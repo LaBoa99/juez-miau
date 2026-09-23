@@ -1,0 +1,27 @@
+# 1. .gitignore Global en la raíz
+echo '.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+
+**/node_modules/
+pnpm-debug.log*
+
+**/venv/
+**/.venv/
+**/__pycache__/
+*.pyc
+
+**/dist/
+**/.angular/
+apps/app-competidores/build/
+*.exe' > .gitignore
+
+# 2. .gitignore para la App de Python
+echo 'venv/
+__pycache__/
+build/
+dist/
+*.exe
+*.spec' > apps/app-competidores/.gitignore
