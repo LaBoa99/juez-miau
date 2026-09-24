@@ -9,3 +9,9 @@ export interface ISubmissionResponse {
   status: "PENDING" | "ACCEPTED" | "WRONG_ANSWER" | "TIME_LIMIT_EXCEEDED";
   executionTimeMs: number;
 }
+
+
+export * from "./enums/edition-status.enum.js";
+export * from "./enums/roles.enum.js";
+export * from "./enums/staff-role.enum.js";
+export * from "./interfaces/edition.interface.js";

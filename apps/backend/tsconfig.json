@@ -18,9 +18,6 @@
     "skipLibCheck": true,
     "strict": true,
     "strictPropertyInitialization": false,
-    "types": ["vitest/globals", "node"],
-    "paths": {
-      "@concurso/shared-types": ["../../packages/shared-types/src/index.ts"]
-    }
+    "types": ["vitest/globals", "node"]
   }
 }
