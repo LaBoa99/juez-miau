@@ -1,11 +1,10 @@
-import { PickType } from '@nestjs/swagger';
+import { IsDate } from 'class-validator';
+import { Type } from 'class-transformer';
 import type { IScheduleEdition } from '@concurso/shared-types';
-import { Edition } from '../entities/edition.entity.js';
 
-export class ScheduleEditionDto extends PickType(Edition, [
-    'scheduled_start',
-] as const) implements IScheduleEdition {
+export class ScheduleEditionDto implements IScheduleEdition {
 
-    // En el entity es nullable (Borrador), pero al programar es obligatoria; @IsDate() del entity rechaza null
+    @Type(() => Date)
+    @IsDate()
     declare scheduled_start: Date;
 }

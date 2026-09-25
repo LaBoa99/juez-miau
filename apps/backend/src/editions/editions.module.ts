@@ -21,6 +21,10 @@ import { Category } from './entities/category.entity.js';
 import { Room } from './entities/room.entity.js';
 import { EditionStaff } from './entities/edition-staff.entity.js';
 import { RoomObserver } from './entities/room-observer.entity.js';
+import { EditionTeamsController } from './controllers/edition-teams.controller.js';
+import { EditionTeamsService } from './services/edition-teams.service.js';
+import { UtilsModule } from '../utils/utils.module.js';
+import { TeamsModule } from '../teams/teams.module.js';
 
 @Module({
   imports: [
@@ -31,6 +35,8 @@ import { RoomObserver } from './entities/room-observer.entity.js';
       EditionStaff,
       RoomObserver,
     ]),
+    UtilsModule,
+    TeamsModule,
   ],
   controllers: [
     EditionsController,
@@ -41,6 +47,7 @@ import { RoomObserver } from './entities/room-observer.entity.js';
     RoomProyectorsController,
     CategoriesController,
     EditionStaffController,
+    EditionTeamsController,
   ],
   providers: [
     EditionsService,
@@ -51,6 +58,7 @@ import { RoomObserver } from './entities/room-observer.entity.js';
     RoomProyectorsService,
     CategoriesService,
     EditionStaffService,
+    EditionTeamsService,
   ],
 })
 export class EditionsModule {}

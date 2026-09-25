@@ -1,8 +1,12 @@
-import { PickType } from '@nestjs/swagger';
-import type { ICreateEditionStaff } from '@concurso/shared-types';
-import { EditionStaff } from '../entities/edition-staff.entity.js';
+import { IsEnum, IsInt, Min } from 'class-validator';
+import { StaffRole, type ICreateEditionStaff } from '@concurso/shared-types';
 
-export class CreateEditionStaffDto extends PickType(EditionStaff, [
-    'staff_user_id',
-    'role',
-] as const) implements ICreateEditionStaff {}
+export class CreateEditionStaffDto implements ICreateEditionStaff {
+
+    @IsInt()
+    @Min(1)
+    declare staff_user_id: number;
+
+    @IsEnum(StaffRole)
+    declare role: StaffRole;
+}

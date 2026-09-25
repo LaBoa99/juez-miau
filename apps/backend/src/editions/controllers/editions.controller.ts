@@ -30,7 +30,7 @@ export class EditionsController {
     @Get(':id')
     getEditionById(
         @Param('id', ParseIntPipe) id: number,
-    ): Promise<IEditionDetail> {
+    ): Promise<any> {
         return this.editionsService.findById(id);
     }
 

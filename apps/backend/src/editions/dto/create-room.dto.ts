@@ -1,8 +1,16 @@
-import { PickType } from '@nestjs/swagger';
+import { IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import type { ICreateRoom } from '@concurso/shared-types';
-import { Room } from '../entities/room.entity.js';
 
-export class CreateRoomDto extends PickType(Room, [
-    'name',
-    'category_id',
-] as const) implements ICreateRoom {}
+export class CreateRoomDto implements ICreateRoom {
+
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(255)
+    declare name: string;
+
+    // null = salón sin categoría
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    declare category_id?: number | null;
+}

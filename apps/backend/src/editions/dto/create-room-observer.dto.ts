@@ -1,7 +1,9 @@
-import { PickType } from '@nestjs/swagger';
+import { IsInt, Min } from 'class-validator';
 import type { ICreateRoomObserver } from '@concurso/shared-types';
-import { RoomObserver } from '../entities/room-observer.entity.js';
 
-export class CreateRoomObserverDto extends PickType(RoomObserver, [
-    'staff_user_id',
-] as const) implements ICreateRoomObserver {}
+export class CreateRoomObserverDto implements ICreateRoomObserver {
+
+    @IsInt()
+    @Min(1)
+    declare staff_user_id: number;
+}
