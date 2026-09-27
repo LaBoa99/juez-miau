@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, type Relation } from "typeorm";
 import { RefreshToken } from "../../auth/entities/refresh-token.entity.js";
 
 @Entity('staff_user')
@@ -26,5 +26,5 @@ export class StaffUser {
     declare created_at: Date
 
     @OneToMany(() => RefreshToken, token => token.user)
-    declare refresh_tokens: RefreshToken[]
+    declare refresh_tokens: Relation<RefreshToken[]>
 }

@@ -1,4 +1,4 @@
-import { Injectable, NotImplementedException } from '@nestjs/common'
+import { Injectable, NotImplementedException, UnauthorizedException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { StaffService } from '../../staff/services/staff.service.js'
@@ -8,22 +8,35 @@ import { EditionStaff } from '../../editions/entities/edition-staff.entity.js'
 import { StaffLoginDto } from '../dto/staff-login.dto.js'
 import { TeamLoginDto } from '../dto/team-login.dto.js'
 import { RefreshDto } from '../dto/refresh.dto.js'
+import { Team } from '../../teams/entities/team.entity.js'
+import { PasswordService } from '../../utils/services/password.service.js'
+import { JwtService } from '@nestjs/jwt'
 
 @Injectable()
 export class AuthService {
     constructor(
-        private readonly staffService: StaffService,
         @InjectRepository(RefreshToken) private readonly refreshRepo: Repository<RefreshToken>,
         @InjectRepository(TeamSession) private readonly sessionRepo: Repository<TeamSession>,
-       // @InjectRepository(Team) private readonly teamRepo: Repository<Team>,
+        @InjectRepository(Team) private readonly teamRepo: Repository<Team>,
         @InjectRepository(EditionStaff) private readonly editionStaffRepo: Repository<EditionStaff>,
+        private readonly staffService: StaffService,
+        private readonly passwordService: PasswordService,
+        private readonly jwtService: JwtService,
     ) {}
 
     async staffLogin(dto: StaffLoginDto) {
         // TODO: buscar staff por email (con password_hash), verificar con argon2,
-        // 401 si falla o está inactivo, crear staff_refresh_token, firmar JWT.
+        const staffUser = await this.staffService.findByEmail(dto.email)
+        const isUserValided = await this.passwordService.comparePassword(dto.password, staffUser.password_hash)
+        // 401 si falla o está inactivo
+        if(!isUserValided) throw new UnauthorizedException('');
+
+        // crear staff_refresh_token, firmar JWT.
+        const payload =  {sub: staffUser.id, username: staffUser.email} 
+        const accesToken = await this.jwtService.signAsync(payload)
+
         // Responde: { accessToken, refreshToken, user: { id, name, roles: [{ editionId, role }] } }
-        throw new NotImplementedException()
+        return {accesToken, user: staffUser}
     }
 
     async teamLogin(dto: TeamLoginDto) {

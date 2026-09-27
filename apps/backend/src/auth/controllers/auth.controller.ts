@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, Post, Req } from '@nestjs/common'
 import { StaffLoginDto } from '../dto/staff-login.dto.js'
 import { TeamLoginDto } from '../dto/team-login.dto.js'
 import { RefreshDto } from '../dto/refresh.dto.js'
@@ -38,7 +38,10 @@ export class AuthController {
 
     // GET /api/v1/auth/me
     @Get('me')
-    me() {
-        return this.authService.me()
+    me(
+        @Req() request: any
+    ) {
+        console.log(request['user'])
+        return true
     }
 }

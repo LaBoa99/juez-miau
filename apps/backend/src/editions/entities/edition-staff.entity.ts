@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, type Relation } from "typeorm";
 import { StaffRole, type IEditionStaff } from "@concurso/shared-types";
 import { Edition } from "./edition.entity.js";
 
@@ -17,5 +17,5 @@ export class EditionStaff implements IEditionStaff {
 
     @ManyToOne(() => Edition, edition => edition.staff, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'edition_id'})
-    declare edition: Edition
+    declare edition: Relation<Edition>
 }

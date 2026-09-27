@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, type Relation } from "typeorm";
 import type { ICategory } from "@concurso/shared-types";
 import { Edition } from "./edition.entity.js";
 import { Room } from "./room.entity.js";
@@ -23,13 +23,13 @@ export class Category implements ICategory {
     declare sort_order: number
 
     @OneToMany(() => Room, room => room.category)
-    declare rooms: Room[]
+    declare rooms: Relation<Room[]>
 
     @OneToMany(() => Team, team => team.category)
-    declare teams: Team[]
+    declare teams: Relation<Team[]>
 
     @ManyToOne(() => Edition, edition => edition.categories, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'edition_id'})
-    declare edition: Edition
+    declare edition: Relation<Edition>
 
 }

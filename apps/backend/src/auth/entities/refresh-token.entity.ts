@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm"
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, type Relation } from "typeorm"
 import { StaffUser } from "../../staff/entities/staff-user.entity.js"
 
 @Entity('refresh_token')
@@ -21,5 +21,5 @@ export class RefreshToken {
 
     @ManyToOne(() => StaffUser, user => user.refresh_tokens, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'user_id' })
-    declare user: StaffUser
+    declare user: Relation<StaffUser>
 }

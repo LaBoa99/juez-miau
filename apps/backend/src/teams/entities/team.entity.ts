@@ -1,5 +1,5 @@
 import { Exclude } from "class-transformer";
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, type Relation } from "typeorm";
 import { Edition } from "../../editions/entities/edition.entity.js";
 import { Category } from "../../editions/entities/category.entity.js";
 import { Room } from "../../editions/entities/room.entity.js";
@@ -40,20 +40,20 @@ export class Team {
     declare created_at: Date
 
     @OneToOne(() => TeamSession, teamSession => teamSession.team)
-    declare teamSession: TeamSession | null
+    declare teamSession: Relation<TeamSession> | null
 
     @OneToMany(() => TeamMember, teamMember => teamMember.team)
-    declare members: TeamMember[]
+    declare members: Relation<TeamMember[]>
 
     @ManyToOne(() => Edition, edition => edition.teams)
     @JoinColumn({ name: 'edition_id'})
-    declare edition: Edition
+    declare edition: Relation<Edition>
 
     @ManyToOne(() => Category, category => category.teams)
     @JoinColumn({ name: 'category_id'})
-    declare category: Category
+    declare category: Relation<Category>
 
     @ManyToOne(() => Room, room => room.teams)
     @JoinColumn({ name: 'room_id' })
-    declare room: Room | null
+    declare room: Relation<Room> | null
 }
