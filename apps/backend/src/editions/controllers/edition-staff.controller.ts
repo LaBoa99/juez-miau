@@ -1,7 +1,8 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post } from '@nestjs/common';
-import type { IEditionStaff, IEditionStaffListItem } from '@concurso/shared-types';
+import type { IEditionStaff } from '@concurso/shared-types';
 import { EditionStaffService } from '../services/edition-staff.service.js';
 import { CreateEditionStaffDto } from '../dto/create-edition-staff.dto.js';
+import type { EditionStaff } from '../entities/edition-staff.entity.js';
 
 @Controller('editions/:editionId/staff')
 export class EditionStaffController {
@@ -13,7 +14,7 @@ export class EditionStaffController {
     @Get()
     getStaffMembersOfEdition(
         @Param('editionId', ParseIntPipe) editionId: number,
-    ): Promise<IEditionStaffListItem[]> {
+    ): Promise<EditionStaff[]> {
         return this.editionStaffService.findAllByEdition(editionId);
     }
 

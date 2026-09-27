@@ -1,4 +1,4 @@
-import { Injectable, NotImplementedException } from '@nestjs/common'
+import { Injectable, NotImplementedException, UnauthorizedException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { StaffUser } from '../entities/staff-user.entity.js'
@@ -50,5 +50,16 @@ export class StaffService {
         // TODO: 404 si no existe, active = false, revocar sus refresh tokens.
         // Responde: { id, active: false }
         throw new NotImplementedException()
+    }
+
+    async findByEmail(email: string) {
+        const staffUser = await this.staffRepo.findOne({
+            where: { email },
+            select: { id: true, name: true, email: true, password_hash: true, is_superadmin: true, active: true, created_at: true },
+        })
+
+        if(!staffUser) throw new UnauthorizedException('');
+
+        return staffUser;
     }
 }
