@@ -60,5 +60,6 @@ import { TeamsModule } from '../teams/teams.module.js';
     EditionStaffService,
     EditionTeamsService,
   ],
+  exports: [EditionStaffService],
 })
 export class EditionsModule {}

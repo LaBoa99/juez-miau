@@ -1,4 +1,4 @@
-import { Entity, JoinColumn, ManyToOne, PrimaryColumn } from "typeorm";
+import { Entity, JoinColumn, ManyToOne, PrimaryColumn, type Relation } from "typeorm";
 import type { IRoomObserver } from "@concurso/shared-types";
 import { Room } from "./room.entity.js";
 
@@ -14,5 +14,5 @@ export class RoomObserver implements IRoomObserver {
 
     @ManyToOne(() => Room, room => room.observers, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'room_id'})
-    declare room: Room
+    declare room: Relation<Room>
 }

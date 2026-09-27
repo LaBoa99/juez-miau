@@ -1,29 +1,44 @@
-import { Injectable, NotImplementedException } from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { Injectable, NotImplementedException, UnauthorizedException } from '@nestjs/common'
+import { JwtService } from '@nestjs/jwt'
 import { StaffService } from '../../staff/services/staff.service.js'
-import { RefreshToken } from '../entities/refresh-token.entity.js'
-import { TeamSession } from '../entities/team-session.entity.js'
-import { EditionStaff } from '../../editions/entities/edition-staff.entity.js'
+import { PasswordService } from '../../utils/services/password.service.js'
+import { TeamSessionsService } from '../../teams/services/team-sessions.service.js'
+import { EditionStaffService } from '../../editions/services/edition-staff.service.js'
+import { RefreshTokensService } from './refresh-tokens.service.js'
 import { StaffLoginDto } from '../dto/staff-login.dto.js'
 import { TeamLoginDto } from '../dto/team-login.dto.js'
-import { RefreshDto } from '../dto/refresh.dto.js'
+import { AccessTokenPayloadFactory, AccessTokenType, type AccessTokenPayload } from '../factories/access-token-payload.factory.js'
 
 @Injectable()
 export class AuthService {
     constructor(
         private readonly staffService: StaffService,
-        @InjectRepository(RefreshToken) private readonly refreshRepo: Repository<RefreshToken>,
-        @InjectRepository(TeamSession) private readonly sessionRepo: Repository<TeamSession>,
-       // @InjectRepository(Team) private readonly teamRepo: Repository<Team>,
-        @InjectRepository(EditionStaff) private readonly editionStaffRepo: Repository<EditionStaff>,
+        private readonly passwordService: PasswordService,
+        private readonly jwtService: JwtService,
+        private readonly refreshTokensService: RefreshTokensService,
+        private readonly teamSessionsService: TeamSessionsService,
+        private readonly editionStaffService: EditionStaffService,
     ) {}
 
     async staffLogin(dto: StaffLoginDto) {
-        // TODO: buscar staff por email (con password_hash), verificar con argon2,
-        // 401 si falla o está inactivo, crear staff_refresh_token, firmar JWT.
-        // Responde: { accessToken, refreshToken, user: { id, name, roles: [{ editionId, role }] } }
-        throw new NotImplementedException()
+        const user = await this.staffService.findByEmailWithPassword(dto.email)
+
+        // Mismo mensaje para email inexistente, contraseña incorrecta o usuario inactivo,
+        // para no revelar qué emails están registrados
+        const valid = user?.active && await this.passwordService.comparePassword(dto.password, user.password_hash)
+        if (!user || !valid) {
+            throw new UnauthorizedException('Credenciales inválidas')
+        }
+
+        return {
+            accessToken: await this.jwtService.signAsync(AccessTokenPayloadFactory.forStaff(user)),
+            refreshToken: await this.refreshTokensService.issue(user.id),
+            user: {
+                id: user.id,
+                name: user.name,
+                roles: await this.findStaffRoles(user.id),
+            },
+        }
     }
 
     async teamLogin(dto: TeamLoginDto) {
@@ -34,23 +49,39 @@ export class AuthService {
         throw new NotImplementedException()
     }
 
-    async refresh(dto: RefreshDto) {
-        // TODO: buscar el refresh token por su hash; 401 si no existe, está revocado,
-        // expiró o el usuario está inactivo. Firmar un access token nuevo.
-        // Responde: { accessToken }
-        throw new NotImplementedException()
+    async refresh(refreshToken: string | undefined) {
+        const stored = refreshToken ? await this.refreshTokensService.findActive(refreshToken) : null
+
+        if (!stored || !stored.user.active) {
+            throw new UnauthorizedException('Sesión expirada, vuelve a iniciar sesión')
+        }
+
+        return { accessToken: await this.jwtService.signAsync(AccessTokenPayloadFactory.forStaff(stored.user)) }
     }
 
-    async logout() {
-        // TODO: staff → revoked_at = ahora en su refresh token.
-        // Equipo → ended_at = ahora y end_reason = 'logout' en su team_session.
-        // Responde: 204 sin contenido
-        throw new NotImplementedException()
+    async logout(refreshToken: string | undefined) {
+        // TODO: equipo → ended_at = ahora y end_reason = 'logout' en su team_session.
+        if (!refreshToken) return
+
+        await this.refreshTokensService.revoke(refreshToken)
     }
 
-    async me() {
-        // TODO: staff → { type: 'staff', id, name, roles }
-        // Equipo → { type: 'team', id, name, team }
-        throw new NotImplementedException()
+    async me(payload: AccessTokenPayload) {
+        if (payload.type !== AccessTokenType.STAFF) {
+            // TODO: equipo → { type: 'team', id, name, team }
+            throw new NotImplementedException()
+        }
+
+        const user = await this.staffService.findById(payload.sub)
+        if (!user?.active) {
+            throw new UnauthorizedException('Usuario inactivo o inexistente')
+        }
+
+        return { type: AccessTokenType.STAFF, id: user.id, name: user.name, roles: await this.findStaffRoles(user.id) }
+    }
+
+    private async findStaffRoles(userId: number) {
+        const assignments = await this.editionStaffService.findAllByStaffUser(userId)
+        return assignments.map((a) => ({ editionId: a.edition_id, role: a.role }))
     }
 }

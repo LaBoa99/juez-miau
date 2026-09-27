@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany, type Relation } from "typeorm";
 import { EditionStatus, type IEdition } from "@concurso/shared-types";
 import { bigintTransformer } from "../../common/transformers/bigint.transformer.js";
 import { Category } from "./category.entity.js";
@@ -47,14 +47,14 @@ export class Edition implements IEdition {
     declare created_at: Date;
 
     @OneToMany(() => Category, category => category.edition)
-    declare categories: Category[]
+    declare categories: Relation<Category[]>
 
     @OneToMany(() => Room, room => room.edition)
-    declare rooms: Room[]
+    declare rooms: Relation<Room[]>
 
     @OneToMany(() => Team, team => team.edition)
-    declare teams: Team[]
+    declare teams: Relation<Team[]>
 
     @OneToMany(() => EditionStaff, staff => staff.edition)
-    declare staff: EditionStaff[]
+    declare staff: Relation<EditionStaff[]>
 }

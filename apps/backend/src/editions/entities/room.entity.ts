@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, type Relation } from "typeorm";
 import type { IRoom } from "@concurso/shared-types";
 import { Edition } from "./edition.entity.js";
 import { Category } from "./category.entity.js";
@@ -25,16 +25,16 @@ export class Room implements IRoom {
     declare projector_token_hash: string | null
 
     @OneToMany(() => RoomObserver, observer => observer.room)
-    declare observers: RoomObserver[]
+    declare observers: Relation<RoomObserver[]>
 
     @OneToMany(() => Team, team => team.room)
-    declare teams: Team[]
+    declare teams: Relation<Team[]>
 
     @ManyToOne(() => Edition, edition => edition.rooms, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'edition_id'})
-    declare edition: Edition
+    declare edition: Relation<Edition>
 
     @ManyToOne(() => Category, category => category.rooms)
     @JoinColumn({ name: 'category_id'})
-    declare category: Category | null
+    declare category: Relation<Category> | null
 }

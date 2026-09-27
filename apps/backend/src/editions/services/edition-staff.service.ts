@@ -27,6 +27,14 @@ export class EditionStaffService {
         })
     }
 
+    async findAllByStaffUser(staffUserId: number): Promise<EditionStaff[]> {
+        return this.editionStaffRepository.find({
+            where: {
+                staff_user_id: staffUserId
+            }
+        })
+    }
+
     async assign(editionId: number, dto: CreateEditionStaffDto): Promise<EditionStaff> {
         const editionStaffMember = this.editionStaffRepository.create()
 

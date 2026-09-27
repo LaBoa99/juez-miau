@@ -16,6 +16,6 @@ import { UtilsModule } from '../utils/utils.module.js';
   ],
   controllers: [TeamsController],
   providers: [TeamsService, TeamMembersService, TeamSessionsService],
-  exports: [TeamsService],
+  exports: [TeamsService, TeamSessionsService],
 })
 export class TeamsModule {}

@@ -14,6 +14,19 @@ export class StaffService {
         @InjectRepository(RefreshToken) private readonly refreshRepo: Repository<RefreshToken>,
     ) {}
 
+    // password_hash tiene select: false, por eso hay que pedirlo explícitamente
+    async findByEmailWithPassword(email: string): Promise<StaffUser | null> {
+        return this.staffRepo
+            .createQueryBuilder('user')
+            .addSelect('user.password_hash')
+            .where('user.email = :email', { email })
+            .getOne()
+    }
+
+    async findById(id: number): Promise<StaffUser | null> {
+        return this.staffRepo.findOneBy({ id })
+    }
+
     async findAll(query: ListStaffQueryDto) {
         // TODO: filtrar por active y buscar por name o email.
         // Responde: [{ id, name, email, active, createdAt }]

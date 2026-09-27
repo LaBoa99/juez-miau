@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, OneToOne, PrimaryColumn } from "typeorm";
+import { Column, Entity, JoinColumn, OneToOne, PrimaryColumn, type Relation } from "typeorm";
 import { Team } from "./team.entity.js";
 
 @Entity()
@@ -25,6 +25,6 @@ export class TeamSession {
 
     @OneToOne(() => Team, team => team.teamSession, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'team_id' })
-    declare team: Team
+    declare team: Relation<Team>
 
 }

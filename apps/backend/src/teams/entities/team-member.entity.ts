@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, type Relation } from "typeorm";
 import { Team } from "./team.entity.js";
 
 @Entity()
@@ -18,6 +18,6 @@ export class TeamMember {
 
     @ManyToOne(() => Team, team => team.members)
     @JoinColumn({ name: 'team_id' })
-    declare team: Team;
+    declare team: Relation<Team>;
     
 }
