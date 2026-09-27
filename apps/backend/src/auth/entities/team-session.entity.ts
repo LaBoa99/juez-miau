@@ -8,6 +8,9 @@ export class TeamSession {
     @PrimaryGeneratedColumn()
     declare id: number
 
+    @Column()
+    declare team_id: number
+
     @CreateDateColumn({ type: 'timestamptz' })
     declare started_at: Date
 

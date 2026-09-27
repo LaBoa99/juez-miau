@@ -16,4 +16,5 @@ export * from "./enums/roles.enum.js";
 export * from "./enums/staff-role.enum.js";
 
 export * from "./interfaces/edition.interface.js";
-export * from "./interfaces/team.interface.js"
+export * from "./interfaces/team.interface.js";
+export * from "./interfaces/login.interface.js";
