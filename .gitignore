@@ -91,6 +91,8 @@ __pycache__/
 # DOCKER / DATOS LOCALES
 # ===================================
 docker-data/
+deploy/backups/
+deploy/images/
 *.sqlite
 *.sqlite3
 *.db

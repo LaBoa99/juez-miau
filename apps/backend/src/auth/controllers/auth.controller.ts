@@ -59,7 +59,9 @@ export class AuthController {
         const ttlDays = Number(this.config.get<string>('REFRESH_TOKEN_TTL_DAYS') ?? 7)
         return {
             httpOnly: true,
-            secure: this.config.get<string>('NODE_ENV') === 'production',
+            // COOKIE_SECURE=false permite la cookie sobre HTTP (red del laboratorio sin HTTPS).
+            // Sin la variable, solo es secure en producción
+            secure: (this.config.get<string>('COOKIE_SECURE') ?? String(this.config.get<string>('NODE_ENV') === 'production')) === 'true',
             sameSite: 'strict',
             path: '/api/v1/auth',
             maxAge: ttlDays * 24 * 60 * 60 * 1000,

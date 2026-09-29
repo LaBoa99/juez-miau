@@ -1,10 +1,11 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany, type Relation } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany, type Relation, ManyToMany, JoinTable } from "typeorm";
 import { EditionStatus, type IEdition } from "@concurso/shared-types";
 import { bigintTransformer } from "../../common/transformers/bigint.transformer.js";
 import { Category } from "./category.entity.js";
 import { Room } from "./room.entity.js";
 import { EditionStaff } from "./edition-staff.entity.js";
 import { Team } from "../../teams/entities/team.entity.js";
+import { Language } from "../../languages/entities/language.entity.js";
 
 @Entity()
 export class Edition implements IEdition {
@@ -57,4 +58,8 @@ export class Edition implements IEdition {
 
     @OneToMany(() => EditionStaff, staff => staff.edition)
     declare staff: Relation<EditionStaff[]>
+
+    @ManyToMany(() => Language)
+    @JoinTable()
+    declare languages: Language[]
 }

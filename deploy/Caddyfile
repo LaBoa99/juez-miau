@@ -1,0 +1,31 @@
+# Único punto de entrada público. Todo va por el mismo origen, así el panel de staff no
+# necesita CORS y la cookie de refresh (sameSite strict) funciona.
+#
+# SITE_ADDRESS (en deploy/.env):
+#   :80                   → HTTP por IP, típico en la red del laboratorio
+#   concurso.midominio.mx → HTTPS automático con Let's Encrypt (requiere DNS y puertos 80/443 públicos)
+{$SITE_ADDRESS::80} {
+	encode gzip
+
+	# El código de un envío pesa pocos KB; esto corta abusos
+	request_body {
+		max_size 2MB
+	}
+
+	# API REST (prefijo global api/v1 en app.setup.ts)
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	# Tiempo real (veredictos, marcador). reverse_proxy maneja el upgrade de WebSocket solo
+	handle /socket.io/* {
+		reverse_proxy api:3000
+	}
+
+	# Panel de staff (Angular). Las rutas del SPA caen en index.html
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -1,0 +1,109 @@
+# Despliegue del concurso
+
+Todo el sistema en una sola máquina con Docker Compose. Pensado para montarse unos días antes
+de cada concurso (2 veces al año, 2–4 h) y desmontarse después. Requisitos de hardware en
+[docs/design/server-specs.md](../docs/design/server-specs.md).
+
+```
+                 :80 / :443
+Navegadores ───────► web (Caddy) ──┬── /            panel de staff (Angular, estáticos)
+App de escritorio ─┘               ├── /api/*       ─► api (NestJS) ─► postgres
+de los equipos                     └── /socket.io/* ─►                └► redis ◄─ worker ─► docker.sock
+                                                                                   (juez, perfil "judge")
+```
+
+| Servicio | Qué es | Puertos |
+|---|---|---|
+| `web` | Caddy: sirve `apps/frontend-staff` y hace proxy a la API | 80, 443 publicados |
+| `api` | Backend NestJS. Al arrancar corre el seeder (`SEED_PROFILE`) | interno |
+| `worker` | Juez. Mismo código que la API, arranca `dist/worker.js`. **Aún no existe**: está en el perfil `judge` | ninguno |
+| `postgres` | Base de datos | interno |
+| `redis` | Cola de envíos (BullMQ) | interno |
+
+**Frontend:** el panel debe llamar a la API con la ruta relativa `/api/v1` (mismo origen), no
+con una URL fija; así la misma imagen sirve en cualquier máquina sin reconstruir.
+
+`apps/app-competidores` (PySide6) no va aquí: se instala en las máquinas de los equipos y
+se conecta a `PUBLIC_URL`/`api/v1`.
+
+## Requisitos de la máquina
+
+- Linux x86_64 con Docker 24+ y Docker Compose v2 (`docker compose version`)
+- cgroup v2: `stat -fc %T /sys/fs/cgroup` → `cgroup2fs`
+- ≈ 20 GB libres; IP fija o reservada en la red del laboratorio
+
+## Instalación
+
+```bash
+git clone <repo> && cd mi-concurso-monorepo/deploy
+cp .env.example .env
+# Editar .env: PUBLIC_URL, contraseñas y secretos (openssl rand -hex 32)
+docker compose up -d --build
+docker compose ps              # todo "Up"; postgres y redis "(healthy)"
+```
+
+Entrar a `PUBLIC_URL` con `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
+
+**Sin internet en el laboratorio:** en una máquina con internet, `docker compose build` y
+`scripts/images.sh save`; copiar la carpeta del repo (con `images/`) y en la máquina del
+concurso `scripts/images.sh load` y después `docker compose up -d` (sin `--build`).
+
+## Ciclo por semestre
+
+| Cuándo | Qué | Comando |
+|---|---|---|
+| 2–3 semanas antes | Levantar en cualquier máquina para que los jueces capturen problemas | `docker compose up -d --build` |
+| 1 semana antes | Respaldar la captura y llevarla a la máquina del concurso | `scripts/backup.sh captura` → copiar el `.dump` → `scripts/restore.sh <archivo>` |
+| | Descargar las imágenes del juez | `scripts/images.sh pull` |
+| | Probar el juez en esa máquina | `node ../scripts/judge-bench/bench.mjs --only ac --cpus 1` |
+| | Simulacro: un envío por lenguaje y problema | |
+| Día del concurso | Llegar 1 h antes: `docker compose ps`, red, hora del sistema | |
+| Durante | Respaldo cada 15–30 min (o con cron) | `scripts/backup.sh` |
+| Después | Respaldo final y copiarlo fuera de la máquina | `scripts/backup.sh final` |
+| | Desmontar | `docker compose down` (conserva datos) o `down -v` (los borra) |
+
+Los respaldos se restauran en cualquier otra instalación **con los mismos
+`PASSWORD_ADMIN_MASTERKEY` y `TEAM_SALT`**; guardar el `.env` junto con los respaldos, en
+un lugar seguro.
+
+## HTTP o HTTPS
+
+| Situación | `.env` |
+|---|---|
+| Red del laboratorio, entrada por IP | `SITE_ADDRESS=:80`, `PUBLIC_URL=http://<ip>`, `COOKIE_SECURE=false` |
+| Dominio público apuntando a la máquina | `SITE_ADDRESS=concurso.midominio.mx`, `PUBLIC_URL=https://concurso.midominio.mx`, `COOKIE_SECURE=true` |
+
+Con dominio, Caddy obtiene el certificado solo (necesita los puertos 80 y 443 abiertos desde
+internet). `COOKIE_SECURE=true` sobre HTTP rompe la sesión del staff: el navegador descarta la
+cookie de refresh.
+
+## Activar el juez
+
+Cuando exista `apps/backend/src/worker.ts`:
+
+1. `sudo mkdir -p /var/lib/concurso/submissions && sudo chown 1000:1000 /var/lib/concurso/submissions`
+   (UID del usuario `node` de la imagen; ruta = `SUBMISSIONS_DIR`)
+2. `DOCKER_GID` = `getent group docker | cut -d: -f3`
+3. `COMPOSE_PROFILES=judge` en `.env` y `docker compose up -d`
+
+El worker monta `docker.sock`, que equivale a root en el host: por eso no publica puertos ni
+comparte proceso con la API. Los requisitos de ejecución (variables de .NET, detección de MLE,
+límites) están en [server-specs.md](../docs/design/server-specs.md#requisitos-que-el-worker-debe-cumplir).
+
+## Actualizar el código
+
+```bash
+scripts/backup.sh antes-de-actualizar
+git pull && docker compose up -d --build
+```
+
+Mientras `DB_SYNCHRONIZE=true` (no hay migraciones todavía), TypeORM ajusta el esquema al
+arrancar y **puede borrar columnas con datos**. El respaldo previo no es opcional.
+
+## Comandos útiles
+
+```bash
+docker compose logs -f api            # logs de la API
+docker compose restart api            # reiniciar un servicio
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'   # consola SQL
+```

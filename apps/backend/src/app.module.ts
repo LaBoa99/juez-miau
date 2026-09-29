@@ -24,6 +24,7 @@ import { ExportsModule } from './exports/exports.module.js';
 import { PublicModule } from './public/public.module.js';
 import { HealthModule } from './health/health.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
+import { buildTypeOrmOptions } from './database/typeorm.config.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -44,14 +45,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.getOrThrow<string>('DB_HOST'),
-        port: Number(config.getOrThrow<string>('DB_PORT')),
-        username: config.getOrThrow<string>('DB_USERNAME'),
-        password: config.getOrThrow<string>('DB_PASSWORD'),
-        database: config.getOrThrow<string>('DB_DATABASE'),
+        ...buildTypeOrmOptions(config),
         autoLoadEntities: true,
-        synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
       }),
     }),
     BullModule.forRootAsync({

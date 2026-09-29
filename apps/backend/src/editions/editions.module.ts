@@ -25,6 +25,9 @@ import { EditionTeamsController } from './controllers/edition-teams.controller.j
 import { EditionTeamsService } from './services/edition-teams.service.js';
 import { UtilsModule } from '../utils/utils.module.js';
 import { TeamsModule } from '../teams/teams.module.js';
+import { LanguagesModule } from '../languages/languages.module.js';
+import { EditionLanguagesController } from './controllers/edition-languages.controller.js';
+import { EditionLanguagesService } from './services/edition-languages.service.js';
 
 @Module({
   imports: [
@@ -37,6 +40,7 @@ import { TeamsModule } from '../teams/teams.module.js';
     ]),
     UtilsModule,
     TeamsModule,
+    LanguagesModule,
   ],
   controllers: [
     EditionsController,
@@ -48,6 +52,7 @@ import { TeamsModule } from '../teams/teams.module.js';
     CategoriesController,
     EditionStaffController,
     EditionTeamsController,
+    EditionLanguagesController,
   ],
   providers: [
     EditionsService,
@@ -59,7 +64,10 @@ import { TeamsModule } from '../teams/teams.module.js';
     CategoriesService,
     EditionStaffService,
     EditionTeamsService,
+    EditionLanguagesService,
   ],
-  exports: [EditionStaffService],
+  exports: [
+    EditionStaffService
+  ],
 })
 export class EditionsModule {}

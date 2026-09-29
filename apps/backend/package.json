@@ -14,6 +14,9 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "seed:base": "nest build && node dist/database/seeds/seed.js base",
+    "seed:dev": "nest build && node dist/database/seeds/seed.js dev",
+    "seed:prod": "nest build && node dist/database/seeds/seed.js prod",
     "lint": "oxlint --type-aware src/ test/",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -23,6 +26,7 @@
   },
   "dependencies": {
     "@concurso/shared-types": "workspace:*",
+    "@faker-js/faker": "^10.6.0",
     "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.1",
