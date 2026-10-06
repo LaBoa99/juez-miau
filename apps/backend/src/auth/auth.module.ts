@@ -30,5 +30,7 @@ import { RefreshTokensService } from './services/refresh-tokens.service.js';
     ],
     controllers: [AuthController],
     providers: [AuthService, RefreshTokensService],
+    // Los guards de JWT de otros módulos necesitan JwtService
+    exports: [JwtModule],
 })
 export class AuthModule {}

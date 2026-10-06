@@ -1,10 +1,11 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import type { IEditionStaff, IEditionStaffListItem } from '@concurso/shared-types';
+import { StaffRole, type IEditionStaff, type IEditionStaffListItem } from '@concurso/shared-types';
 import { EditionStaff } from '../entities/edition-staff.entity.js';
 import { EditionsService } from './editions.service.js';
 import { CreateEditionStaffDto } from '../dto/create-edition-staff.dto.js';
+import { StaffService } from '../../staff/services/staff.service.js';
 
 @Injectable()
 export class EditionStaffService {
@@ -13,6 +14,7 @@ export class EditionStaffService {
         @InjectRepository(EditionStaff)
         private readonly editionStaffRepository: Repository<EditionStaff>,
         private readonly editionsService: EditionsService,
+        private readonly staffService: StaffService,
     ) {}
 
     getRepository(): Repository<EditionStaff> {
@@ -33,6 +35,25 @@ export class EditionStaffService {
                 staff_user_id: staffUserId
             }
         })
+    }
+
+    // Gestionar problemas y veredictos: superadmin, o juez/admin de esa edición
+    async assertCanJudge(staffUserId: number, editionId: number): Promise<void> {
+        const user = await this.staffService.findById(staffUserId)
+        if(!user?.active){
+            throw new UnauthorizedException('Usuario inactivo o inexistente')
+        }
+
+        if(user.is_superadmin) return
+
+        const assignment = await this.editionStaffRepository.findOneBy({
+            edition_id: editionId,
+            staff_user_id: staffUserId
+        })
+
+        if(assignment?.role !== StaffRole.JUDGE && assignment?.role !== StaffRole.ADMIN){
+            throw new ForbiddenException('staff user #' + staffUserId + ' is not a judge of edition #' + editionId)
+        }
     }
 
     async assign(editionId: number, dto: CreateEditionStaffDto): Promise<EditionStaff> {

@@ -24,6 +24,7 @@ import { RoomObserver } from './entities/room-observer.entity.js';
 import { EditionTeamsController } from './controllers/edition-teams.controller.js';
 import { EditionTeamsService } from './services/edition-teams.service.js';
 import { UtilsModule } from '../utils/utils.module.js';
+import { StaffModule } from '../staff/staff.module.js';
 import { TeamsModule } from '../teams/teams.module.js';
 import { LanguagesModule } from '../languages/languages.module.js';
 import { EditionLanguagesController } from './controllers/edition-languages.controller.js';
@@ -39,6 +40,7 @@ import { EditionLanguagesService } from './services/edition-languages.service.js
       RoomObserver,
     ]),
     UtilsModule,
+    StaffModule,
     TeamsModule,
     LanguagesModule,
   ],
@@ -67,7 +69,9 @@ import { EditionLanguagesService } from './services/edition-languages.service.js
     EditionLanguagesService,
   ],
   exports: [
-    EditionStaffService
+    EditionsService,
+    CategoriesService,
+    EditionStaffService,
   ],
 })
 export class EditionsModule {}
