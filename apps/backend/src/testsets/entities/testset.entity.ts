@@ -1,10 +1,11 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique, type Relation } from "typeorm";
-import { CompareMode, TestsetStatus, type ITestsetSchema } from "@concurso/shared-types";
+import { CompareMode, TestsetStatus, type IGeneratorGroup, type ITestsetSchema } from "@concurso/shared-types";
 import { bigintTransformer } from "../../common/transformers/bigint.transformer.js";
 import { Problem } from "../../problems/entities/problem.entity.js";
 import { StaffUser } from "../../staff/entities/staff-user.entity.js";
 import { RefSolution } from "./ref-solution.entity.js";
 import { Generator } from "./generator.entity.js";
+import { Checker } from "./checker.entity.js";
 import { TestCase } from "./test-case.entity.js";
 
 @Entity()
@@ -24,8 +25,16 @@ export class Testset {
     @Column({ type: 'int', nullable: true })
     declare ref_solution_id: number | null
 
+    // Generador en código: corre al construir el testset con estos grupos y semillas
     @Column({ type: 'int', nullable: true })
     declare generator_id: number | null
+
+    @Column({ type: 'jsonb', nullable: true })
+    declare generator_groups: IGeneratorGroup[] | null
+
+    // Obligatorio con compare_mode = checker
+    @Column({ type: 'int', nullable: true })
+    declare checker_id: number | null
 
     @Column({ type: 'bigint', nullable: true, transformer: bigintTransformer })
     declare seed: number | null
@@ -87,6 +96,10 @@ export class Testset {
     @ManyToOne(() => Generator)
     @JoinColumn({ name: 'generator_id' })
     declare generator: Relation<Generator> | null
+
+    @ManyToOne(() => Checker)
+    @JoinColumn({ name: 'checker_id' })
+    declare checker: Relation<Checker> | null
 
     @ManyToOne(() => StaffUser)
     @JoinColumn({ name: 'author_id' })

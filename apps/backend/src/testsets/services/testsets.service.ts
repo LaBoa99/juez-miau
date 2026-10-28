@@ -18,7 +18,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { ConflictException, Injectable, Logger, NotFoundException, ServiceUnavailableException, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Queue } from 'bullmq';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { BlobsService } from '../../blobs/services/blobs.service.js';
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js';
 import { Edition } from '../../editions/entities/edition.entity.js';
@@ -27,6 +27,13 @@ import { toProblemDto } from '../../problems/mappers/problem.mapper.js';
 import { Testset } from '../entities/testset.entity.js';
 import { TestCase } from '../entities/test-case.entity.js';
 import { RefSolution } from '../entities/ref-solution.entity.js';
+import { Checker } from '../entities/checker.entity.js';
+import { Generator } from '../entities/generator.entity.js';
+import { compactOrdinals } from '../generation/ordinals.js';
+import { SetCheckerDto, SetGeneratorDto } from '../dto/set-generator.dto.js';
+import { Language } from '../../languages/entities/language.entity.js';
+import { hasDriver } from '../../judge/drivers/index.js';
+import { checkerNameCollisions } from '../../judge/special-programs.js';
 import { parseJsonPreservingIntegers, serializeInput } from '../generation/canonical-json.js';
 import { GenerationError, generateCases } from '../generation/generate.js';
 import { MAX_CASE_BYTES, MAX_GENERATED_TOTAL_BYTES, MAX_INPUT_PREVIEW_BYTES, MAX_TESTSET_CASES, MAX_VALIDATION_ERRORS } from '../generation/limits.js';
@@ -129,6 +136,8 @@ export class TestsetsService {
                 status: TestsetStatus.DRAFT,
                 ref_solution_id: current.ref_solution_id,
                 generator_id: current.generator_id,
+                generator_groups: current.generator_groups,
+                checker_id: current.checker_id,
                 seed: current.seed,
                 generated_count: current.generated_count,
                 time_limit_ms: current.time_limit_ms,
@@ -231,7 +240,7 @@ export class TestsetsService {
         try {
             return await this.dataSource.transaction(async (manager) => {
                 await manager.delete(TestCase, { testset_id: testset.id, origin: TestCaseOrigin.GENERATED })
-                let ordinal = await this.compactOrdinals(testset.id, manager)
+                let ordinal = await compactOrdinals(testset.id, manager)
                 let totalBytes = 0
                 let generatedCount = 0
 
@@ -270,18 +279,7 @@ export class TestsetsService {
     async setRefSolution(testsetId: number, dto: SetRefSolutionDto, staffUserId: number): Promise<IProblemSource> {
         const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
         this.assertEditable(testset)
-
-        const enabled = await this.dataSource.getRepository(Edition)
-            .createQueryBuilder('edition')
-            .innerJoin('edition.languages', 'language')
-            .where('edition.id = :editionId', { editionId: problem.edition_id })
-            .andWhere('language.id = :languageId', { languageId: dto.languageId })
-            .andWhere('language.active = true')
-            .getExists()
-        if(!enabled){
-            throw unprocessable(['language ' + dto.languageId + ' is not active or not enabled in edition #' + problem.edition_id])
-        }
-
+        await this.assertLanguageEnabled(problem, dto.languageId)
         const source = Buffer.from(dto.source, 'utf8')
 
         return this.dataSource.transaction(async (manager) => {
@@ -301,6 +299,107 @@ export class TestsetsService {
         })
     }
 
+    // compare_mode = checker lo exige; el build revisa que acepte las salidas de la solución oficial
+    async setChecker(testsetId: number, dto: SetCheckerDto, staffUserId: number): Promise<IProblemSource> {
+        const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
+        this.assertEditable(testset)
+        await this.assertLanguageEnabled(problem, dto.languageId)
+        const collisions = checkerNameCollisions(this.requireSignature(problem))
+        if(collisions.length > 0) throw unprocessable(collisions)
+        const source = Buffer.from(dto.source, 'utf8')
+
+        return this.dataSource.transaction(async (manager) => {
+            const checker = await manager.save(manager.create(Checker, {
+                problem_id: problem.id,
+                language_id: dto.languageId,
+                source,
+                source_sha: BlobsService.sha256(source),
+                created_by: staffUserId,
+            }))
+
+            testset.checker_id = checker.id
+            this.applyEdited(testset)
+            await manager.save(testset)
+
+            return toSourceDto(checker)!
+        })
+    }
+
+    async removeChecker(testsetId: number, staffUserId: number): Promise<void> {
+        const { testset } = await this.getTestsetForJudge(testsetId, staffUserId)
+        this.assertEditable(testset)
+        if(testset.compare_mode === CompareMode.CHECKER){
+            throw unprocessable(['change compareMode before removing the checker'])
+        }
+        testset.checker_id = null
+        this.applyEdited(testset)
+        await this.testsetRepository.save(testset)
+    }
+
+    // Los casos del generador se crean (y reemplazan) al construir el testset: necesita Docker
+    async setGenerator(testsetId: number, dto: SetGeneratorDto, staffUserId: number): Promise<IProblemSource> {
+        const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
+        this.assertEditable(testset)
+        this.requireSignature(problem)
+        await this.assertLanguageEnabled(problem, dto.languageId)
+
+        const names = dto.groups.map((group) => group.name)
+        if(new Set(names).size !== names.length) throw unprocessable(['generator group names must be unique'])
+        const seeds = dto.groups.reduce((total, group) => total + group.seeds.length, 0)
+        const others = await this.testCaseRepository.count({ where: { testset_id: testset.id, origin: Not(TestCaseOrigin.GENERATOR) } })
+        if(others + seeds > MAX_TESTSET_CASES){
+            throw unprocessable(['' + others + ' cases + ' + seeds + ' from the generator exceed the limit of ' + MAX_TESTSET_CASES])
+        }
+        const source = Buffer.from(dto.source, 'utf8')
+
+        return this.dataSource.transaction(async (manager) => {
+            const generator = await manager.save(manager.create(Generator, {
+                problem_id: problem.id,
+                language_id: dto.languageId,
+                source,
+                source_sha: BlobsService.sha256(source),
+                created_by: staffUserId,
+            }))
+
+            testset.generator_id = generator.id
+            testset.generator_groups = dto.groups.map((group) => ({ name: group.name, seeds: group.seeds }))
+            this.applyEdited(testset)
+            await manager.save(testset)
+
+            return toSourceDto(generator)!
+        })
+    }
+
+    async removeGenerator(testsetId: number, staffUserId: number): Promise<void> {
+        const { testset } = await this.getTestsetForJudge(testsetId, staffUserId)
+        this.assertEditable(testset)
+
+        await this.dataSource.transaction(async (manager) => {
+            await manager.delete(TestCase, { testset_id: testset.id, origin: TestCaseOrigin.GENERATOR })
+            await compactOrdinals(testset.id, manager)
+            testset.generator_id = null
+            testset.generator_groups = null
+            this.applyEdited(testset)
+            await manager.save(testset)
+        })
+    }
+
+    private async assertLanguageEnabled(problem: Problem, languageId: string): Promise<void> {
+        const enabled = await this.dataSource.getRepository(Edition)
+            .createQueryBuilder('edition')
+            .innerJoin('edition.languages', 'language')
+            .where('edition.id = :editionId', { editionId: problem.edition_id })
+            .andWhere('language.id = :languageId', { languageId })
+            .andWhere('language.active = true')
+            .getExists()
+        if(!enabled){
+            throw unprocessable(['language ' + languageId + ' is not active or not enabled in edition #' + problem.edition_id])
+        }
+        if(!hasDriver((await this.dataSource.getRepository(Language).findOneByOrFail({ id: languageId })).code)){
+            throw unprocessable(['language ' + languageId + ' has no driver for function problems'])
+        }
+    }
+
     // Deja el testset en BUILDING y encola el build; el worker (fase 3) ejecuta la solución
     // oficial, llena las salidas y lo pasa a READY o FAILED
     async build(testsetId: number, staffUserId: number): Promise<ITestsetSummary> {
@@ -310,8 +409,12 @@ export class TestsetsService {
         const errors: string[] = []
         if(!problem.signature) errors.push('problem has no signature')
         if(testset.ref_solution_id === null) errors.push('testset v' + testset.version + ' has no reference solution')
+        if(testset.compare_mode === CompareMode.CHECKER && testset.checker_id === null){
+            errors.push('compareMode is checker but testset v' + testset.version + ' has no checker')
+        }
 
-        const cases = await this.testCaseRepository.countBy({ testset_id: testset.id })
+        // Los casos del generador todavía no existen: se crean al construir
+        const cases = (await this.testCaseRepository.countBy({ testset_id: testset.id })) + (testset.generator_id === null ? 0 : 1)
         const publicCases = await this.testCaseRepository.countBy({ testset_id: testset.id, visibility: TestCaseVisibility.PUBLIC })
         if(cases === 0){
             errors.push('testset v' + testset.version + ' has no test cases')
@@ -513,17 +616,6 @@ export class TestsetsService {
 
     // Renumera 1..n los casos que quedan y regresa n. Se pasa por negativos para no chocar
     // con el índice único (testset_id, ordinal) a mitad de la actualización
-    private async compactOrdinals(testsetId: number, manager: EntityManager): Promise<number> {
-        await manager.query('UPDATE test_case SET ordinal = -ordinal WHERE testset_id = $1', [testsetId])
-        await manager.query(
-            `UPDATE test_case SET ordinal = numbered.position
-             FROM (SELECT id, ROW_NUMBER() OVER (ORDER BY -ordinal) AS position FROM test_case WHERE testset_id = $1) numbered
-             WHERE test_case.id = numbered.id`,
-            [testsetId],
-        )
-        return manager.countBy(TestCase, { testset_id: testsetId })
-    }
-
     // Casos y esquema que dejarían de ser válidos con otra firma
     private async findIncompatibilities(testset: Testset, signature: IProblemSignature): Promise<string[]> {
         const errors: string[] = []

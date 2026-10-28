@@ -5,6 +5,7 @@ import { TestsetsService } from '../services/testsets.service.js';
 import { UpdateTestsetDto } from '../dto/update-testset.dto.js';
 import { CreateTestCaseDto } from '../dto/create-test-case.dto.js';
 import { UpdateTestCaseDto } from '../dto/update-test-case.dto.js';
+import { SetCheckerDto, SetGeneratorDto } from '../dto/set-generator.dto.js';
 import { SetRefSolutionDto } from '../dto/set-ref-solution.dto.js';
 
 // Juez o admin de la edición del problema; se revisa en el servicio
@@ -48,6 +49,36 @@ export class TestsetsController {
         @Req() req: AuthenticatedRequest,
     ): Promise<IProblemSource> {
         return this.testsetsService.setRefSolution(id, dto, req.user.sub);
+    }
+
+    @Put(':id/checker')
+    setChecker(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: SetCheckerDto,
+        @Req() req: AuthenticatedRequest,
+    ): Promise<IProblemSource> {
+        return this.testsetsService.setChecker(id, dto, req.user.sub);
+    }
+
+    @Delete(':id/checker')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    removeChecker(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest): Promise<void> {
+        return this.testsetsService.removeChecker(id, req.user.sub);
+    }
+
+    @Put(':id/generator')
+    setGenerator(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: SetGeneratorDto,
+        @Req() req: AuthenticatedRequest,
+    ): Promise<IProblemSource> {
+        return this.testsetsService.setGenerator(id, dto, req.user.sub);
+    }
+
+    @Delete(':id/generator')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    removeGenerator(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest): Promise<void> {
+        return this.testsetsService.removeGenerator(id, req.user.sub);
     }
 
     @Post(':id/build')

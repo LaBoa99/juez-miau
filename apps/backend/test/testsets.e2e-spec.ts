@@ -20,6 +20,7 @@ import { Testset } from '../src/testsets/entities/testset.entity.js';
 import { TestCase } from '../src/testsets/entities/test-case.entity.js';
 import { BlobsService } from '../src/blobs/services/blobs.service.js';
 import { TESTSET_BUILD_QUEUE } from '../src/testsets/testsets.constants.js';
+import { languageSeeder } from '../src/database/seeds/base/language.seeder.js';
 
 describe('Testsets: firma, casos, esquema, solución oficial, build y versiones (e2e)', () => {
   let app: INestApplication<App>;
@@ -99,7 +100,9 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
       languageRepo.save(languageRepo.create({
         code: `testsets-${suffix}-${stamp}`, image_ref: 'img', compile_cmd: '', run_cmd: 'run', compiler_version: '1', file_ext: ext,
       }));
-    enabledLanguage = await newLanguage('on', 'x' + String(stamp % 1000).padStart(3, '0'));
+    // La solución oficial necesita un lenguaje con driver: Python del seeder base (idempotente)
+    await languageSeeder.run({ manager: languageRepo.manager } as Parameters<typeof languageSeeder.run>[0]);
+    enabledLanguage = await languageRepo.findOneByOrFail({ code: 'python' });
     disabledLanguage = await newLanguage('off', 'y' + String(stamp % 1000).padStart(3, '0'));
     await editionRepo.createQueryBuilder().relation(Edition, 'languages').of(edition.id).add(enabledLanguage.id);
 
@@ -126,7 +129,7 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
     // El CASCADE de la edición borra problemas, testsets, casos y soluciones. Los blobs se quedan:
     // son contenido compartido por sha
     await editionRepo.delete(edition.id);
-    await languageRepo.delete([enabledLanguage.id, disabledLanguage.id]);
+    await languageRepo.delete([disabledLanguage.id]);
     await staffRepo.delete([judge.id, observer.id]);
     await app.close();
   });

@@ -41,7 +41,7 @@ export class SubmissionProcessor extends WorkerHost implements OnApplicationBoot
     async process(job: Job<SubmissionJob>): Promise<SubmissionOutcome> {
         const submission = await this.submissionRepository.findOne({
             where: { id: job.data.submissionId },
-            relations: { language: true, testset: true, problem: true },
+            relations: { language: true, testset: { checker: { language: true } }, problem: true },
         })
         // Idempotente: un trabajo repetido no vuelve a juzgar, y uno de una ronda anterior (antes
         // de un rejudge) tampoco
@@ -111,6 +111,7 @@ export class SubmissionProcessor extends WorkerHost implements OnApplicationBoot
             compareMode: testset.compare_mode,
             floatTolerance: testset.float_tolerance,
             exclusive,
+            checker: testset.checker && { language: testset.checker.language, source: testset.checker.source.toString('utf8') },
             onProgress: (judged, total) => {
                 if(Date.now() - lastProgress < PROGRESS_EVERY_MS && judged < total) return
                 lastProgress = Date.now()

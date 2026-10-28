@@ -81,6 +81,23 @@ export interface ISetRefSolution {
     source: string
 }
 
+// ─── Checker y generador en código (judge-evaluation.md §3 y §5) ─
+// Ambos se escriben en cualquier lenguaje soportado, como una función:
+//   check(<parámetros del problema>, expectedOutput, actualOutput) -> bool
+//   generate(seed: long, group: string, index: int) -> string (JSON del input, un campo por parámetro)
+
+export type ISetChecker = ISetRefSolution
+
+export interface IGeneratorGroup {
+    name: string
+    // Un caso por semilla
+    seeds: number[]
+}
+
+export interface ISetGenerator extends ISetRefSolution {
+    groups: IGeneratorGroup[]
+}
+
 export interface ICreateTestsetVersion {
     reason: string
 }

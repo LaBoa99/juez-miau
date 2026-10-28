@@ -1,7 +1,7 @@
 import { ProblemStatus } from "../enums/problem-status.enum.js"
 import { CompareMode, TestsetStatus } from "../enums/testset-status.enum.js"
 import type { IProblemSignature } from "./signature.interface.js"
-import type { ITestCase, ITestsetSchema } from "./testset.interface.js"
+import type { IGeneratorGroup, ITestCase, ITestsetSchema } from "./testset.interface.js"
 
 // ─── Requests ────────────────────────────────────────────────
 
@@ -66,6 +66,9 @@ export interface IProblemTestset {
     reviewInstructions: string | null
     refSolutionId: number | null
     generatorId: number | null
+    // Grupos y semillas con que corre el generador en código
+    generatorGroups: IGeneratorGroup[] | null
+    checkerId: number | null
     seed: number | null
     generatedCount: number | null
     refMaxTimeMs: number | null

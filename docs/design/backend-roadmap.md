@@ -125,7 +125,19 @@ Hallazgos que cambian el orden:
     - Rutas: `GET /editions/:id/review-queue` y `POST /submissions/:id/review` con `{ accept, comment }`. Al aceptar queda AC; al rechazar queda WA y cuenta como rechazo. El equipo ve el comentario.
   - Nota: cada tabla tiene su propio tipo enum. El `INSERT ... SELECT` del historial convierte pasando por texto, porque un `enumName` compartido rompe la sincronización de TypeORM.
   - Pruebas: `test/resilience.e2e-spec.ts` (con `JUDGE_DOCKER=1`) y el helper `test/helpers/contest-fixture.ts`.
-  - Falta la 6b: checker, generadores en código y tipos `enum`/`object`.
+- Fase 6b implementada (2026-10-28):
+  - **Checker** (`compare_mode = checker`):
+    - El juez escribe `check(<parámetros>, expectedOutput, actualOutput) -> bool` en cualquier lenguaje con driver. Corre con los mismos drivers, en un contenedor por envío, solo sobre los casos que terminaron bien.
+    - Si el checker truena, el envío queda en `ERROR`: es un error de configuración y no se castiga al equipo.
+    - El build exige que el checker acepte la salida oficial en todos los casos.
+    - Rutas: `PUT/DELETE /testsets/:id/checker`. Los parámetros no pueden llamarse `expectedOutput` ni `actualOutput`.
+  - **Generador en código**:
+    - El juez escribe `generate(seed: long, group: string, index: int) -> string`, que regresa el JSON del input.
+    - Corre al construir el testset y reemplaza los casos con `origin = generator` (ocultos, con grupo y semilla). La salida se valida contra la firma y se reescribe en forma canónica.
+    - Ruta: `PUT/DELETE /testsets/:id/generator` con `{ languageId, source, groups: [{ name, seeds }] }`.
+  - La solución oficial, el checker y el generador ahora exigen un lenguaje con driver desde que se capturan.
+  - Pruebas: `test/checker-generator.e2e-spec.ts` (problema con varias respuestas válidas y generador en JavaScript).
+  - **Pendiente:** los tipos `enum` y `object` en firmas y drivers. Requieren clases o structs en los 7 lenguajes y cambios en el esquema y la normalización. Conviene hacerlos después del simulacro, cuando algún problema real los pida.
 
 ## Decisiones abiertas originales
 1. **Formato de los problemas.** Para el simulacro, stdin/stdout comparando por tokens (recomendado) o problemas por función desde el inicio.

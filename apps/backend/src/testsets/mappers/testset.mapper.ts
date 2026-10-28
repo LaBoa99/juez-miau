@@ -3,6 +3,7 @@ import type { Testset } from '../entities/testset.entity.js';
 import type { TestCase } from '../entities/test-case.entity.js';
 import type { RefSolution } from '../entities/ref-solution.entity.js';
 import type { Generator } from '../entities/generator.entity.js';
+import type { Checker } from '../entities/checker.entity.js';
 
 export function toTestsetDto(testset: Testset): IProblemTestset {
     return {
@@ -18,6 +19,8 @@ export function toTestsetDto(testset: Testset): IProblemTestset {
         reviewInstructions: testset.review_instructions,
         refSolutionId: testset.ref_solution_id,
         generatorId: testset.generator_id,
+        generatorGroups: testset.generator_groups,
+        checkerId: testset.checker_id,
         seed: testset.seed,
         generatedCount: testset.generated_count,
         refMaxTimeMs: testset.ref_max_time_ms,
@@ -55,7 +58,7 @@ export function toTestCaseDto(testCase: TestCase, inputPreview: string | null = 
 }
 
 // Solución de referencia o generador: mismo formato
-export function toSourceDto(source: RefSolution | Generator | null | undefined): IProblemSource | null {
+export function toSourceDto(source: RefSolution | Generator | Checker | null | undefined): IProblemSource | null {
     if(!source) return null
 
     return {
