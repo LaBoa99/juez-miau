@@ -291,4 +291,4 @@ La primera edición toma más: los jueces tienen que acostumbrarse al formato po
 7. ~~Validación de la solución oficial contra los ejemplos~~ (ya no aplica: las salidas esperadas, incluidas las de los ejemplos, salen de la solución oficial; el build falla si truena o pasa el TL)
 8. ~~Rejudge~~ (hecho: por envío, por problema y automático con la versión nueva del testset; TLE confirmado en exclusiva)
 9. ~~Cola de revisión manual~~ (backend hecho: `manual_review` en el testset; falta la pantalla en el panel de staff)
-10. Migraciones de TypeORM antes de producción
+10. ~~Migraciones de TypeORM antes de producción~~ (hecho en la fase 8)

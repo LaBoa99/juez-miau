@@ -101,13 +101,32 @@ scripts/backup.sh antes-de-actualizar
 git pull && docker compose up -d --build
 ```
 
-Mientras `DB_SYNCHRONIZE=true` (no hay migraciones todavía), TypeORM ajusta el esquema al
-arrancar y **puede borrar columnas con datos**. El respaldo previo no es opcional.
+La API aplica las migraciones pendientes al arrancar (`RUN_MIGRATIONS=true` en el compose).
+El worker espera a que la API esté sana para arrancar. Aun así, respalda antes de actualizar:
+una migración puede borrar columnas.
+
+### Migraciones
+
+- `DB_SYNCHRONIZE=false` en producción. El esquema cambia solo con migraciones
+  (`apps/backend/src/database/migrations/`).
+- **BD creada antes con `DB_SYNCHRONIZE=true`** (despliegues anteriores a las migraciones): ya
+  tiene el esquema, y la migración inicial fallaría con "relation already exists". La primera vez,
+  márcala como aplicada sin ejecutarla y luego arranca normal:
+
+  ```bash
+  scripts/backup.sh antes-de-migraciones
+  docker compose run --rm api node dist/database/migrate.js baseline
+  docker compose up -d
+  ```
+
+- Para un cambio de entidades, genera la migración en desarrollo con
+  `pnpm migration:generate src/database/migrations/<Nombre>` y súbela con el código.
 
 ## Comandos útiles
 
 ```bash
 docker compose logs -f api            # logs de la API
+curl -s localhost/api/v1/health        # BD, Redis, jueces conectados y envíos en cola
 docker compose restart api            # reiniciar un servicio
 docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'   # consola SQL
 ```

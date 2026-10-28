@@ -22,6 +22,9 @@ x-backend-env: &backend-env
   FRONT_END_URL: ${PUBLIC_URL}
   COOKIE_SECURE: ${COOKIE_SECURE}
   JWT_SECRET: ${JWT_SECRET}
+  # Vacíos = sin telemetría de Observe
+  OBSERVE_APP_KEY: ${OBSERVE_APP_KEY:-}
+  OBSERVE_APP_SECRET: ${OBSERVE_APP_SECRET:-}
   JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
   JWT_TEAM_EXPIRES_IN: ${JWT_TEAM_EXPIRES_IN:-12h}
   REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-7}
@@ -76,11 +79,20 @@ services:
     environment:
       <<: *backend-env
       SEED_PROFILE: ${SEED_PROFILE:-prod}
+      # Migraciones al arrancar; el worker nunca las corre
+      RUN_MIGRATIONS: "true"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # BD y Redis respondiendo (GET /api/v1/health). La imagen no trae curl ni wget
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/v1/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
 
   # Juez: toma envíos y builds de testsets de la cola y los ejecuta en contenedores hermanos
   # a través de docker.sock (src/worker.ts)
@@ -90,8 +102,9 @@ services:
     command: ["node", "dist/worker.js"]
     environment:
       <<: *backend-env
-      # El seeder ya lo corre la API
+      # El seeder y las migraciones ya los corre la API
       SEED_PROFILE: none
+      RUN_MIGRATIONS: "false"
       # 1 = cola en serie: tiempos justos sin contención de memoria (docs/design/server-specs.md)
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
       # CPUs lógicas para juzgar, una por núcleo físico (lscpu -e). Vacío = las últimas WORKER_CONCURRENCY
@@ -106,9 +119,10 @@ services:
       # Misma ruta dentro y fuera: los contenedores de los envíos los crea el Docker del host,
       # que resuelve los bind mounts con rutas del host, no del contenedor del worker
       - ${SUBMISSIONS_DIR}:${SUBMISSIONS_DIR}
+    # Arranca cuando la API ya aplicó las migraciones
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
 
   # Entrada pública: panel de staff (Angular) + proxy a la API. Ver deploy/Caddyfile
   web:

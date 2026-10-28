@@ -7,9 +7,10 @@
 {$SITE_ADDRESS::80} {
 	encode gzip
 
-	# El código de un envío pesa pocos KB; esto corta abusos
+	# Igual que el límite de la API (app.setup.ts): un caso de prueba puede pesar hasta 8 MB.
+	# Los envíos los limita la API a 64 KB
 	request_body {
-		max_size 2MB
+		max_size 16MB
 	}
 
 	# API REST (prefijo global api/v1 en app.setup.ts)

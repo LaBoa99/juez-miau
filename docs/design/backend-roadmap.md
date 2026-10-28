@@ -162,6 +162,24 @@ Hallazgos que cambian el orden:
   - Pruebas: `test/integrity.e2e-spec.ts`, que no necesita Docker.
   - Nota: `ProctoringModule` y `PublicModule` siguen vacíos. Lo de supervisión quedó en `IntegrityModule`.
 
+- Fase 8 implementada (2026-10-28):
+  - **Migraciones de TypeORM**:
+    - `src/database/data-source.ts` (CLI) y `migrate.ts`.
+    - La migración inicial (`Initial`) se generó desde las entidades contra una BD vacía. Se verificó que, al aplicarla y volver a generar, no aparecen cambios, y que la BD de desarrollo creada con synchronize tampoco tiene diferencias.
+    - Scripts: `pnpm migration:generate|run|baseline|revert`.
+    - La API las aplica al arrancar (`RUN_MIGRATIONS=true` en el entrypoint) y el worker no.
+    - En producción `DB_SYNCHRONIZE=false`. Una BD creada antes con synchronize se marca con `migrate.js baseline` (documentado en `deploy/README.md`).
+  - **Observe** es opcional: solo se registra con `OBSERVE_APP_KEY` y `OBSERVE_APP_SECRET`. Antes las credenciales estaban fijas y daban 429.
+  - **`GET /health`** (`@Public`): revisa BD y Redis (503 si alguno falla) e informa cuántos jueces hay conectados y cuántos envíos esperan. El compose lo usa como healthcheck de la API, y el worker espera a que la API esté sana.
+  - Caddy acepta cuerpos de hasta 16 MB, igual que la API. Antes eran 2 MB y un caso grande daba 413.
+  - Se construyó y probó la imagen: trae el runner, el CLI de Docker y las migraciones, y el entrypoint migra y siembra una BD vacía.
+
+## Pendiente después de las fases
+- Frontends: consumir `GET /contest`, `POST /submissions`, el socket `/ws`, el marcador, la cola de revisión, las alertas y la bitácora.
+- Tipos `enum` y `object` en firmas y drivers.
+- Calibrar `time_multiplier` (sobre todo Python) con `scripts/judge-bench`.
+- Cerrar los sockets de un equipo al revocar su sesión.
+
 ## Decisiones abiertas originales
 1. **Formato de los problemas.** Para el simulacro, stdin/stdout comparando por tokens (recomendado) o problemas por función desde el inicio.
 2. **Hash de contraseñas.** Quedarse con bcrypt, que ya se usa en todo el código (recomendado), o migrar a argon2.

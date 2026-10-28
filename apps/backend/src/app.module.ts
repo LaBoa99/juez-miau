@@ -28,14 +28,16 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
   imports: [
-    // Distributed tracing, auto-correlated logs, request/job metrics, error
-    // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com
-    ObserveModule.forRoot({
-      appKey: 'YOUR_APP_KEY',
-      appSecret: 'YOUR_APP_SECRET',
-      serviceId: 'backend',
-    }),
     configImport,
+    // Telemetría de https://observe.nestjs.com, solo con credenciales (OBSERVE_APP_KEY/SECRET).
+    // configImport ya cargó el .env en process.env al evaluarse root-imports
+    ...(process.env.OBSERVE_APP_KEY && process.env.OBSERVE_APP_SECRET
+      ? [ObserveModule.forRoot({
+          appKey: process.env.OBSERVE_APP_KEY,
+          appSecret: process.env.OBSERVE_APP_SECRET,
+          serviceId: 'backend',
+        })]
+      : []),
     apiTypeOrmImport,
     bullImport,
     AuthModule,
