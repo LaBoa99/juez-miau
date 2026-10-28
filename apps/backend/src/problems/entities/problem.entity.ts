@@ -1,5 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique, type Relation } from "typeorm";
-import { ProblemStatus } from "@concurso/shared-types";
+import { ProblemStatus, type IProblemSignature } from "@concurso/shared-types";
 import { Edition } from "../../editions/entities/edition.entity.js";
 import { Category } from "../../editions/entities/category.entity.js";
 import { Testset } from "../../testsets/entities/testset.entity.js";
@@ -37,6 +37,10 @@ export class Problem {
 
     @Column({ type: 'enum', enum: ProblemStatus, default: ProblemStatus.DRAFT })
     declare status: ProblemStatus
+
+    // null mientras el juez no la define; publicar la exige
+    @Column({ type: 'jsonb', nullable: true })
+    declare signature: IProblemSignature | null
 
     // null solo durante el alta: el testset v1 se crea en la misma transacción
     @Column({ type: 'int', nullable: true })

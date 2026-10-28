@@ -3,7 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
-import { App } from 'supertest/types';
+import { App } from 'supertest/types.js';
 import { Repository } from 'typeorm';
 import { StaffRole, TestCaseOrigin, TestCaseVisibility, TestsetStatus } from '@concurso/shared-types';
 import { AppModule } from './../src/app.module.js';
@@ -150,7 +150,7 @@ describe('Problemas para staff (e2e)', () => {
       expect(testset).toMatchObject({
         problem_id: problem.id,
         version: 1,
-        status: TestsetStatus.BUILDING,
+        status: TestsetStatus.DRAFT,
         ref_solution_id: null,
         author_id: judge.id,
       });
@@ -219,7 +219,7 @@ describe('Problemas para staff (e2e)', () => {
         generator: null,
       });
       expect(res.body.testsets).toHaveLength(1);
-      expect(res.body.testsets[0]).toMatchObject({ id: testsetId, version: 1, status: 'building' });
+      expect(res.body.testsets[0]).toMatchObject({ id: testsetId, version: 1, status: 'draft' });
     });
 
     it('GET /problems/:id → 404 si no existe, 403 si no es juez de esa edición', async () => {
@@ -248,6 +248,7 @@ describe('Problemas para staff (e2e)', () => {
         statement: 'Nuevo enunciado',
         inputFormat: 'Dos enteros a y b.',
         outputFormat: 'Un entero.',
+        signature: null,
         limits: { timeLimitMs: 1000, memoryLimitMb: 256 },
         samples: [],
       });
@@ -257,7 +258,8 @@ describe('Problemas para staff (e2e)', () => {
       const res = await api().post(`/api/v1/problems/${problemId}/publish`).set(as('judge')).expect(422);
 
       expect(res.body.errors).toEqual([
-        'testset v1 is not built (status: building)',
+        'signature is not defined',
+        'testset v1 is not built (status: draft)',
         'testset v1 has no reference solution',
         'testset v1 has no test cases',
       ]);
@@ -273,6 +275,9 @@ describe('Problemas para staff (e2e)', () => {
         created_by: judge.id,
       });
       await testsetRepo.update(testsetId, { status: TestsetStatus.READY, ref_solution_id: refSolution.id });
+      await problemRepo.update(problemId, {
+        signature: { functionName: 'sumar', params: [{ name: 'a', type: { type: 'int' } }], returns: { type: 'int' } },
+      });
 
       const caseRepo = app.get<Repository<TestCase>>(getRepositoryToken(TestCase));
       const newCase = (ordinal: number, visibility: TestCaseVisibility) =>

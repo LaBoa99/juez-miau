@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
+import { Redis } from 'ioredis';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -51,12 +52,14 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     }),
     BullModule.forRootAsync({
       inject: [ConfigService],
+      // En ESM BullMQ no puede cargar ioredis por su cuenta: hay que pasarle el cliente ya creado
       useFactory: (config: ConfigService) => ({
-        connection: {
+        connection: new Redis({
           host: config.getOrThrow<string>('REDIS_HOST'),
           port: Number(config.getOrThrow<string>('REDIS_PORT')),
           password: config.get<string>('REDIS_PASSWORD') || undefined,
-        },
+          maxRetriesPerRequest: null,
+        }),
       }),
     }),
     AuthModule,

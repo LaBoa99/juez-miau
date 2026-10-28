@@ -1,5 +1,7 @@
 import { ProblemStatus } from "../enums/problem-status.enum.js"
-import { TestsetStatus } from "../enums/testset-status.enum.js"
+import { CompareMode, TestsetStatus } from "../enums/testset-status.enum.js"
+import type { IProblemSignature } from "./signature.interface.js"
+import type { ITestCase, ITestsetSchema } from "./testset.interface.js"
 
 // ─── Requests ────────────────────────────────────────────────
 
@@ -48,6 +50,7 @@ export interface IProblem {
     points: number
     status: ProblemStatus
     currentTestsetId: number | null
+    signature: IProblemSignature | null
 }
 
 export interface IProblemTestset {
@@ -56,6 +59,9 @@ export interface IProblemTestset {
     status: TestsetStatus
     timeLimitMs: number
     memoryLimitMb: number
+    compareMode: CompareMode
+    floatTolerance: number | null
+    schema: ITestsetSchema | null
     refSolutionId: number | null
     generatorId: number | null
     seed: number | null
@@ -65,6 +71,11 @@ export interface IProblemTestset {
     authorId: number
     reason: string | null
     createdAt: string | Date
+}
+
+export interface ITestsetDetail extends IProblemTestset {
+    problemId: number
+    cases: ITestCase[]
 }
 
 // Solución de referencia o generador: mismo formato
@@ -84,6 +95,7 @@ export interface IProblemDetail extends IProblem {
     generator: IProblemSource | null
 }
 
+// JSON canónico
 export interface IProblemSample {
     input: string
     output: string
@@ -95,6 +107,7 @@ export interface IProblemPreview {
     statement: string
     inputFormat: string
     outputFormat: string
+    signature: IProblemSignature | null
     limits: {
         timeLimitMs: number
         memoryLimitMb: number

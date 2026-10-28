@@ -7,20 +7,20 @@ import {
     type IProblemDetail,
     type IProblemListItem,
     type IProblemPreview,
-    type IProblemSource,
-    type IProblemTestset,
+    type IProblemSample,
     type IPublishProblemResponse,
 } from '@concurso/shared-types';
 import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Not, Repository } from 'typeorm';
+import { DataSource, IsNull, Not, Repository } from 'typeorm';
 import { EditionsService } from '../../editions/services/editions.service.js';
 import { CategoriesService } from '../../editions/services/categories.service.js';
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js';
 import { Testset } from '../../testsets/entities/testset.entity.js';
 import { TestCase } from '../../testsets/entities/test-case.entity.js';
-import type { RefSolution } from '../../testsets/entities/ref-solution.entity.js';
-import type { Generator } from '../../testsets/entities/generator.entity.js';
+import { BlobsService } from '../../blobs/services/blobs.service.js';
+import { toSourceDto, toTestsetDto } from '../../testsets/mappers/testset.mapper.js';
+import { toProblemDto } from '../mappers/problem.mapper.js';
 import { CreateProblemDto } from '../dto/create-problem.dto.js';
 import { ProblemFiltersDto } from '../dto/problem-filters.dto.js';
 import { UpdateProblemDto } from '../dto/update-problem.dto.js';
@@ -40,6 +40,7 @@ export class ProblemsService {
         private readonly editionsService: EditionsService,
         private readonly categoriesService: CategoriesService,
         private readonly editionStaffService: EditionStaffService,
+        private readonly blobsService: BlobsService,
     ) {}
 
     getRepository(): Repository<Problem> {
@@ -130,10 +131,10 @@ export class ProblemsService {
         const current = testsets.find((testset) => testset.id === problem.current_testset_id)
 
         return {
-            ...this.toProblemDto(problem),
-            testsets: testsets.map((testset) => this.toTestsetDto(testset)),
-            refSolution: this.toSourceDto(current?.ref_solution),
-            generator: this.toSourceDto(current?.generator),
+            ...toProblemDto(problem),
+            testsets: testsets.map((testset) => toTestsetDto(testset)),
+            refSolution: toSourceDto(current?.ref_solution),
+            generator: toSourceDto(current?.generator),
         }
     }
 
@@ -150,7 +151,7 @@ export class ProblemsService {
         if(dto.inputFormat !== undefined) problem.input_format = dto.inputFormat
         if(dto.outputFormat !== undefined) problem.output_format = dto.outputFormat
 
-        return this.toProblemDto(await this.problemRepository.save(problem))
+        return toProblemDto(await this.problemRepository.save(problem))
     }
 
     // El enunciado tal como lo verá el equipo (RF-27)
@@ -163,13 +164,28 @@ export class ProblemsService {
             statement: problem.statement_md,
             inputFormat: problem.input_format,
             outputFormat: problem.output_format,
+            signature: problem.signature,
             limits: testset && {
                 timeLimitMs: testset.time_limit_ms,
                 memoryLimitMb: testset.memory_limit_mb,
             },
-            // TODO: devolver los casos públicos cuando exista el almacén de contenido por sha (input_sha / output_sha)
-            samples: [],
+            samples: testset ? await this.findSamples(testset) : [],
         }
+    }
+
+    // Casos públicos que ya tienen salida (calculada por el build), en orden
+    private async findSamples(testset: Testset): Promise<IProblemSample[]> {
+        const cases = await this.testCaseRepository.find({
+            where: { testset_id: testset.id, visibility: TestCaseVisibility.PUBLIC, output_sha: Not(IsNull()) },
+            order: { ordinal: 'ASC' },
+        })
+        const contents = await this.blobsService.getManyText(cases.flatMap((testCase) => [testCase.input_sha, testCase.output_sha!]))
+
+        return cases.flatMap((testCase) => {
+            const input = contents.get(testCase.input_sha)
+            const output = contents.get(testCase.output_sha!)
+            return input !== undefined && output !== undefined ? [{ input, output }] : []
+        })
     }
 
     // No ejecuta la solución de referencia: confía en que el build del testset lo dejó en `ready` (RF-21)
@@ -207,6 +223,7 @@ export class ProblemsService {
         if(!problem.statement_md.trim()) errors.push('statement is empty')
         if(!problem.input_format.trim()) errors.push('inputFormat is empty')
         if(!problem.output_format.trim()) errors.push('outputFormat is empty')
+        if(!problem.signature) errors.push('signature is not defined')
 
         const testset = await this.findCurrentTestset(problem)
         if(!testset){
@@ -231,6 +248,11 @@ export class ProblemsService {
             errors.push('testset v' + testset.version + ' has no public test cases')
         }
 
+        const withoutOutput = await this.testCaseRepository.count({ where: { testset_id: testset.id, output_sha: IsNull() }})
+        if(withoutOutput > 0){
+            errors.push('testset v' + testset.version + ' has ' + withoutOutput + ' cases without expected output')
+        }
+
         return errors
     }
 
@@ -251,54 +273,6 @@ export class ProblemsService {
 
         if(taken){
             throw new ConflictException('letter ' + letter + ' is already used in category #' + categoryId)
-        }
-    }
-
-    private toProblemDto(problem: Problem): IProblem {
-        return {
-            id: problem.id,
-            editionId: problem.edition_id,
-            categoryId: problem.category_id,
-            letter: problem.letter,
-            title: problem.title,
-            statement: problem.statement_md,
-            inputFormat: problem.input_format,
-            outputFormat: problem.output_format,
-            points: problem.points,
-            status: problem.status,
-            currentTestsetId: problem.current_testset_id,
-        }
-    }
-
-    private toTestsetDto(testset: Testset): IProblemTestset {
-        return {
-            id: testset.id,
-            version: testset.version,
-            status: testset.status,
-            timeLimitMs: testset.time_limit_ms,
-            memoryLimitMb: testset.memory_limit_mb,
-            refSolutionId: testset.ref_solution_id,
-            generatorId: testset.generator_id,
-            seed: testset.seed,
-            generatedCount: testset.generated_count,
-            refMaxTimeMs: testset.ref_max_time_ms,
-            buildLog: testset.build_log,
-            authorId: testset.author_id,
-            reason: testset.reason,
-            createdAt: testset.created_at,
-        }
-    }
-
-    private toSourceDto(source: RefSolution | Generator | null | undefined): IProblemSource | null {
-        if(!source) return null
-
-        return {
-            id: source.id,
-            languageId: source.language_id,
-            source: source.source.toString('utf8'),
-            sourceSha: source.source_sha,
-            createdBy: source.created_by,
-            createdAt: source.created_at,
         }
     }
 }

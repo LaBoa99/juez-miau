@@ -1,5 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique, type Relation } from "typeorm";
 import { TestCaseOrigin, TestCaseVisibility } from "@concurso/shared-types";
+import { bigintTransformer } from "../../common/transformers/bigint.transformer.js";
 import { Testset } from "./testset.entity.js";
 
 @Entity('test_case')
@@ -25,14 +26,22 @@ export class TestCase {
     @Column({ type: 'char', length: 64 })
     declare input_sha: string
 
-    @Column({ type: 'char', length: 64 })
-    declare output_sha: string
+    // null hasta que el build ejecuta la solución oficial
+    @Column({ type: 'char', length: 64, nullable: true })
+    declare output_sha: string | null
 
     @Column({ type: 'int' })
     declare input_bytes: number
 
-    @Column({ type: 'int' })
-    declare output_bytes: number
+    @Column({ type: 'int', nullable: true })
+    declare output_bytes: number | null
+
+    // Trazabilidad de los casos generados por esquema; null en los manuales
+    @Column({ type: 'text', nullable: true })
+    declare group_name: string | null
+
+    @Column({ type: 'bigint', nullable: true, transformer: bigintTransformer })
+    declare seed: number | null
 
     @Column({ type: 'int', nullable: true })
     declare ref_time_ms: number | null

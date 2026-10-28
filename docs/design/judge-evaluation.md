@@ -257,8 +257,8 @@ La primera edición toma más: los jueces tienen que acostumbrarse al formato po
 
 ## Pendiente
 
-1. Tipos del esquema y del problema en `shared-types`
-2. Generador con semilla en el backend
+1. ~~Tipos del esquema y del problema en `shared-types`~~ (hecho: `signature.interface.ts`, `testset.interface.ts`)
+2. ~~Generador con semilla en el backend~~ (hecho: `src/testsets/generation/`)
 3. Entidades `Problem`, `TestCase`, `Submission`
 4. Templates de driver por lenguaje generados desde la firma (empezar por tipos simples)
 5. Worker de ejecución: `src/worker.ts`, `WorkerModule`, `JudgeProcessor`, BullMQ + Redis

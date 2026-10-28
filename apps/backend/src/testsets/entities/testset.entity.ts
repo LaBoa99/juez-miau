@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique, type Relation } from "typeorm";
-import { TestsetStatus } from "@concurso/shared-types";
+import { CompareMode, TestsetStatus, type ITestsetSchema } from "@concurso/shared-types";
 import { bigintTransformer } from "../../common/transformers/bigint.transformer.js";
 import { Problem } from "../../problems/entities/problem.entity.js";
 import { StaffUser } from "../../staff/entities/staff-user.entity.js";
@@ -42,7 +42,19 @@ export class Testset {
     @Column({ type: 'int', nullable: true })
     declare ref_max_time_ms: number | null
 
-    @Column({ type: 'enum', enum: TestsetStatus, default: TestsetStatus.BUILDING })
+    // Esquema declarativo para generar casos; null si solo hay casos manuales
+    @Column({ type: 'jsonb', nullable: true })
+    declare schema: ITestsetSchema | null
+
+    @Column({ type: 'enum', enum: CompareMode, default: CompareMode.EXACT })
+    declare compare_mode: CompareMode
+
+    // Solo aplica con compare_mode = tolerance
+    @Column({ type: 'double precision', nullable: true })
+    declare float_tolerance: number | null
+
+    // DRAFT es el único estado editable (FAILED vuelve a DRAFT al editarlo); READY es inmutable
+    @Column({ type: 'enum', enum: TestsetStatus, default: TestsetStatus.DRAFT })
     declare status: TestsetStatus
 
     @Column({ type: 'text', nullable: true })
