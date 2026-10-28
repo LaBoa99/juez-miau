@@ -22,6 +22,7 @@ import { ExportsModule } from './exports/exports.module.js';
 import { PublicModule } from './public/public.module.js';
 import { HealthModule } from './health/health.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
+import { ContestModule } from './contest/contest.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -56,6 +57,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     PublicModule,
     HealthModule,
     RealtimeModule,
+    ContestModule,
   ],
   controllers: [AppController],
   providers: [AppService],

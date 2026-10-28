@@ -35,6 +35,10 @@ export class Edition implements IEdition {
     @Column({ type: 'timestamptz', nullable: true })
     declare paused_at: Date | null;
 
+    // Suma de las pausas ya terminadas; la pausa en curso se cuenta desde paused_at
+    @Column({ type: 'bigint', unsigned: true, default: 0, transformer: bigintTransformer })
+    declare paused_total_ms: number;
+
     @Column({ type: 'timestamptz', nullable: true })
     declare finished_at: Date | null;
 

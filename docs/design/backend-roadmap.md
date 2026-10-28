@@ -81,6 +81,28 @@ Hallazgos que cambian el orden:
   - Pruebas: `pnpm test:judge` (28 en Docker) y `test/judge-build.e2e-spec.ts` con `JUDGE_DOCKER=1`.
   - Pendiente para la fase 6: confirmar los TLE en exclusiva.
 
+- Fase 4 implementada (2026-10-27):
+  - **Reloj** (`src/contest-clock/`): `clock.ts` tiene funciones puras (`elapsedMs`, `isFrozen`, `acceptsSubmissions`) y existe la columna `Edition.paused_total_ms`.
+    - Rutas: `POST /editions/:id/clock/{start,pause,resume,finish}` (admin), `GET /editions/:id/clock` y `GET /public/editions/:id/clock`.
+    - Un tick de BullMQ cada 5 s arranca las ediciones programadas y termina las que ya se acabaron. No hay un job por edición, así se evita un ciclo de módulos y el tick sobrevive a reinicios. Los envíos se cortan con el reloj calculado, no con el tick.
+  - **Envíos** (`src/submissions/`): entidades `Submission`, con el testset fijado, y `SubmissionCase`.
+    - `POST /submissions` (equipo):
+      - Valida que la edición esté RUNNING y con tiempo, que el problema esté publicado y sea de la categoría del equipo, que el lenguaje esté habilitado y tenga driver, y que el código pese 64 KB como máximo.
+      - Exige 5 s entre envíos del mismo equipo.
+      - Guarda antes de encolar, con jobId fijo. Al arrancar, la API vuelve a encolar los QUEUED y JUDGING.
+    - Consultas: `GET /submissions` y `GET /submissions/:id` (el equipo ve lo suyo sin casos; el staff ve el detalle) y `GET /editions/:id/submissions` con filtros.
+    - `SubmissionProcessor` en el worker:
+      - Reintenta solo los errores del sistema.
+      - Al agotar los reintentos, deja el envío en `ERROR` para un rejudge.
+  - **Tiempo real**:
+    - Gateway Socket.io en el namespace `/ws`, con el token en `auth.token`.
+    - El equipo entra a su sala sin pedirlo. El staff usa `edition:join` y se revisa su rol. El proyector usa `public:join`.
+    - `JudgingEventsListener` (`QueueEventsListener`) reenvía `submission:update` y `submission:progress`, y expone `addVerdictListener` para el marcador.
+  - **Vista del equipo**: `GET /contest` regresa reloj, lenguajes y problemas de su categoría con ejemplos y `starterCode`. Antes del inicio, la lista de problemas va vacía.
+  - `EditionStaffService.assertRole(userId, editionId, roles[])` generaliza `assertCanJudge`.
+  - Pruebas: `test/contest.e2e-spec.ts` (simulacro completo con `JUDGE_DOCKER=1`) y `clock.spec.ts`.
+  - Pendiente: cerrar los sockets de un equipo cuando se revoca su sesión. Hoy el token solo se revisa al conectar.
+
 ## Decisiones abiertas originales
 1. **Formato de los problemas.** Para el simulacro, stdin/stdout comparando por tokens (recomendado) o problemas por función desde el inicio.
 2. **Hash de contraseñas.** Quedarse con bcrypt, que ya se usa en todo el código (recomendado), o migrar a argon2.

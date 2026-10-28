@@ -39,6 +39,12 @@ export class EditionStaffService {
 
     // Gestionar problemas y veredictos: superadmin, o juez/admin de esa edición
     async assertCanJudge(staffUserId: number, editionId: number): Promise<void> {
+        await this.assertRole(staffUserId, editionId, [StaffRole.ADMIN, StaffRole.JUDGE])
+    }
+
+    // Superadmin, o alguno de `roles` en la edición. Para chequeos dentro de servicios, cuando la
+    // ruta no permite resolver la edición con @RequireEditionRole
+    async assertRole(staffUserId: number, editionId: number, roles: StaffRole[]): Promise<void> {
         const user = await this.staffService.findById(staffUserId)
         if(!user?.active){
             throw new UnauthorizedException('Usuario inactivo o inexistente')
@@ -51,8 +57,8 @@ export class EditionStaffService {
             staff_user_id: staffUserId
         })
 
-        if(assignment?.role !== StaffRole.JUDGE && assignment?.role !== StaffRole.ADMIN){
-            throw new ForbiddenException('staff user #' + staffUserId + ' is not a judge of edition #' + editionId)
+        if(!assignment || !roles.includes(assignment.role)){
+            throw new ForbiddenException('staff user #' + staffUserId + ' has no ' + roles.join('/') + ' role in edition #' + editionId)
         }
     }
 

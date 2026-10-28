@@ -156,7 +156,11 @@ export class ProblemsService {
 
     // El enunciado tal como lo verá el equipo (RF-27)
     async preview(id: number, staffUserId: number): Promise<IProblemPreview> {
-        const problem = await this.getByIdForJudge(id, staffUserId)
+        return this.buildPreview(await this.getByIdForJudge(id, staffUserId))
+    }
+
+    // Sin revisar permisos: también lo usa la vista del equipo durante el concurso
+    async buildPreview(problem: Problem): Promise<IProblemPreview> {
         const testset = await this.findCurrentTestset(problem)
 
         return {
