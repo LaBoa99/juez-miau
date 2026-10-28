@@ -8,6 +8,10 @@ export class TeamSession {
     @PrimaryColumn()
     declare team_id: number
 
+    // Cambia en cada login; va en el JWT del equipo para invalidar tokens de sesiones anteriores
+    @Column({ type: 'uuid', nullable: true })
+    declare session_id: string | null
+
     @Column({ type: 'text', nullable: true })
     declare machine_id: string | null
 

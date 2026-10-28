@@ -3,6 +3,8 @@ import type { IEditionStaff } from '@concurso/shared-types';
 import { EditionStaffService } from '../services/edition-staff.service.js';
 import { CreateEditionStaffDto } from '../dto/create-edition-staff.dto.js';
 import type { EditionStaff } from '../entities/edition-staff.entity.js';
+import { RequireEditionRole, ANY_EDITION_ROLE } from '../../auth/decorators/access.decorators.js';
+import { StaffRole } from '@concurso/shared-types';
 
 @Controller('editions/:editionId/staff')
 export class EditionStaffController {
@@ -12,6 +14,7 @@ export class EditionStaffController {
     ) {}
 
     @Get()
+    @RequireEditionRole(ANY_EDITION_ROLE)
     getStaffMembersOfEdition(
         @Param('editionId', ParseIntPipe) editionId: number,
     ): Promise<EditionStaff[]> {
@@ -19,6 +22,7 @@ export class EditionStaffController {
     }
 
     @Post()
+    @RequireEditionRole([StaffRole.ADMIN])
     assignStaffToEdition(
         @Param('editionId', ParseIntPipe) editionId: number,
         @Body() dto: CreateEditionStaffDto,
@@ -27,6 +31,7 @@ export class EditionStaffController {
     }
 
     @Delete(':staffUserId')
+    @RequireEditionRole([StaffRole.ADMIN])
     @HttpCode(HttpStatus.NO_CONTENT)
     removeStaffOfEdition(
         @Param('editionId', ParseIntPipe) editionId: number,

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule, type JwtSignOptions } from '@nestjs/jwt';
 import { StaffModule } from '../staff/staff.module.js';
@@ -10,6 +11,8 @@ import { RefreshToken } from './entities/refresh-token.entity.js';
 import { AuthController } from './controllers/auth.controller.js';
 import { AuthService } from './services/auth.service.js';
 import { RefreshTokensService } from './services/refresh-tokens.service.js';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
+import { EditionRoleGuard } from './guards/edition-role.guard.js';
 
 @Module({
     imports: [
@@ -29,7 +32,13 @@ import { RefreshTokensService } from './services/refresh-tokens.service.js';
         }),
     ],
     controllers: [AuthController],
-    providers: [AuthService, RefreshTokensService],
+    providers: [
+        AuthService,
+        RefreshTokensService,
+        // Se ejecutan en este orden: primero autenticación, luego rol en la edición
+        { provide: APP_GUARD, useClass: JwtAuthGuard },
+        { provide: APP_GUARD, useClass: EditionRoleGuard },
+    ],
     // Los guards de JWT de otros módulos necesitan JwtService
     exports: [JwtModule],
 })

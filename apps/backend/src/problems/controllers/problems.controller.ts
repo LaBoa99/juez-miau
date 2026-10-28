@@ -1,12 +1,10 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Req } from '@nestjs/common';
 import type { IProblem, IProblemDetail, IProblemPreview, IPublishProblemResponse } from '@concurso/shared-types';
-import { StaffAuthGuard } from '../../auth/guards/staff-auth.guard.js';
 import type { AuthenticatedRequest } from '../../auth/guards/jwt-auth.guard.js';
 import { ProblemsService } from '../services/problems.service.js';
 import { UpdateProblemDto } from '../dto/update-problem.dto.js';
 
 @Controller('problems')
-@UseGuards(StaffAuthGuard)
 export class ProblemsController {
 
     constructor(

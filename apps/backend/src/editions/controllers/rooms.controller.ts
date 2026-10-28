@@ -2,6 +2,8 @@ import { Body, Controller, Delete, HttpCode, HttpStatus, Param, ParseIntPipe, Pa
 import type { IRoom } from '@concurso/shared-types';
 import { RoomsService } from '../services/rooms.service.js';
 import { UpdateRoomDto } from '../dto/update-room.dto.js';
+import { RequireEditionRole, EditionScope } from '../../auth/decorators/access.decorators.js';
+import { StaffRole } from '@concurso/shared-types';
 
 @Controller('rooms')
 export class RoomsController {
@@ -11,6 +13,7 @@ export class RoomsController {
     ) {}
 
     @Patch(':id')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.ROOM, 'id')
     updateRoom(
         @Param('id', ParseIntPipe) id: number,
         @Body() dto: UpdateRoomDto,
@@ -19,6 +22,7 @@ export class RoomsController {
     }
 
     @Delete(':id')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.ROOM, 'id')
     @HttpCode(HttpStatus.NO_CONTENT)
     deleteRoom(
         @Param('id', ParseIntPipe) id: number,

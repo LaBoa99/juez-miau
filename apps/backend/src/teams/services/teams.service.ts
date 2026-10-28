@@ -12,6 +12,7 @@ import { CoolNames } from '../../utils/classes/cool-names.js';
 import { Room } from '../../editions/entities/room.entity.js';
 import { TeamSessionsService } from './team-sessions.service.js';
 import { TeamFiltersDto } from '../dtos/team-filters.dto.js';
+import { EditionStatus } from '@concurso/shared-types';
 
 export interface CreateTeamOptions {
     // si no se indican se generan automáticamente
@@ -19,6 +20,8 @@ export interface CreateTeamOptions {
     password?: string
     manager?: EntityManager
 }
+
+export const ACTIVE_EDITION_STATUSES = [EditionStatus.SCHEDULED, EditionStatus.RUNNING, EditionStatus.PAUSED]
 
 @Injectable()
 export class TeamsService {
@@ -166,14 +169,23 @@ export class TeamsService {
         }
     }
 
+    // El username solo es único dentro de su edición; el login lo busca en las ediciones
+    // programadas o en curso (al programar una edición se valida que no choque con otra activa)
+    async findForLogin(username: string): Promise<Team[]> {
+        return this._teamRepository.createQueryBuilder('team')
+            .innerJoin('team.edition', 'edition')
+            .where('team.username = :username', { username })
+            .andWhere('edition.status IN (:...statuses)', { statuses: ACTIVE_EDITION_STATUSES })
+            .getMany()
+    }
+
     async resetPassword(id: number) {
-        // no need of relatiosn 
         const team = await this.getById(id)
 
-        // this password must be store in some place you know 
+        // Igual que al crear: cifrada (recuperable por el staff) y hasheada (para el login)
         const password = this._passwordService.generatePassword()
-        team.password = password
-        team.password_hash = await this._passwordService.hashPassword(password, 3)
+        team.password = await this._passwordService.encryptPassword(password)
+        team.password_hash = await this._passwordService.hashPassword(password)
 
         return this._teamRepository.save(team)
     }

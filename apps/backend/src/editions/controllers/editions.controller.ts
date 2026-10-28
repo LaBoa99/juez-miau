@@ -5,6 +5,8 @@ import { EditionFiltersDto } from '../dto/edition-filters.dto.js';
 import { CreateEditionDto } from '../dto/create-edition.dto.js';
 import { UpdateEditionDto } from '../dto/update-edition.dto.js';
 import { ScheduleEditionDto } from '../dto/schedule-edition.dto.js';
+import { RequireEditionRole, ANY_EDITION_ROLE, EditionScope, SuperadminOnly } from '../../auth/decorators/access.decorators.js';
+import { StaffRole } from '@concurso/shared-types';
 
 @Controller('editions')
 export class EditionsController {
@@ -21,6 +23,7 @@ export class EditionsController {
     }
 
     @Post()
+    @SuperadminOnly()
     createEdition(
         @Body() dto: CreateEditionDto,
     ): Promise<IEdition> {
@@ -28,6 +31,7 @@ export class EditionsController {
     }
 
     @Get(':id')
+    @RequireEditionRole(ANY_EDITION_ROLE, EditionScope.EDITION, 'id')
     getEditionById(
         @Param('id', ParseIntPipe) id: number,
     ): Promise<any> {
@@ -35,6 +39,7 @@ export class EditionsController {
     }
 
     @Patch(':id')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.EDITION, 'id')
     updateEdition(
         @Param('id', ParseIntPipe) id: number,
         @Body() dto: UpdateEditionDto,
@@ -43,6 +48,7 @@ export class EditionsController {
     }
 
     @Post(':id/schedule')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.EDITION, 'id')
     @HttpCode(HttpStatus.OK)
     scheduleEdition(
         @Param('id', ParseIntPipe) id: number,
@@ -52,6 +58,7 @@ export class EditionsController {
     }
 
     @Delete(':id')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.EDITION, 'id')
     @HttpCode(HttpStatus.NO_CONTENT)
     deleteEdition(
         @Param('id', ParseIntPipe) id: number,

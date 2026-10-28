@@ -4,7 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { createHash } from 'crypto';
 import request from 'supertest';
-import { App } from 'supertest/types';
+import { App } from 'supertest/types.js';
 import { Repository } from 'typeorm';
 import { StaffRole } from '@concurso/shared-types';
 import { AppModule } from './../src/app.module.js';

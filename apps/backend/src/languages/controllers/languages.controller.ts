@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
 import { LanguagesService } from "../services/languages.service.js";
 import { CreateLanguageDto } from "../dtos/create-language.dto.js";
+import { SuperadminOnly } from '../../auth/decorators/access.decorators.js';
 
 @Controller("languages")
 export class LanguagesController {
@@ -17,6 +18,7 @@ export class LanguagesController {
     }
 
     @Post()
+    @SuperadminOnly()
     async addLanguages(
         @Body() dto: CreateLanguageDto
     ){
@@ -24,6 +26,7 @@ export class LanguagesController {
     }
 
     @Patch(":uuid")
+    @SuperadminOnly()
     async toggleActiveOfLanguage(
         @Param("uuid") uuid: string
     ){

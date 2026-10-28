@@ -2,6 +2,8 @@ import { Body, Controller, Delete, HttpCode, HttpStatus, Param, ParseIntPipe, Pa
 import type { ICategory } from '@concurso/shared-types';
 import { CategoriesService } from '../services/categories.service.js';
 import { UpdateCategoryDto } from '../dto/update-category.dto.js';
+import { RequireEditionRole, EditionScope } from '../../auth/decorators/access.decorators.js';
+import { StaffRole } from '@concurso/shared-types';
 
 @Controller('categories')
 export class CategoriesController {
@@ -11,6 +13,7 @@ export class CategoriesController {
     ) {}
 
     @Patch(':id')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.CATEGORY, 'id')
     updateCategory(
         @Param('id', ParseIntPipe) id: number,
         @Body() dto: UpdateCategoryDto,
@@ -19,6 +22,7 @@ export class CategoriesController {
     }
 
     @Delete(':id')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.CATEGORY, 'id')
     @HttpCode(HttpStatus.NO_CONTENT)
     deleteCategory(
         @Param('id', ParseIntPipe) id: number,

@@ -2,6 +2,8 @@ import { Body, Controller, Delete, HttpCode, HttpStatus, Param, ParseIntPipe, Po
 import type { IRoomObserver } from '@concurso/shared-types';
 import { RoomObserversService } from '../services/room-observers.service.js';
 import { CreateRoomObserverDto } from '../dto/create-room-observer.dto.js';
+import { RequireEditionRole, EditionScope } from '../../auth/decorators/access.decorators.js';
+import { StaffRole } from '@concurso/shared-types';
 
 @Controller('rooms/:roomId/observers')
 export class RoomObserversController {
@@ -11,6 +13,7 @@ export class RoomObserversController {
     ) {}
 
     @Post()
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.ROOM, 'roomId')
     assignObserverToRoom(
         @Param('roomId', ParseIntPipe) roomId: number,
         @Body() dto: CreateRoomObserverDto,
@@ -19,6 +22,7 @@ export class RoomObserversController {
     }
 
     @Delete(':staffUserId')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.ROOM, 'roomId')
     @HttpCode(HttpStatus.NO_CONTENT)
     removeObserverOfRoom(
         @Param('roomId', ParseIntPipe) roomId: number,

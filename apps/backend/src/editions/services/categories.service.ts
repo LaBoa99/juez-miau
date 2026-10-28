@@ -6,6 +6,8 @@ import { CreateCategoryDto } from '../dto/create-category.dto.js';
 import { UpdateCategoryDto } from '../dto/update-category.dto.js';
 import { Category } from '../entities/category.entity.js';
 import { EditionsService } from './editions.service.js';
+import { Team } from '../../teams/entities/team.entity.js';
+import { Problem } from '../../problems/entities/problem.entity.js';
 
 @Injectable()
 export class CategoriesService {
@@ -82,7 +84,6 @@ export class CategoriesService {
         return this.categoryRepository.save(category)
     }
 
-    // TODO: validar que no tenga equipos ni problemas asociados cuando existan esos módulos
     async remove(id: number): Promise<void> {
         const category = await this.categoryRepository.findOne({
             where: { id },
@@ -95,6 +96,14 @@ export class CategoriesService {
 
         const edition = await this.editionService.getById(category.edition_id)
         this.editionService.assertIsEditable(edition)
+
+        if(await this.categoryRepository.manager.existsBy(Team, { category_id: id })){
+            throw new ConflictException('category #' + id + ' has teams assigned')
+        }
+
+        if(await this.categoryRepository.manager.existsBy(Problem, { category_id: id })){
+            throw new ConflictException('category #' + id + ' has problems assigned')
+        }
 
         if(category.rooms.length > 0){
             throw new ConflictException('category #' + id + ' has rooms assigned')

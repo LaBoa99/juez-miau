@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
 import { TeamsService } from '../services/teams.service.js';
 import { UpdateTeamDto } from '../dtos/update-team.dto.js';
+import { RequireEditionRole, ANY_EDITION_ROLE, EditionScope } from '../../auth/decorators/access.decorators.js';
+import { StaffRole } from '@concurso/shared-types';
 
 @Controller('teams')
 export class TeamsController {
@@ -11,6 +13,7 @@ export class TeamsController {
 
 
     @Get(':id')
+    @RequireEditionRole(ANY_EDITION_ROLE, EditionScope.TEAM, 'id')
     getTeam(
         @Param('id', ParseIntPipe) id: number
     ) {
@@ -18,6 +21,7 @@ export class TeamsController {
     }
 
     @Patch(':id')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.TEAM, 'id')
     updateTeam(
         @Param('id', ParseIntPipe) id: number,
         @Body() body : UpdateTeamDto,
@@ -26,6 +30,7 @@ export class TeamsController {
     }
 
     @Post(':id/reset-password')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.TEAM, 'id')
     resetPasswordOfTeam(
         @Param('id', ParseIntPipe) id: number
     ){
@@ -33,6 +38,7 @@ export class TeamsController {
     }
 
     @Delete(':id')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.TEAM, 'id')
     @HttpCode(HttpStatus.NO_CONTENT)
     deleteTeam(
         @Param('id', ParseIntPipe) id: number
@@ -41,6 +47,7 @@ export class TeamsController {
     }
 
     @Delete(':id/sessions')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.TEAM, 'id')
     @HttpCode(HttpStatus.NO_CONTENT)
     closeSessionsOfTeam(
         @Param('id', ParseIntPipe) id: number

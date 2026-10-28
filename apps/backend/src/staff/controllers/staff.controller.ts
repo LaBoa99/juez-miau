@@ -3,8 +3,10 @@ import { ListStaffQueryDto } from '../dto/list-staff-query.dto.js'
 import { CreateStaffDto } from '../dto/create-staff.dto.js'
 import { UpdateStaffDto } from '../dto/update-staff.dto.js'
 import { StaffService } from '../services/staff.service.js'
+import { SuperadminOnly } from '../../auth/decorators/access.decorators.js'
 
 @Controller('staff')
+@SuperadminOnly()
 export class StaffController {
     constructor(private readonly staffService: StaffService) {}
 

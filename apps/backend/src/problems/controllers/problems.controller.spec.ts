@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProblemsController } from './problems.controller.js';
 import { ProblemsService } from '../services/problems.service.js';
-import { StaffAuthGuard } from '../../auth/guards/staff-auth.guard.js';
 
 describe('ProblemsController', () => {
   let controller: ProblemsController;
@@ -11,8 +10,6 @@ describe('ProblemsController', () => {
       controllers: [ProblemsController],
       providers: [{ provide: ProblemsService, useValue: {} }],
     })
-      .overrideGuard(StaffAuthGuard)
-      .useValue({ canActivate: () => true })
       .compile();
 
     controller = module.get<ProblemsController>(ProblemsController);

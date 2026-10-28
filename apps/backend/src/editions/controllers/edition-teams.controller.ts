@@ -4,6 +4,8 @@ import { memoryStorage } from 'multer';
 import { EditionTeamsService } from '../services/edition-teams.service.js';
 import { CsvFileValidator } from '../../utils/validators/csv-file.validator.js';
 import { TeamFiltersDto } from '../../teams/dtos/team-filters.dto.js';
+import { RequireEditionRole, ANY_EDITION_ROLE } from '../../auth/decorators/access.decorators.js';
+import { StaffRole } from '@concurso/shared-types';
 
 const csvFilePipe = new ParseFilePipeBuilder()
     .addValidator(new CsvFileValidator())
@@ -18,6 +20,7 @@ export class EditionTeamsController {
     ) {}
 
     @Post('import/validate')
+    @RequireEditionRole([StaffRole.ADMIN])
     @UseInterceptors(
         FileInterceptor('file', {
             storage: memoryStorage(),
@@ -31,6 +34,7 @@ export class EditionTeamsController {
     }
 
     @Post('import')
+    @RequireEditionRole([StaffRole.ADMIN])
     @UseInterceptors(
         FileInterceptor('file', {
             storage: memoryStorage(),
@@ -44,6 +48,7 @@ export class EditionTeamsController {
     }
 
     @Get('')
+    @RequireEditionRole(ANY_EDITION_ROLE)
     getTeamsOfEdition(
         @Param('editionId', ParseIntPipe) editionId: number,
         @Query() filters: TeamFiltersDto,

@@ -2,6 +2,8 @@ import { Body, Controller, Get, Param, ParseIntPipe, Post } from '@nestjs/common
 import type { IRoom, IRoomListItem } from '@concurso/shared-types';
 import { EditionRoomsService } from '../services/edition-rooms.service.js';
 import { CreateRoomDto } from '../dto/create-room.dto.js';
+import { RequireEditionRole, ANY_EDITION_ROLE } from '../../auth/decorators/access.decorators.js';
+import { StaffRole } from '@concurso/shared-types';
 
 @Controller('editions/:editionId/rooms')
 export class EditionRoomsController {
@@ -11,6 +13,7 @@ export class EditionRoomsController {
     ) {}
 
     @Get()
+    @RequireEditionRole(ANY_EDITION_ROLE)
     getAllRoomsOfEdition(
         @Param('editionId', ParseIntPipe) editionId: number,
     ): Promise<IRoomListItem[]> {
@@ -18,6 +21,7 @@ export class EditionRoomsController {
     }
 
     @Post()
+    @RequireEditionRole([StaffRole.ADMIN])
     createRoomForEdition(
         @Param('editionId', ParseIntPipe) editionId: number,
         @Body() dto: CreateRoomDto,

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { IRoom, IRoomListItem } from '@concurso/shared-types';
@@ -7,6 +7,7 @@ import { CreateRoomDto } from '../dto/create-room.dto.js';
 import { UpdateRoomDto } from '../dto/update-room.dto.js';
 import { CategoriesService } from './categories.service.js';
 import { EditionsService } from './editions.service.js';
+import { Team } from '../../teams/entities/team.entity.js';
 
 @Injectable()
 export class RoomsService {
@@ -72,9 +73,12 @@ export class RoomsService {
         return this.roomRepository.save(room)
     }
 
-    // TODO: validar que no tenga equipos asignados cuando exista el módulo de teams
     async remove(id: number): Promise<void> {
         await this.getById(id)
+
+        if(await this.roomRepository.manager.existsBy(Team, { room_id: id })){
+            throw new ConflictException('room #' + id + ' has teams assigned')
+        }
         await this.roomRepository.delete([ id ])
     }
 

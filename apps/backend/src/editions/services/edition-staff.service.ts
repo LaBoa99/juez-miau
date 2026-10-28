@@ -60,9 +60,11 @@ export class EditionStaffService {
         const editionStaffMember = this.editionStaffRepository.create()
 
         const edition = await this.editionsService.getById(editionId)
-        
-        // search for staff 
-        // PENDIENTE 
+
+        const staffUser = await this.staffService.findById(dto.staff_user_id)
+        if(!staffUser?.active){
+            throw new NotFoundException('staff user not found #' + dto.staff_user_id)
+        }
 
         const alreadyAssigned = await this.editionStaffRepository.existsBy({
             edition_id: editionId,
