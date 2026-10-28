@@ -82,20 +82,20 @@ services:
       redis:
         condition: service_healthy
 
-  # Juez: toma envíos de la cola y los ejecuta en contenedores hermanos a través de docker.sock.
-  # Todavía no existe src/worker.ts, por eso está en el perfil "judge" y no arranca por defecto.
-  # Para activarlo: COMPOSE_PROFILES=judge en deploy/.env
+  # Juez: toma envíos y builds de testsets de la cola y los ejecuta en contenedores hermanos
+  # a través de docker.sock (src/worker.ts)
   worker:
     image: concurso-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     command: ["node", "dist/worker.js"]
-    profiles: ["judge"]
     environment:
       <<: *backend-env
       # El seeder ya lo corre la API
       SEED_PROFILE: none
       # 1 = cola en serie: tiempos justos sin contención de memoria (docs/design/server-specs.md)
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
+      # CPUs lógicas para juzgar, una por núcleo físico (lscpu -e). Vacío = las últimas WORKER_CONCURRENCY
+      JUDGE_CPUS: ${JUDGE_CPUS:-}
       DOCKER_TMP_DIR: ${SUBMISSIONS_DIR}
     # El usuario "node" de la imagen necesita el grupo docker del host para usar el socket
     group_add:

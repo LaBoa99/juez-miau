@@ -4,7 +4,7 @@
 Ya está la administración: ediciones, salas, categorías, lenguajes, equipos, problemas y login de staff. Falta el núcleo del concurso: login de equipos, el juez, los envíos, el reloj, el marcador y el tiempo real. Este plan ordena ese trabajo según las dependencias. La meta es llegar a un primer simulacro completo: un equipo entra, envía código, recibe veredicto y aparece en el marcador.
 
 Hallazgos que cambian el orden:
-- El worker no existe. Solo está `BullModule.forRootAsync`. La base para construirlo es `scripts/judge-bench/{bench.mjs,runner.c}`.
+- El worker no existe. Solo está `BullModule.forRootAsync`. La base para construirlo es `scripts/judge-bench/bench.mjs` y `runner.c`, que ya se movió a `apps/backend/judge/`.
 - `problem.entity.ts` y el seeder de lenguajes leen la entrada por stdin y escriben por stdout. El diseño de `judge-evaluation.md` pide problemas por función, con entrada y salida en JSON.
 - Hoy no se puede publicar ningún problema. `findPublishErrors` exige un testset `READY`, y nada en el código llena testsets.
 - Los frontends todavía no consumen el backend. Los tipos de Submission en `packages/shared-types` están desactualizados.
@@ -62,6 +62,24 @@ Hallazgos que cambian el orden:
 - **Drivers:** los 6 lenguajes con tipos simples y sus arrays para el simulacro 1.
 - Los e2e de las fases 1 y 2 pasan (50/50) con Postgres y Redis locales.
 - **Corrección:** BullMQ 6 no puede cargar `ioredis` en ESM. Ahora `BullModule.forRootAsync` recibe un cliente `Redis` ya creado. Antes la cola nunca se conectaba y el build respondía 503.
+
+- Fase 3 implementada (2026-10-27):
+  - `src/judge/`:
+    - `DockerRunnerService`, el código de `bench.mjs` pasado a una clase.
+    - `CpuPool` con `JUDGE_CPUS`.
+    - Drivers de los 7 lenguajes del seeder.
+    - `compare.ts` con modos exacto y con tolerancia.
+    - `JudgeService.judge()`, que reutilizan el build y los envíos.
+  - `runner.c` se movió a `apps/backend/judge/`. Ahora sube el stack al máximo.
+  - `src/worker.ts` y `WorkerModule`, sin HTTP y sin sincronizar el esquema. Se arranca con `pnpm start:worker:dev`.
+  - `TestsetBuildProcessor`:
+    - Corre la solución oficial con 10× TL.
+    - Si todo sale bien, guarda las salidas y `ref_time_ms`, deja el testset en `READY` y mueve `current_testset_id`.
+    - Si la solución truena, no compila o pasa el TL, deja `FAILED` con el motivo.
+  - Se agregó Python al seeder. Su `time_multiplier` de 3 falta calibrarlo.
+  - El Dockerfile incluye el runner y el CLI de Docker. El worker del compose ya no está detrás de un perfil.
+  - Pruebas: `pnpm test:judge` (28 en Docker) y `test/judge-build.e2e-spec.ts` con `JUDGE_DOCKER=1`.
+  - Pendiente para la fase 6: confirmar los TLE en exclusiva.
 
 ## Decisiones abiertas originales
 1. **Formato de los problemas.** Para el simulacro, stdin/stdout comparando por tokens (recomendado) o problemas por función desde el inicio.

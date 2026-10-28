@@ -23,11 +23,24 @@ RUN pnpm --filter backend deploy --prod --legacy /out \
  && cp -r apps/backend/dist /out/dist
 
 # ===================================
+# RUNNER: mide tiempo de CPU y memoria de cada caso. Estático para montarlo en cualquier imagen
+# ===================================
+FROM gcc:14 AS runner
+COPY apps/backend/judge/runner.c /src/runner.c
+RUN gcc -O2 -static /src/runner.c -o /src/runner
+
+# ===================================
 # RUNTIME: solo lo necesario para correr
 # ===================================
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
+
+# El worker lanza los contenedores de los envíos con el CLI de Docker sobre docker.sock.
+# La API usa la misma imagen pero no monta el socket, así que el CLI no le sirve de nada
+COPY --from=docker:27-cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=runner /src/runner /app/judge/runner
+ENV JUDGE_RUNNER_BIN=/app/judge/runner
 
 COPY --from=build --chown=node:node /out ./
 COPY --chown=node:node apps/backend/docker-entrypoint.sh ./

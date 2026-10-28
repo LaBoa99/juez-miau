@@ -19,6 +19,8 @@ import { dirname, join } from 'node:path'
 import { parseArgs } from 'node:util'
 
 const HERE = dirname(new URL(import.meta.url).pathname)
+// runner.c vive en el backend: el worker usa el mismo binario
+const RUNNER_DIR = join(HERE, '..', '..', 'apps', 'backend', 'judge')
 
 const { values: args } = parseArgs({
     options: {
@@ -236,7 +238,7 @@ async function prepare() {
     })
 
     const build = await run('docker', ['run', '--rm', '--user', `${process.getuid()}:${process.getgid()}`,
-        '-v', `${HERE}:/src:ro`, '-v', `${work}:/w`, 'gcc:14', 'gcc', '-O2', '-static', '/src/runner.c', '-o', '/w/runner'])
+        '-v', `${RUNNER_DIR}:/src:ro`, '-v', `${work}:/w`, 'gcc:14', 'gcc', '-O2', '-static', '/src/runner.c', '-o', '/w/runner'])
     if (build.code !== 0) throw new Error(`no se pudo compilar runner.c:\n${build.out}`)
     return { work, tests, runner: join(work, 'runner') }
 }

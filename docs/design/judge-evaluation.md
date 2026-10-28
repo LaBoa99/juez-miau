@@ -1,6 +1,6 @@
 # Diseño del juez: ejecución, casos de prueba y evaluación
 
-- **Estado:** Aceptado — pendiente de implementación
+- **Estado:** Aceptado — en implementación (fase 3 lista: drivers, worker y build de testsets)
 - **Fecha:** 2026-09-29
 
 ## Contexto
@@ -228,6 +228,31 @@ Es la pieza con más trabajo: 6 lenguajes × tipos anidables.
 
 Plan: empezar con `int`, `long`, `float`, `bool`, `string` y sus `array`; agregar `object` después.
 
+#### Implementación (fase 3, `apps/backend/src/judge/drivers/`)
+
+El driver lee la entrada en JSON por stdin, llama a la función y escribe el resultado en
+`/tmp/result.json`. La salida estándar del participante se descarta. El JSON del resultado no
+tiene que ser canónico: el worker lo revisa contra el tipo de retorno y lo reescribe en forma
+canónica antes de comparar. Si el tipo no coincide, el veredicto es WA con el motivo.
+
+| Lenguaje | Dónde va la función | `long` | `float` | arrays |
+|----------|---------------------|--------|---------|--------|
+| Python | función libre | `int` | `float` | `list` |
+| JS / TS | función libre (puede ser `export` o `async`) | `bigint` (de regreso acepta `number`) | `number` | `T[]` |
+| Java | método estático de `class Main` | `long` | `double` | `T[]` |
+| C# | método estático de `class Main`, sin namespace | `long` | `double` | `T[]` |
+| C++ | función libre; por valor, `&` o `const&` | `long long` | `double` | `std::vector<T>` |
+| C | función libre | `long long` | `double` | structs `IntArray { data, len }`, `IntArray2D`... de `judge.h` |
+
+- En C y C++ el driver incluye `Main.c`/`Main.cpp` en la misma unidad de compilación. Un `main()`
+  propio del participante, para probar en su máquina, no estorba, y `#define int long long`
+  funciona.
+- En C, para regresar un array o un string se reserva con `malloc`.
+- La recursión profunda funciona en todos: el runner sube el stack al máximo, Java usa `-Xss64m`,
+  Node `--stack-size` y C# corre en un hilo de 256 MB.
+- `starterCode()` genera la plantilla de cada lenguaje a partir de la firma.
+- Pruebas reales en Docker: `pnpm test:judge` (los 7 lenguajes y cada veredicto).
+
 ## Tiempo estimado para montar una edición
 
 Con el sistema construido, casi todo es trabajo humano; la parte de la máquina tarda minutos.
@@ -260,10 +285,10 @@ La primera edición toma más: los jueces tienen que acostumbrarse al formato po
 1. ~~Tipos del esquema y del problema en `shared-types`~~ (hecho: `signature.interface.ts`, `testset.interface.ts`)
 2. ~~Generador con semilla en el backend~~ (hecho: `src/testsets/generation/`)
 3. Entidades `Problem`, `TestCase`, `Submission`
-4. Templates de driver por lenguaje generados desde la firma (empezar por tipos simples)
-5. Worker de ejecución: `src/worker.ts`, `WorkerModule`, `JudgeProcessor`, BullMQ + Redis
-6. Asignación de núcleos (`--cpuset-cpus`), medición de tiempo de CPU (base: `scripts/judge-bench/runner.c`) y confirmación de TLE en exclusiva
-7. Validación de la solución oficial contra los ejemplos
+4. ~~Templates de driver por lenguaje generados desde la firma~~ (hecho para tipos simples y arrays; faltan `enum` y `object`)
+5. ~~Worker de ejecución: `src/worker.ts`, `WorkerModule`, BullMQ + Redis~~ (hecho: build de testsets; los envíos llegan en la fase 4)
+6. ~~Asignación de núcleos (`--cpuset-cpus`, `JUDGE_CPUS`), medición de tiempo de CPU (`apps/backend/judge/runner.c`)~~; falta la confirmación de TLE en exclusiva
+7. ~~Validación de la solución oficial contra los ejemplos~~ (ya no aplica: las salidas esperadas, incluidas las de los ejemplos, salen de la solución oficial; el build falla si truena o pasa el TL)
 8. Rejudge
 9. Cola de revisión manual en el panel de staff
 10. Migraciones de TypeORM antes de producción

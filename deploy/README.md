@@ -77,14 +77,18 @@ Con dominio, Caddy obtiene el certificado solo (necesita los puertos 80 y 443 ab
 internet). `COOKIE_SECURE=true` sobre HTTP rompe la sesión del staff: el navegador descarta la
 cookie de refresh.
 
-## Activar el juez
+## El juez
 
-Cuando exista `apps/backend/src/worker.ts`:
+El servicio `worker` (`apps/backend/src/worker.ts`) arranca junto con los demás. Antes del primer
+`docker compose up`:
 
 1. `sudo mkdir -p /var/lib/concurso/submissions && sudo chown 1000:1000 /var/lib/concurso/submissions`
    (UID del usuario `node` de la imagen; ruta = `SUBMISSIONS_DIR`)
 2. `DOCKER_GID` = `getent group docker | cut -d: -f3`
-3. `COMPOSE_PROFILES=judge` en `.env` y `docker compose up -d`
+3. `JUDGE_CPUS` con una CPU lógica por núcleo físico que se reserve para juzgar (`lscpu -e`), y
+   `WORKER_CONCURRENCY` con la misma cantidad
+4. Descargar las imágenes de los lenguajes (~4.4 GB):
+   `for i in gcc:14 eclipse-temurin:21-jdk python:3.12-slim node:24-slim mcr.microsoft.com/dotnet/sdk:8.0; do docker pull $i; done`
 
 El worker monta `docker.sock`, que equivale a root en el host: por eso no publica puertos ni
 comparte proceso con la API. Los requisitos de ejecución (variables de .NET, detección de MLE,

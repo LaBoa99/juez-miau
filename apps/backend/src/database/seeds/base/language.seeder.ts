@@ -74,6 +74,17 @@ const LANGUAGES: Omit<Language, 'id' | 'active'>[] = [
         file_ext: 'ts',
         time_multiplier: 2,
     },
+    {
+        code: 'python',
+        image_ref: 'python:3.12-slim',
+        compile_cmd: 'python3 -m py_compile Main.py',
+        run_cmd: 'python3 Main.py',
+        compiler_version: 'Python 3.12',
+        flags: '',
+        file_ext: 'py',
+        // CPython es el más lento de todos; falta calibrarlo con scripts/judge-bench
+        time_multiplier: 3,
+    },
 ]
 
 export const languageSeeder: Seeder = {

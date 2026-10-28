@@ -14,6 +14,8 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "start:worker": "nest start --entryFile worker",
+    "start:worker:dev": "nest start --watch --entryFile worker",
     "seed:base": "nest build && node dist/database/seeds/seed.js base",
     "seed:dev": "nest build && node dist/database/seeds/seed.js dev",
     "seed:prod": "nest build && node dist/database/seeds/seed.js prod",
@@ -22,7 +24,8 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
+    "test:judge": "JUDGE_DOCKER=1 vitest run src/judge/judge.docker.spec.ts"
   },
   "dependencies": {
     "@concurso/shared-types": "workspace:*",

@@ -72,6 +72,13 @@ int main(int argc, char **argv) {
         setrlimit(RLIMIT_CPU, &cpu);
         struct rlimit fsize = { max_output, max_output };
         setrlimit(RLIMIT_FSIZE, &fsize);
+        // Stack hasta el máximo permitido (8 MB por defecto) para que la recursión profunda funcione
+        // igual en C/C++ que en Java (-Xss64m) y Node (--stack-size). La memoria la limita el cgroup
+        struct rlimit stack;
+        if (getrlimit(RLIMIT_STACK, &stack) == 0) {
+            stack.rlim_cur = stack.rlim_max;
+            setrlimit(RLIMIT_STACK, &stack);
+        }
 
         execvp(argv[6], argv + 6);
         _exit(127);

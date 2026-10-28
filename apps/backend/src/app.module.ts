@@ -1,9 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { BullModule } from '@nestjs/bullmq';
-import { Redis } from 'ioredis';
 import { createObserveModule } from '@nestjs/observe';
+import { apiTypeOrmImport, bullImport, configImport } from './core/root-imports.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -25,7 +22,6 @@ import { ExportsModule } from './exports/exports.module.js';
 import { PublicModule } from './public/public.module.js';
 import { HealthModule } from './health/health.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
-import { buildTypeOrmOptions } from './database/typeorm.config.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -38,30 +34,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       appSecret: 'YOUR_APP_SECRET',
       serviceId: 'backend',
     }),
-    ConfigModule.forRoot({
-      isGlobal: true,
-      cache: true,
-      envFilePath: '.env',
-    }),
-    TypeOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        ...buildTypeOrmOptions(config),
-        autoLoadEntities: true,
-      }),
-    }),
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      // En ESM BullMQ no puede cargar ioredis por su cuenta: hay que pasarle el cliente ya creado
-      useFactory: (config: ConfigService) => ({
-        connection: new Redis({
-          host: config.getOrThrow<string>('REDIS_HOST'),
-          port: Number(config.getOrThrow<string>('REDIS_PORT')),
-          password: config.get<string>('REDIS_PASSWORD') || undefined,
-          maxRetriesPerRequest: null,
-        }),
-      }),
-    }),
+    configImport,
+    apiTypeOrmImport,
+    bullImport,
     AuthModule,
     StaffModule,
     EditionsModule,
