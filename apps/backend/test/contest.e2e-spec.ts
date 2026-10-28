@@ -10,7 +10,7 @@ import { DataSource, Repository } from 'typeorm';
 import type { AddressInfo, Server } from 'node:net';
 import {
   EditionStatus, SOCKET_EVENTS, StaffRole, SubmissionStatus, TestsetStatus, Verdict,
-  type IContestClock, type ISubmission, type IStaffSubmission,
+  type IContestClock, type ISubmission, type IStaffSubmission, type IStandings,
 } from '@concurso/shared-types';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
@@ -272,6 +272,39 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Concurso en vivo: reloj, envíos, ju
     expect(mine.body.map((submission: ISubmission) => submission.id)).toEqual([results.ce, results.wa, results.ac]);
   }, 180_000);
 
+  it('el marcador ICPC llega por socket al proyector y se congela en los últimos minutos', async () => {
+    const projector = await connect();
+    await projector.emitWithAck(SOCKET_EVENTS.JOIN_PUBLIC, { editionId: edition.id });
+    const updates = record<IStandings>(projector, SOCKET_EVENTS.STANDINGS_UPDATE);
+
+    // Un WA después del AC no cambia la celda, pero sí dispara el recálculo
+    await skipCooldown(team.id);
+    const late = await submit(teamToken, SOLUTIONS.wa).expect(202);
+    const pushed = await waitFor(() => updates.find((update) => update.editionId === edition.id), 10_000);
+    expect(pushed.view).toBe('public');
+
+    const standings = (await api().get(`/api/v1/editions/${edition.id}/standings`).set(bearer(adminToken)).expect(200)).body as IStandings;
+    const principiantes = standings.categories.find((category) => category.code === 'PRIN')!;
+    expect(principiantes.problems).toEqual([{ id: problemId, letter: 'A', title: 'Suma' }]);
+    // AC al primer intento en el minuto 0; el CE y el WA posteriores no penalizan
+    expect(principiantes.rows).toEqual([
+      expect.objectContaining({ rank: 1, teamId: team.id, solved: 1, penalty: 0 }),
+    ]);
+    expect(principiantes.rows[0].cells[0]).toMatchObject({ solved: true, rejected: 0, acMinute: 0, firstToSolve: true });
+    expect(standings.categories.find((category) => category.code === 'AVAN')!.rows).toEqual([
+      expect.objectContaining({ teamId: otherTeam.id, solved: 0, rank: 1 }),
+    ]);
+
+    // Faltan 5 minutos: la vista pública se congela (freeze de 10), la del staff no
+    await editionRepo.update(edition.id, { started_at: new Date(Date.now() - 55 * 60_000) });
+    const frozen = (await api().get(`/api/v1/public/editions/${edition.id}/standings`).expect(200)).body as IStandings;
+    expect(frozen).toMatchObject({ view: 'public', frozen: true, freezeMinute: 50 });
+    const staff = (await api().get(`/api/v1/editions/${edition.id}/standings`).set(bearer(adminToken)).expect(200)).body as IStandings;
+    expect(staff.frozen).toBe(false);
+    await waitFor(() => (updates.length ? true : undefined));
+    expect(late.body.id).toEqual(expect.any(Number));
+  }, 120_000);
+
   it('en pausa y al terminar no se aceptan envíos; el tiempo de pausa no cuenta', async () => {
     await skipCooldown(team.id);
     await api().post(`/api/v1/editions/${edition.id}/clock/pause`).set(bearer(adminToken)).expect(200);
@@ -286,5 +319,9 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Concurso en vivo: reloj, envíos, ju
     expect(finished.body.status).toBe(EditionStatus.FINISHED);
     expect(finished.body.elapsedMs).toBeLessThan(paused.elapsedMs + 2_000);
     await submit(teamToken, SOLUTIONS.ac).expect(409);
+
+    // Al terminar se descongela
+    const publicStandings = (await api().get(`/api/v1/public/editions/${edition.id}/standings`).expect(200)).body as IStandings;
+    expect(publicStandings.frozen).toBe(false);
   });
 });

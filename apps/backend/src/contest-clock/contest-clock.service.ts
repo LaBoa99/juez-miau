@@ -11,6 +11,7 @@ import { elapsedMs, remainingMs, toClockDto } from './clock.js'
 @Injectable()
 export class ContestClockService {
     private readonly logger = new Logger(ContestClockService.name)
+    private readonly transitionListeners: ((editionId: number) => void)[] = []
 
     constructor(
         @InjectRepository(Edition)
@@ -103,7 +104,13 @@ export class ContestClockService {
         const clock = toClockDto(edition)
         this.logger.log('edition #' + editionId + ' is ' + edition.status + ' at ' + Math.round(elapsedMs(edition) / 1000) + ' s')
         this.realtime.toPublic(editionId, SOCKET_EVENTS.CLOCK_UPDATE, clock)
+        this.transitionListeners.forEach((listener) => listener(editionId))
         return clock
+    }
+
+    // El marcador se registra aquí: al terminar se descongela
+    onTransition(listener: (editionId: number) => void): void {
+        this.transitionListeners.push(listener)
     }
 
     private async getEdition(editionId: number): Promise<Edition> {

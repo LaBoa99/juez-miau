@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common'
 import { OnQueueEvent, QueueEventsHost, QueueEventsListener } from '@nestjs/bullmq'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
@@ -8,16 +7,10 @@ import { Submission } from '../submissions/entities/submission.entity.js'
 import { SubmissionsService } from '../submissions/services/submissions.service.js'
 import { SUBMISSIONS_QUEUE, submissionIdFromJob } from '../submissions/submissions.constants.js'
 
-export interface VerdictListener {
-    onSubmissionJudged(submission: Submission): void
-}
-
 // El worker no tiene WebSocket: avisa con eventos de la cola (QueueEvents de BullMQ) y la API
 // los reenvía por Socket.io. El estado siempre se lee de la BD, el evento solo dice qué cambió
 @QueueEventsListener(SUBMISSIONS_QUEUE)
 export class JudgingEventsListener extends QueueEventsHost {
-    private readonly logger = new Logger(JudgingEventsListener.name)
-    private readonly verdictListeners: VerdictListener[] = []
 
     constructor(
         @InjectRepository(Submission)
@@ -26,11 +19,6 @@ export class JudgingEventsListener extends QueueEventsHost {
         private readonly realtime: RealtimeService,
     ) {
         super()
-    }
-
-    // El marcador se registra aquí para recalcular con cada veredicto
-    addVerdictListener(listener: VerdictListener): void {
-        this.verdictListeners.push(listener)
     }
 
     @OnQueueEvent('progress')
@@ -51,14 +39,8 @@ export class JudgingEventsListener extends QueueEventsHost {
         const submission = await this.load(jobId, true)
         if(!submission) return
 
+        // También avisa al marcador (SubmissionsService.onChange)
         this.submissionsService.publish(submission)
-        for(const listener of this.verdictListeners){
-            try {
-                listener.onSubmissionJudged(submission)
-            } catch(error) {
-                this.logger.error('verdict listener failed', error instanceof Error ? error.stack : undefined)
-            }
-        }
     }
 
     private async load(jobId: string, withCases: boolean): Promise<Submission | null> {

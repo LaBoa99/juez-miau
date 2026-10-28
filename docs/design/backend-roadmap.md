@@ -41,7 +41,7 @@ Hallazgos que cambian el orden:
 - **Formato:** por función desde el simulacro 1. Los drivers con tipos simples (`int`, `long`, `float`, `bool`, `string` y sus arrays) pasan a la ruta crítica, en la fase 3. Antes de la fase 2, a `Problem`/`Testset` hay que agregarles `signature`, `schema` y `compare_mode`.
 - **Hash:** bcrypt. Hay que corregir los TODOs que dicen argon2.
 - **Login de equipo:** se busca el `username` solo en ediciones `SCHEDULED`/`RUNNING`. Hay que validar que dos ediciones activas no repitan username.
-- **Puntaje:** se define antes de la fase 5.
+- **Puntaje:** ICPC (decidido el 2026-10-27, ver abajo).
 - Hecho: arreglado `resetPassword` y borrado `auth.guard.ts`.
 - Fase 1 implementada (2026-10-24): guards globales `JwtAuthGuard` + `EditionRoleGuard` con decoradores en `auth/decorators/access.decorators.ts`, sesión de equipo con `session_id` en el JWT, CRUD de staff, relaciones a `StaffUser`, validaciones de borrado y `schedule` (RF-06 + usernames únicos entre ediciones activas). Pendiente correr `test/access.e2e-spec.ts` con Postgres.
 - Fase 2 implementada (2026-10-24):
@@ -102,6 +102,14 @@ Hallazgos que cambian el orden:
   - `EditionStaffService.assertRole(userId, editionId, roles[])` generaliza `assertCanJudge`.
   - Pruebas: `test/contest.e2e-spec.ts` (simulacro completo con `JUDGE_DOCKER=1`) y `clock.spec.ts`.
   - Pendiente: cerrar los sockets de un equipo cuando se revoca su sesión. Hoy el token solo se revisa al conectar.
+
+- Fase 5 implementada (2026-10-27) → **el backend ya permite el Simulacro 1**:
+  - `src/standings/icpc.ts`: `computeStandings()` es una función pura con pruebas. Ordena por resueltos, luego por penalización (minuto del AC + 20 por cada rechazo previo; CE no cuenta) y luego por el último AC más temprano. Los empates exactos comparten lugar. También marca al primero en resolver por categoría y cuenta los pendientes.
+  - Congelamiento: en la vista pública, los envíos desde `duration - freeze` cuentan como pendientes. La del staff siempre está completa. Al terminar la edición se descongela.
+  - `StandingsService` recalcula desde los envíos y guarda el resultado en memoria por edición, vista y estado de congelamiento. Se invalida con `SubmissionsService.onChange` y `ContestClockService.onTransition`.
+  - Por socket emite `standings:update`, con un debounce de 1 s: la vista pública va a la sala pública y la del staff a la sala del staff, con el campo `view` para distinguirlas.
+  - Rutas: `GET /public/editions/:id/standings` (`@Public`, 404 si la edición es borrador) y `GET /editions/:id/standings` (staff).
+  - Lo que falta para correr el simulacro con personas: que los frontends consuman `GET /contest`, `POST /submissions`, el socket `/ws` y el marcador.
 
 ## Decisiones abiertas originales
 1. **Formato de los problemas.** Para el simulacro, stdin/stdout comparando por tokens (recomendado) o problemas por función desde el inicio.

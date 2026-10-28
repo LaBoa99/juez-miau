@@ -40,6 +40,7 @@ const DEFAULT_PAGE = 50
 @Injectable()
 export class SubmissionsService implements OnApplicationBootstrap {
     private readonly logger = new Logger(SubmissionsService.name)
+    private readonly changeListeners: ((submission: Submission) => void)[] = []
 
     constructor(
         @InjectRepository(Submission)
@@ -173,6 +174,18 @@ export class SubmissionsService implements OnApplicationBootstrap {
     publish(submission: Submission): void {
         this.realtime.toTeam(submission.team_id, SOCKET_EVENTS.SUBMISSION_UPDATE, toSubmissionDto(submission))
         this.realtime.toStaff(submission.edition_id, SOCKET_EVENTS.SUBMISSION_UPDATE, toStaffSubmissionDto(submission))
+        for(const listener of this.changeListeners){
+            try {
+                listener(submission)
+            } catch(error) {
+                this.logger.error('submission listener failed', error instanceof Error ? error.stack : undefined)
+            }
+        }
+    }
+
+    // El marcador se registra aquí: cada envío nuevo o veredicto lo cambia
+    onChange(listener: (submission: Submission) => void): void {
+        this.changeListeners.push(listener)
     }
 
     async enqueue(submissionId: number): Promise<void> {
