@@ -14,6 +14,8 @@ export function toTestsetDto(testset: Testset): IProblemTestset {
         compareMode: testset.compare_mode,
         floatTolerance: testset.float_tolerance,
         schema: testset.schema,
+        manualReview: testset.manual_review,
+        reviewInstructions: testset.review_instructions,
         refSolutionId: testset.ref_solution_id,
         generatorId: testset.generator_id,
         seed: testset.seed,

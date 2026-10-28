@@ -1,12 +1,14 @@
 import { ConflictException, HttpException, HttpStatus, Injectable, Logger, NotFoundException, UnprocessableEntityException, type OnApplicationBootstrap } from '@nestjs/common'
-import { InjectQueue } from '@nestjs/bullmq'
 import { InjectRepository } from '@nestjs/typeorm'
-import type { Queue } from 'bullmq'
 import { In, LessThan, MoreThan, Repository, type FindOptionsWhere } from 'typeorm'
 import {
     ProblemStatus,
     SOCKET_EVENTS,
+    StaffRole,
     SubmissionStatus,
+    Verdict,
+    type IRejudgeResponse,
+    type ISubmissionHistoryEntry,
     type ISubmission,
     type ISubmissionDetail,
     type IStaffSubmission,
@@ -24,16 +26,15 @@ import { RealtimeService } from '../../realtime/realtime.service.js'
 import { Team } from '../../teams/entities/team.entity.js'
 import { CreateSubmissionDto } from '../dto/create-submission.dto.js'
 import { SubmissionFiltersDto } from '../dto/submission-filters.dto.js'
+import { RejudgeProblemDto, RejudgeSubmissionDto } from '../dto/rejudge.dto.js'
+import { ReviewSubmissionDto } from '../dto/review-submission.dto.js'
 import { Submission } from '../entities/submission.entity.js'
+import { SubmissionHistory } from '../entities/submission-history.entity.js'
 import { toStaffSubmissionDto, toSubmissionDto } from '../mappers/submission.mapper.js'
-import {
-    MAX_SOURCE_BYTES,
-    SUBMISSION_COOLDOWN_MS,
-    SUBMISSION_JOB_ATTEMPTS,
-    SUBMISSIONS_QUEUE,
-    submissionJobId,
-    type SubmissionJob,
-} from '../submissions.constants.js'
+import { MAX_SOURCE_BYTES, SUBMISSION_COOLDOWN_MS } from '../submissions.constants.js'
+import { SubmissionQueueService } from './submission-queue.service.js'
+
+const JUDGE_ROLES = [StaffRole.ADMIN, StaffRole.JUDGE]
 
 const DEFAULT_PAGE = 50
 
@@ -51,8 +52,9 @@ export class SubmissionsService implements OnApplicationBootstrap {
         private readonly problemRepository: Repository<Problem>,
         @InjectRepository(Language)
         private readonly languageRepository: Repository<Language>,
-        @InjectQueue(SUBMISSIONS_QUEUE)
-        private readonly queue: Queue<SubmissionJob>,
+        @InjectRepository(SubmissionHistory)
+        private readonly historyRepository: Repository<SubmissionHistory>,
+        private readonly queueService: SubmissionQueueService,
         private readonly editionStaffService: EditionStaffService,
         private readonly realtime: RealtimeService,
     ) {}
@@ -62,11 +64,11 @@ export class SubmissionsService implements OnApplicationBootstrap {
     async onApplicationBootstrap(): Promise<void> {
         const pending = await this.submissionRepository.find({
             where: { status: In([SubmissionStatus.QUEUED, SubmissionStatus.JUDGING]) },
-            select: { id: true },
+            select: { id: true, judge_round: true },
             order: { id: 'ASC' },
         })
-        for(const { id } of pending){
-            await this.enqueue(id).catch((error: unknown) => this.logger.warn('could not requeue submission #' + id + ': ' + String(error)))
+        for(const { id, judge_round } of pending){
+            await this.queueService.enqueue(id, judge_round).catch((error: unknown) => this.logger.warn('could not requeue submission #' + id + ': ' + String(error)))
         }
         if(pending.length > 0) this.logger.log('requeued ' + pending.length + ' pending submission(s)')
     }
@@ -123,7 +125,7 @@ export class SubmissionsService implements OnApplicationBootstrap {
         }))
 
         // Si Redis falla el envío queda guardado como QUEUED y se encola al reiniciar la API
-        await this.enqueue(submission.id).catch((error: unknown) =>
+        await this.queueService.enqueue(submission.id, submission.judge_round).catch((error: unknown) =>
             this.logger.error('could not enqueue submission #' + submission.id, error instanceof Error ? error.stack : undefined))
 
         this.publish(submission)
@@ -188,14 +190,85 @@ export class SubmissionsService implements OnApplicationBootstrap {
         this.changeListeners.push(listener)
     }
 
-    async enqueue(submissionId: number): Promise<void> {
-        await this.queue.add('judge', { submissionId }, {
-            jobId: submissionJobId(submissionId),
-            attempts: SUBMISSION_JOB_ATTEMPTS,
-            backoff: { type: 'exponential', delay: 2_000 },
-            removeOnComplete: 1_000,
-            removeOnFail: 1_000,
+    // ─── Rejudge ─────────────────────────────────────────────────
+
+    async rejudgeSubmission(staffUserId: number, id: number, dto: RejudgeSubmissionDto): Promise<IRejudgeResponse> {
+        const submission = await this.getSubmission(id)
+        await this.editionStaffService.assertRole(staffUserId, submission.edition_id, JUDGE_ROLES)
+        return this.rejudge({ submissionIds: [id] }, dto.reason, staffUserId)
+    }
+
+    async rejudgeProblem(staffUserId: number, problemId: number, dto: RejudgeProblemDto): Promise<IRejudgeResponse> {
+        const problem = await this.problemRepository.findOneBy({ id: problemId })
+        if(!problem) throw new NotFoundException('problem not found #' + problemId)
+        await this.editionStaffService.assertRole(staffUserId, problem.edition_id, JUDGE_ROLES)
+        return this.rejudge({ problemId, verdicts: dto.verdicts }, dto.reason, staffUserId)
+    }
+
+    async findHistory(staffUserId: number, id: number): Promise<ISubmissionHistoryEntry[]> {
+        const submission = await this.getSubmission(id)
+        await this.editionStaffService.assertRole(staffUserId, submission.edition_id, ANY_EDITION_ROLE)
+        const entries = await this.historyRepository.find({ where: { submission_id: id }, order: { judge_round: 'ASC' } })
+        return entries.map((entry) => ({
+            judgeRound: entry.judge_round,
+            testsetId: entry.testset_id,
+            status: entry.status,
+            verdict: entry.verdict,
+            maxTimeMs: entry.max_time_ms,
+            judgedAt: entry.judged_at,
+            reason: entry.reason,
+            rejudgedBy: entry.rejudged_by,
+            createdAt: entry.created_at,
+        }))
+    }
+
+    private async rejudge(target: Parameters<SubmissionQueueService['rejudge']>[0], reason: string, staffUserId: number): Promise<IRejudgeResponse> {
+        const submissions = await this.queueService.rejudge(target, { reason, staffUserId })
+        // Pasan a pendientes en el marcador hasta tener el veredicto nuevo
+        submissions.forEach((submission) => this.publish(submission))
+        return { submissionIds: submissions.map((submission) => submission.id) }
+    }
+
+    // ─── Revisión manual ─────────────────────────────────────────
+
+    // Los más viejos primero: es una cola
+    async findPendingReview(editionId: number): Promise<IStaffSubmission[]> {
+        const submissions = await this.submissionRepository.find({
+            where: { edition_id: editionId, status: SubmissionStatus.DONE, verdict: Verdict.PENDING_REVIEW },
+            order: { id: 'ASC' },
+            select: this.withoutSource(),
         })
+        return submissions.map(toStaffSubmissionDto)
+    }
+
+    async review(staffUserId: number, id: number, dto: ReviewSubmissionDto): Promise<IStaffSubmission> {
+        const submission = await this.getSubmission(id)
+        await this.editionStaffService.assertRole(staffUserId, submission.edition_id, JUDGE_ROLES)
+
+        const changes = {
+            verdict: dto.accept ? Verdict.AC : Verdict.WA,
+            reviewed_by: staffUserId,
+            reviewed_at: new Date(),
+            review_comment: dto.comment?.trim() || null,
+        }
+        // Condicional: dos jueces revisando a la vez, o un rejudge en medio
+        const result = await this.submissionRepository.update(
+            { id, status: SubmissionStatus.DONE, verdict: Verdict.PENDING_REVIEW, judge_round: submission.judge_round },
+            changes,
+        )
+        if(!result.affected){
+            throw new ConflictException('submission #' + id + ' is not pending review')
+        }
+
+        Object.assign(submission, changes)
+        this.publish(submission)
+        return toStaffSubmissionDto(submission)
+    }
+
+    private async getSubmission(id: number): Promise<Submission> {
+        const submission = await this.submissionRepository.findOne({ where: { id }, select: this.withoutSource() })
+        if(!submission) throw new NotFoundException('submission not found #' + id)
+        return submission
     }
 
     // El código puede pesar 64 KB; en las listas no hace falta
@@ -203,7 +276,8 @@ export class SubmissionsService implements OnApplicationBootstrap {
         return {
             id: true, edition_id: true, team_id: true, problem_id: true, language_id: true, testset_id: true,
             source_sha: true, status: true, verdict: true, contest_ms: true, max_time_ms: true, max_memory_kb: true,
-            compile_log: true, created_at: true, judged_at: true,
+            compile_log: true, judge_round: true, reviewed_by: true, reviewed_at: true, review_comment: true,
+            created_at: true, judged_at: true,
         }
     }
 }

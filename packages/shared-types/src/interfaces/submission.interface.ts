@@ -46,6 +46,8 @@ export interface ISubmission {
     maxMemoryKb: number | null
     // Solo si el veredicto es CE
     compileLog: string | null
+    // Comentario del juez al revisar a mano (aceptado o rechazado)
+    reviewComment: string | null
     createdAt: Date
     judgedAt: Date | null
 }
@@ -63,7 +65,45 @@ export interface ISubmissionCase {
 export interface IStaffSubmission extends ISubmission {
     teamId: number
     testsetId: number
+    // Cuántas veces se ha re-juzgado
+    judgeRound: number
+    reviewedBy: number | null
+    reviewedAt: Date | null
     cases: ISubmissionCase[]
+}
+
+// ─── Rejudge y revisión manual ───────────────────────────────
+
+export interface IRejudge {
+    reason: string
+}
+
+export interface IRejudgeProblem extends IRejudge {
+    // Solo los envíos con estos veredictos; vacío o ausente = todos
+    verdicts?: Verdict[]
+}
+
+export interface IRejudgeResponse {
+    submissionIds: number[]
+}
+
+// Veredicto anterior de un envío re-juzgado
+export interface ISubmissionHistoryEntry {
+    judgeRound: number
+    testsetId: number
+    status: SubmissionStatus
+    verdict: Verdict | null
+    maxTimeMs: number | null
+    judgedAt: Date | null
+    reason: string
+    // null: re-juicio automático por una versión nueva del testset
+    rejudgedBy: number | null
+    createdAt: Date
+}
+
+export interface IReviewSubmission {
+    accept: boolean
+    comment?: string
 }
 
 export interface ISubmissionDetail extends ISubmission {

@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsNumber, IsObject, IsOptional, IsPositive, Max, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsNumber, IsObject, IsOptional, IsPositive, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 import { CompareMode, type ITestsetSchema, type IUpdateTestset } from '@concurso/shared-types';
 
 export class UpdateTestsetDto implements IUpdateTestset {
@@ -30,4 +30,15 @@ export class UpdateTestsetDto implements IUpdateTestset {
     @IsOptional()
     @IsObject()
     declare schema?: ITestsetSchema | null;
+
+    @IsOptional()
+    @IsBoolean()
+    declare manualReview?: boolean;
+
+    // null la quita
+    @IsOptional()
+    @ValidateIf((_, value) => value !== null)
+    @IsString()
+    @MaxLength(2000)
+    declare reviewInstructions?: string | null;
 }

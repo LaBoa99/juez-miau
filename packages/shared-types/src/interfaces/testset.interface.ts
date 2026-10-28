@@ -61,6 +61,10 @@ export interface IUpdateTestset {
     compareMode?: CompareMode
     floatTolerance?: number | null
     schema?: ITestsetSchema | null
+    // Los AC quedan en PENDING_REVIEW hasta que un juez los revise (judge-evaluation.md §5)
+    manualReview?: boolean
+    // Qué debe revisar el juez, p. ej. "no usar sorted()"; null la quita
+    reviewInstructions?: string | null
 }
 
 // `input` es un objeto con una llave por parámetro de la firma.

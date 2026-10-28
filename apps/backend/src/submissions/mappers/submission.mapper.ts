@@ -13,6 +13,7 @@ export function toSubmissionDto(submission: Submission): ISubmission {
         maxMemoryKb: submission.max_memory_kb,
         // Es el código del propio equipo: el log del compilador no revela nada de los casos
         compileLog: submission.verdict === Verdict.CE ? submission.compile_log : null,
+        reviewComment: submission.review_comment,
         createdAt: submission.created_at,
         judgedAt: submission.judged_at,
     }
@@ -24,6 +25,9 @@ export function toStaffSubmissionDto(submission: Submission): IStaffSubmission {
         ...toSubmissionDto(submission),
         teamId: submission.team_id,
         testsetId: submission.testset_id,
+        judgeRound: submission.judge_round,
+        reviewedBy: submission.reviewed_by,
+        reviewedAt: submission.reviewed_at,
         cases: [...(submission.cases ?? [])]
             .sort((a, b) => a.ordinal - b.ordinal)
             .map((submissionCase) => ({

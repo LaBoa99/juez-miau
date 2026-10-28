@@ -61,6 +61,21 @@ export class Submission {
     @Column({ type: 'text', nullable: true })
     declare compile_log: string | null
 
+    // Sube con cada rejudge. El trabajo de la cola lleva la ronda: si ya no coincide, su
+    // resultado es viejo y se descarta
+    @Column({ type: 'int', default: 0 })
+    declare judge_round: number
+
+    // Revisión manual (testset.manual_review)
+    @Column({ type: 'int', nullable: true })
+    declare reviewed_by: number | null
+
+    @Column({ type: 'timestamptz', nullable: true })
+    declare reviewed_at: Date | null
+
+    @Column({ type: 'text', nullable: true })
+    declare review_comment: string | null
+
     @CreateDateColumn({ type: 'timestamptz' })
     declare created_at: Date
 

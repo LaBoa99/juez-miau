@@ -62,6 +62,8 @@ export interface IProblemTestset {
     compareMode: CompareMode
     floatTolerance: number | null
     schema: ITestsetSchema | null
+    manualReview: boolean
+    reviewInstructions: string | null
     refSolutionId: number | null
     generatorId: number | null
     seed: number | null

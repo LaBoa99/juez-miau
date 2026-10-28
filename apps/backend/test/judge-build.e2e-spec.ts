@@ -20,13 +20,14 @@ import { TestCase } from '../src/testsets/entities/test-case.entity.js';
 import { BlobsModule } from '../src/blobs/blobs.module.js';
 import { BlobsService } from '../src/blobs/services/blobs.service.js';
 import { JudgeModule } from '../src/judge/judge.module.js';
+import { SubmissionsModule } from '../src/submissions/submissions.module.js';
 import { TestsetBuildProcessor } from '../src/testsets/processors/testset-build.processor.js';
 import { languageSeeder } from '../src/database/seeds/base/language.seeder.js';
 
 // El processor del worker dentro del mismo proceso que la API (el "modo desarrollo" de
 // judge-evaluation.md §6). Ejecuta la solución oficial en Docker, por eso solo corre con JUDGE_DOCKER=1
 @Module({
-  imports: [TypeOrmModule.forFeature([Testset, TestCase]), BlobsModule, JudgeModule],
+  imports: [TypeOrmModule.forFeature([Testset, TestCase]), BlobsModule, JudgeModule, SubmissionsModule],
   providers: [TestsetBuildProcessor],
 })
 class InProcessJudgeModule {}

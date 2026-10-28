@@ -53,6 +53,13 @@ export class Testset {
     @Column({ type: 'double precision', nullable: true })
     declare float_tolerance: number | null
 
+    // Revisión híbrida (judge-evaluation.md §5): los AC quedan en PENDING_REVIEW para un juez
+    @Column({ type: 'boolean', default: false })
+    declare manual_review: boolean
+
+    @Column({ type: 'text', nullable: true })
+    declare review_instructions: string | null
+
     // DRAFT es el único estado editable (FAILED vuelve a DRAFT al editarlo); READY es inmutable
     @Column({ type: 'enum', enum: TestsetStatus, default: TestsetStatus.DRAFT })
     declare status: TestsetStatus

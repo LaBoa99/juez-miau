@@ -11,6 +11,7 @@ import { TESTSET_BUILD_QUEUE } from './testsets/testsets.constants.js'
 import { Submission } from './submissions/entities/submission.entity.js'
 import { SubmissionCase } from './submissions/entities/submission-case.entity.js'
 import { SubmissionProcessor } from './submissions/processors/submission.processor.js'
+import { SubmissionQueueService } from './submissions/services/submission-queue.service.js'
 import { SUBMISSIONS_QUEUE } from './submissions/submissions.constants.js'
 
 // Proceso del juez (judge-evaluation.md §6): sin HTTP, consume las colas y ejecuta en Docker.
@@ -25,6 +26,6 @@ import { SUBMISSIONS_QUEUE } from './submissions/submissions.constants.js'
         BlobsModule,
         JudgeModule,
     ],
-    providers: [TestsetBuildProcessor, SubmissionProcessor],
+    providers: [TestsetBuildProcessor, SubmissionProcessor, SubmissionQueueService],
 })
 export class WorkerModule {}

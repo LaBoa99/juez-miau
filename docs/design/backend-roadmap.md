@@ -111,6 +111,22 @@ Hallazgos que cambian el orden:
   - Rutas: `GET /public/editions/:id/standings` (`@Public`, 404 si la edición es borrador) y `GET /editions/:id/standings` (staff).
   - Lo que falta para correr el simulacro con personas: que los frontends consuman `GET /contest`, `POST /submissions`, el socket `/ws` y el marcador.
 
+- Fase 6a implementada (2026-10-28), lo obligatorio antes del concurso real:
+  - **Rejudge** (`SubmissionQueueService.rejudge`, lo usan la API y el worker):
+    - Guarda el resultado anterior en `submission_history`, regresa el envío a QUEUED con la versión actual del testset de su problema y sube `judge_round`.
+    - El jobId incluye la ronda (`submission-<id>-r<n>`). Un trabajo de una ronda anterior que siga corriendo descarta su resultado.
+    - Rutas: `POST /submissions/:id/rejudge`, `POST /problems/:id/rejudge` (con filtro opcional por veredicto) y `GET /submissions/:id/history`. Todas piden juez o admin y un `reason` obligatorio.
+    - Automático: cuando una versión nueva del testset de un problema publicado queda READY, el worker re-juzga todos sus envíos.
+    - El rejudge "por caso" quedó cubierto por el rejudge del problema.
+  - **TLE en exclusiva**: `CpuPool.useExclusive` reserva todos los núcleos en una fila FIFO, para que no lo dejen esperando quienes llegan después. Un TLE se repite así antes de darse por bueno, salvo cuando el pool tiene un solo núcleo.
+  - **Revisión manual**:
+    - `Testset.manual_review` y `review_instructions` están en el testset (con versiones) y no en el problema, porque afectan veredictos.
+    - Con `manual_review`, un AC queda en `PENDING_REVIEW`.
+    - Rutas: `GET /editions/:id/review-queue` y `POST /submissions/:id/review` con `{ accept, comment }`. Al aceptar queda AC; al rechazar queda WA y cuenta como rechazo. El equipo ve el comentario.
+  - Nota: cada tabla tiene su propio tipo enum. El `INSERT ... SELECT` del historial convierte pasando por texto, porque un `enumName` compartido rompe la sincronización de TypeORM.
+  - Pruebas: `test/resilience.e2e-spec.ts` (con `JUDGE_DOCKER=1`) y el helper `test/helpers/contest-fixture.ts`.
+  - Falta la 6b: checker, generadores en código y tipos `enum`/`object`.
+
 ## Decisiones abiertas originales
 1. **Formato de los problemas.** Para el simulacro, stdin/stdout comparando por tokens (recomendado) o problemas por función desde el inicio.
 2. **Hash de contraseñas.** Quedarse con bcrypt, que ya se usa en todo el código (recomendado), o migrar a argon2.

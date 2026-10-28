@@ -136,6 +136,8 @@ export class TestsetsService {
                 schema: current.schema,
                 compare_mode: current.compare_mode,
                 float_tolerance: current.float_tolerance,
+                manual_review: current.manual_review,
+                review_instructions: current.review_instructions,
                 author_id: staffUserId,
                 reason: dto.reason,
             }))
@@ -181,6 +183,8 @@ export class TestsetsService {
         if(dto.memoryLimitMb !== undefined) testset.memory_limit_mb = dto.memoryLimitMb
         if(dto.compareMode !== undefined) testset.compare_mode = dto.compareMode
         if(dto.floatTolerance !== undefined) testset.float_tolerance = dto.floatTolerance
+        if(dto.manualReview !== undefined) testset.manual_review = dto.manualReview
+        if(dto.reviewInstructions !== undefined) testset.review_instructions = dto.reviewInstructions
         if(testset.compare_mode === CompareMode.TOLERANCE && testset.float_tolerance === null){
             testset.float_tolerance = DEFAULT_FLOAT_TOLERANCE
         }

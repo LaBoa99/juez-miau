@@ -3,7 +3,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { InjectRepository } from '@nestjs/typeorm'
 import type { Job } from 'bullmq'
 import { DataSource, In, Repository } from 'typeorm'
-import { SubmissionStatus, type ISubmissionProgress } from '@concurso/shared-types'
+import { SubmissionStatus, Verdict, type ISubmissionProgress } from '@concurso/shared-types'
 import { BlobsService } from '../../blobs/services/blobs.service.js'
 import { JudgeInfrastructureError } from '../../judge/docker-runner.service.js'
 import { JudgeService, type JudgeResult } from '../../judge/judge.service.js'
@@ -43,24 +43,33 @@ export class SubmissionProcessor extends WorkerHost implements OnApplicationBoot
             where: { id: job.data.submissionId },
             relations: { language: true, testset: true, problem: true },
         })
-        // Idempotente: un trabajo repetido no vuelve a juzgar (el rejudge lo regresa a QUEUED)
-        if(!submission || ![SubmissionStatus.QUEUED, SubmissionStatus.JUDGING].includes(submission.status)) return 'skipped'
+        // Idempotente: un trabajo repetido no vuelve a juzgar, y uno de una ronda anterior (antes
+        // de un rejudge) tampoco
+        if(!submission || submission.judge_round !== job.data.round) return 'skipped'
+        if(![SubmissionStatus.QUEUED, SubmissionStatus.JUDGING].includes(submission.status)) return 'skipped'
 
         try {
-            const result = await this.judge(submission, job)
-            await this.save(submission, result)
+            let result = await this.judge(submission, job, false)
+            // Con otros contenedores al lado un programa que usa mucha memoria corre hasta 5×
+            // más lento: el TLE solo vale si se repite con el servidor para él solo
+            if(result.verdict === Verdict.TLE && this.judgeService.concurrency > 1){
+                this.logger.log('confirming TLE of submission #' + submission.id + ' with all cores reserved')
+                result = await this.judge(submission, job, true)
+            }
+            const verdict = result.verdict === Verdict.AC && submission.testset.manual_review ? Verdict.PENDING_REVIEW : result.verdict
+            await this.save(submission, { ...result, verdict })
             return 'judged'
         } catch(error) {
             const attempts = job.opts.attempts ?? 1
             if(error instanceof JudgeInfrastructureError && job.attemptsMade + 1 < attempts){
                 this.logger.warn('submission #' + submission.id + ' hit a system error, retrying: ' + error.message)
-                await this.submissionRepository.update(submission.id, { status: SubmissionStatus.QUEUED })
+                await this.submissionRepository.update({ id: submission.id, judge_round: submission.judge_round }, { status: SubmissionStatus.QUEUED })
                 throw error
             }
             // Sin más intentos: queda en ERROR para que un juez lo re-juzgue. Se completa el trabajo
             // (no se marca fallido) para que la API reciba el evento y avise
             this.logger.error('submission #' + submission.id + ' could not be judged', error instanceof Error ? error.stack : undefined)
-            await this.submissionRepository.update(submission.id, {
+            await this.submissionRepository.update({ id: submission.id, judge_round: submission.judge_round }, {
                 status: SubmissionStatus.ERROR,
                 compile_log: ('system error: ' + String(error)).slice(0, 4096),
                 judged_at: new Date(),
@@ -69,7 +78,7 @@ export class SubmissionProcessor extends WorkerHost implements OnApplicationBoot
         }
     }
 
-    private async judge(submission: Submission, job: Job<SubmissionJob>): Promise<JudgeResult> {
+    private async judge(submission: Submission, job: Job<SubmissionJob>, exclusive: boolean): Promise<JudgeResult> {
         const { testset, problem, language } = submission
         if(!problem.signature) throw new Error('problem #' + problem.id + ' has no signature')
 
@@ -84,7 +93,7 @@ export class SubmissionProcessor extends WorkerHost implements OnApplicationBoot
             return text
         }
 
-        await this.submissionRepository.update(submission.id, { status: SubmissionStatus.JUDGING })
+        await this.submissionRepository.update({ id: submission.id, judge_round: submission.judge_round }, { status: SubmissionStatus.JUDGING })
         await this.reportProgress(job, { submissionId: submission.id, judged: 0, total: cases.length })
 
         let lastProgress = 0
@@ -101,6 +110,7 @@ export class SubmissionProcessor extends WorkerHost implements OnApplicationBoot
             memoryLimitMb: testset.memory_limit_mb,
             compareMode: testset.compare_mode,
             floatTolerance: testset.float_tolerance,
+            exclusive,
             onProgress: (judged, total) => {
                 if(Date.now() - lastProgress < PROGRESS_EVERY_MS && judged < total) return
                 lastProgress = Date.now()
@@ -111,6 +121,14 @@ export class SubmissionProcessor extends WorkerHost implements OnApplicationBoot
 
     private async save(submission: Submission, result: JudgeResult): Promise<void> {
         await this.dataSource.transaction(async (manager) => {
+            // Si hubo un rejudge mientras corría, este resultado ya no vale
+            const current = await manager.findOne(Submission, {
+                where: { id: submission.id, judge_round: submission.judge_round },
+                select: { id: true },
+                lock: { mode: 'pessimistic_write' },
+            })
+            if(!current) return
+
             await manager.delete(SubmissionCase, { submission_id: submission.id })
             if(result.cases.length > 0){
                 await manager.insert(SubmissionCase, result.cases.map((testCase) => ({
@@ -123,7 +141,7 @@ export class SubmissionProcessor extends WorkerHost implements OnApplicationBoot
                     message: testCase.message?.slice(0, 4096) ?? null,
                 })))
             }
-            await manager.update(Submission, { id: submission.id, status: In([SubmissionStatus.QUEUED, SubmissionStatus.JUDGING]) }, {
+            await manager.update(Submission, { id: submission.id, judge_round: submission.judge_round, status: In([SubmissionStatus.QUEUED, SubmissionStatus.JUDGING]) }, {
                 status: SubmissionStatus.DONE,
                 verdict: result.verdict,
                 max_time_ms: result.cases.length > 0 ? result.maxTimeMs : null,

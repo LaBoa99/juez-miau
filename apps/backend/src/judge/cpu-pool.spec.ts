@@ -24,6 +24,22 @@ describe('CpuPool', () => {
     })
 })
 
+describe('CpuPool.useExclusive', () => {
+    it('espera a que se liberen todos y bloquea a los que llegan después', async () => {
+        const pool = new CpuPool([1, 2])
+        const events: string[] = []
+        const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+        const first = pool.use(async () => { events.push('a:start'); await sleep(20); events.push('a:end') })
+        const exclusive = pool.useExclusive(async (cpu) => { events.push('x:start:' + cpu); await sleep(10); events.push('x:end') })
+        // Llega después del exclusivo: aunque hay un núcleo libre, espera su turno
+        const late = pool.use(async () => { events.push('b:start') })
+
+        await Promise.all([first, exclusive, late])
+        expect(events).toEqual(['a:start', 'a:end', 'x:start:2', 'x:end', 'b:start'])
+    })
+})
+
 describe('parseJudgeCpus', () => {
     it('lee la lista de JUDGE_CPUS', () => {
         expect(parseJudgeCpus('2, 3,3,5', 1)).toEqual([2, 3, 5])

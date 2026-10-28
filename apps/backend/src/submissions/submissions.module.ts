@@ -10,19 +10,21 @@ import { Team } from '../teams/entities/team.entity.js';
 import { SubmissionsController } from './controllers/submissions.controller.js';
 import { Submission } from './entities/submission.entity.js';
 import { SubmissionCase } from './entities/submission-case.entity.js';
+import { SubmissionHistory } from './entities/submission-history.entity.js';
+import { SubmissionQueueService } from './services/submission-queue.service.js';
 import { SubmissionsService } from './services/submissions.service.js';
 import { SUBMISSIONS_QUEUE } from './submissions.constants.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Submission, SubmissionCase, Team, Problem, Language, Edition]),
+    TypeOrmModule.forFeature([Submission, SubmissionCase, SubmissionHistory, Team, Problem, Language, Edition]),
     // Aquí solo se encolan envíos; el consumidor vive en el worker
     BullModule.registerQueue({ name: SUBMISSIONS_QUEUE }),
     EditionsModule,
     RealtimeModule,
   ],
   controllers: [SubmissionsController],
-  providers: [SubmissionsService],
-  exports: [TypeOrmModule, SubmissionsService],
+  providers: [SubmissionsService, SubmissionQueueService],
+  exports: [TypeOrmModule, SubmissionsService, SubmissionQueueService],
 })
 export class SubmissionsModule {}

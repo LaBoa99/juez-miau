@@ -28,6 +28,7 @@ import { TeamSessionsService } from '../src/teams/services/team-sessions.service
 import { AccessTokenPayloadFactory } from '../src/auth/factories/access-token-payload.factory.js';
 import { BlobsModule } from '../src/blobs/blobs.module.js';
 import { JudgeModule } from '../src/judge/judge.module.js';
+import { SubmissionsModule } from '../src/submissions/submissions.module.js';
 import { TestsetBuildProcessor } from '../src/testsets/processors/testset-build.processor.js';
 import { SubmissionProcessor } from '../src/submissions/processors/submission.processor.js';
 import { languageSeeder } from '../src/database/seeds/base/language.seeder.js';
@@ -35,7 +36,7 @@ import { languageSeeder } from '../src/database/seeds/base/language.seeder.js';
 // Simulacro completo en un proceso: la API más los processors del worker (modo desarrollo).
 // Ejecuta código en Docker, por eso solo corre con JUDGE_DOCKER=1
 @Module({
-  imports: [TypeOrmModule.forFeature([Testset, TestCase, Submission, SubmissionCase]), BlobsModule, JudgeModule],
+  imports: [TypeOrmModule.forFeature([Testset, TestCase, Submission, SubmissionCase]), BlobsModule, JudgeModule, SubmissionsModule],
   providers: [TestsetBuildProcessor, SubmissionProcessor],
 })
 class InProcessJudgeModule {}

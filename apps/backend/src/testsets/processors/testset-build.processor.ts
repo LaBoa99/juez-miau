@@ -3,11 +3,12 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { InjectRepository } from '@nestjs/typeorm'
 import type { Job } from 'bullmq'
 import { DataSource, Repository } from 'typeorm'
-import { TestsetStatus, Verdict } from '@concurso/shared-types'
+import { ProblemStatus, TestsetStatus, Verdict } from '@concurso/shared-types'
 import { BlobsService } from '../../blobs/services/blobs.service.js'
 import { Problem } from '../../problems/entities/problem.entity.js'
 import { hasDriver } from '../../judge/drivers/index.js'
 import { JudgeService, type JudgeResult } from '../../judge/judge.service.js'
+import { SubmissionQueueService } from '../../submissions/services/submission-queue.service.js'
 import { Testset } from '../entities/testset.entity.js'
 import { TestCase } from '../entities/test-case.entity.js'
 import { TESTSET_BUILD_QUEUE, type TestsetBuildJob } from '../testsets.constants.js'
@@ -33,6 +34,7 @@ export class TestsetBuildProcessor extends WorkerHost implements OnApplicationBo
         private readonly dataSource: DataSource,
         private readonly blobsService: BlobsService,
         private readonly judgeService: JudgeService,
+        private readonly submissionQueue: SubmissionQueueService,
     ) {
         super()
     }
@@ -115,7 +117,17 @@ export class TestsetBuildProcessor extends WorkerHost implements OnApplicationBo
             return true
         })
 
-        if(saved) this.logger.log('testset #' + testset.id + ' (problem #' + problem.id + ' v' + testset.version + ') is ready')
+        if(!saved) return []
+        this.logger.log('testset #' + testset.id + ' (problem #' + problem.id + ' v' + testset.version + ') is ready')
+
+        // Una versión nueva de un problema publicado cambia lo que es correcto: los envíos que ya
+        // tiene se re-juzgan con ella (la v1 se construye antes de publicar y no tiene envíos)
+        if(problem.status === ProblemStatus.PUBLISHED && problem.current_testset_id !== testset.id){
+            await this.submissionQueue.rejudge(
+                { problemId: problem.id },
+                { reason: 'testset v' + testset.version + ' built' + (testset.reason ? ': ' + testset.reason : ''), staffUserId: null },
+            )
+        }
         return []
     }
 

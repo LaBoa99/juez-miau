@@ -27,6 +27,8 @@ export interface JudgeRequest {
     memoryLimitMb: number
     compareMode: CompareMode
     floatTolerance: number | null
+    // Con todos los núcleos reservados (para confirmar un TLE)
+    exclusive?: boolean
     onProgress?: (judged: number, total: number) => void
 }
 
@@ -73,7 +75,7 @@ export class JudgeService {
             flags: request.language.flags,
         })
 
-        return this.pool.use(async (cpu) => {
+        const run = async (cpu: number): Promise<JudgeResult> => {
             const workspace = await this.runner.createWorkspace()
             try {
                 await this.runner.writeFiles(workspace.box, program.files)
@@ -117,7 +119,8 @@ export class JudgeService {
             } finally {
                 await this.runner.removeWorkspace(workspace)
             }
-        })
+        }
+        return request.exclusive ? this.pool.useExclusive(run) : this.pool.use(run)
     }
 
     private evaluateCase(request: JudgeRequest, raw: RawCaseResult, resultText: string | null): JudgeCaseResult {
