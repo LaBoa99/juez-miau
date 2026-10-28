@@ -6,6 +6,7 @@ import { StaffModule } from '../staff/staff.module.js';
 import { UtilsModule } from '../utils/utils.module.js';
 import { TeamsModule } from '../teams/teams.module.js';
 import { EditionsModule } from '../editions/editions.module.js';
+import { FlagsModule } from '../flags/flags.module.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RefreshToken } from './entities/refresh-token.entity.js';
 import { AuthController } from './controllers/auth.controller.js';
@@ -20,6 +21,7 @@ import { EditionRoleGuard } from './guards/edition-role.guard.js';
         UtilsModule,
         TeamsModule,
         EditionsModule,
+        FlagsModule,
         TypeOrmModule.forFeature([RefreshToken]),
         JwtModule.registerAsync({
             inject: [ConfigService],

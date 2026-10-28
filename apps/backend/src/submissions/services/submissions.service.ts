@@ -1,4 +1,4 @@
-import { ConflictException, HttpException, HttpStatus, Injectable, Logger, NotFoundException, UnprocessableEntityException, type OnApplicationBootstrap } from '@nestjs/common'
+import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, Logger, NotFoundException, UnprocessableEntityException, type OnApplicationBootstrap } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { In, LessThan, MoreThan, Repository, type FindOptionsWhere } from 'typeorm'
 import {
@@ -19,6 +19,7 @@ import { BlobsService } from '../../blobs/services/blobs.service.js'
 import { acceptsSubmissions, elapsedMs } from '../../contest-clock/clock.js'
 import { Edition } from '../../editions/entities/edition.entity.js'
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js'
+import { FlagsService } from '../../flags/flags.service.js'
 import { hasDriver } from '../../judge/drivers/index.js'
 import { Language } from '../../languages/entities/language.entity.js'
 import { Problem } from '../../problems/entities/problem.entity.js'
@@ -55,6 +56,7 @@ export class SubmissionsService implements OnApplicationBootstrap {
         @InjectRepository(SubmissionHistory)
         private readonly historyRepository: Repository<SubmissionHistory>,
         private readonly queueService: SubmissionQueueService,
+        private readonly flagsService: FlagsService,
         private readonly editionStaffService: EditionStaffService,
         private readonly realtime: RealtimeService,
     ) {}
@@ -80,6 +82,11 @@ export class SubmissionsService implements OnApplicationBootstrap {
         const edition = team.edition
         if(!acceptsSubmissions(edition)){
             throw new ConflictException('the contest is not running (status: ' + edition.status + ')')
+        }
+
+        // Con la opción activa, una alerta abierta frena los envíos hasta que el staff la revise
+        if(edition.block_submissions_on_alert && await this.flagsService.hasOpen(team.id)){
+            throw new ForbiddenException('submissions are blocked until the staff reviews an alert on your team')
         }
 
         const problem = await this.problemRepository.findOneBy({

@@ -71,6 +71,7 @@ export class EditionsService {
         edition.block_submissions_on_alert = dto.block_submissions_on_alert
         edition.duration_ms = dto.duration_ms
         edition.freeze_duration_ms = dto.freeze_duration_ms
+        edition.forbidden_processes = dto.forbidden_processes ?? []
 
         return this.editionRepository.save(edition)
     }

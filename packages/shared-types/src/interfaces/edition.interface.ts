@@ -49,6 +49,7 @@ export interface IRoomObserver {
 export type IEditionFilters = Partial<Pick<IEdition, 'status'>>
 
 export type ICreateEdition = Pick<IEdition, 'name' | 'duration_ms' | 'freeze_duration_ms' | 'block_submissions_on_alert'>
+    & Partial<Pick<IEdition, 'forbidden_processes'>>
 
 export type IUpdateEdition = Partial<ICreateEdition>
 

@@ -149,6 +149,8 @@ export const SOCKET_EVENTS = {
     SUBMISSION_PROGRESS: "submission:progress",
     CLOCK_UPDATE: "clock:update",
     STANDINGS_UPDATE: "standings:update",
+    // Solo staff: alerta nueva o resuelta (IFlag)
+    FLAG_UPDATE: "flag:update",
 } as const
 
 export interface IJoinEdition {

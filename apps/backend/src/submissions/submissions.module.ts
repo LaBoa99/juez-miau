@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { Edition } from '../editions/entities/edition.entity.js';
 import { EditionsModule } from '../editions/editions.module.js';
+import { FlagsModule } from '../flags/flags.module.js';
 import { Language } from '../languages/entities/language.entity.js';
 import { Problem } from '../problems/entities/problem.entity.js';
 import { RealtimeModule } from '../realtime/realtime.module.js';
@@ -21,6 +22,7 @@ import { SUBMISSIONS_QUEUE } from './submissions.constants.js';
     // Aquí solo se encolan envíos; el consumidor vive en el worker
     BullModule.registerQueue({ name: SUBMISSIONS_QUEUE }),
     EditionsModule,
+    FlagsModule,
     RealtimeModule,
   ],
   controllers: [SubmissionsController],

@@ -139,6 +139,29 @@ Hallazgos que cambian el orden:
   - Pruebas: `test/checker-generator.e2e-spec.ts` (problema con varias respuestas válidas y generador en JavaScript).
   - **Pendiente:** los tipos `enum` y `object` en firmas y drivers. Requieren clases o structs en los 7 lenguajes y cambios en el esquema y la normalización. Conviene hacerlos después del simulacro, cuando algún problema real los pida.
 
+- Fase 7 implementada (2026-10-28):
+  - **Alertas** (`src/flags/`, entidad `Flag`): `SESSION_REPLACED`, `FORBIDDEN_PROCESS`, `HEARTBEAT_LOST` y `MANUAL`.
+    - Hay una sola alerta abierta por equipo, tipo y llave. Por ejemplo, un proceso que sigue abierto no genera una alerta en cada heartbeat.
+    - `FlagsService` no depende del socket, para evitar el ciclo con Auth. `IntegrityModule` reenvía `flag:update` al staff.
+    - Se cerró el TODO de `auth.service.ts`: iniciar sesión en otra máquina levanta una alerta.
+  - **Heartbeat** (`src/integrity/`): `POST /contest/heartbeat` con `{ processes }`, cada 30 s.
+    - Compara los procesos con `Edition.forbidden_processes` sin distinguir mayúsculas, sin ruta y sin `.exe`. La lista ya se puede capturar al crear o editar la edición.
+    - Un job de BullMQ cada 30 s levanta `HEARTBEAT_LOST` cuando una sesión abierta de una edición RUNNING lleva 90 s sin heartbeat.
+  - **`block_submissions_on_alert`**: con una alerta abierta, `POST /submissions` da 403 hasta que el staff la resuelva. El heartbeat avisa al cliente con `submissionsBlocked`.
+  - Rutas de alertas:
+    - `GET /editions/:id/flags?open=true&teamId=`
+    - `POST /editions/:id/flags` (manual; el equipo debe ser de esa edición)
+    - `POST /flags/:id/resolve` con `{ note }`, para cualquier rol de la edición.
+  - **Auditoría** (`src/audit/`):
+    - Un interceptor global registra cada POST, PUT, PATCH y DELETE del staff, también los que fallan, con la edición, la ruta, el código de respuesta y el cuerpo sin contraseñas, tokens ni código fuente (recortado a 4 KB).
+    - `GET /audit` es solo para superadmin.
+  - **Exportaciones** (`src/exports/`):
+    - `GET /editions/:id/exports/standings.csv` para cualquier rol: marcador completo con celdas "minuto (+rechazos)".
+    - `GET /editions/:id/exports/submissions.csv` para juez o admin.
+    - Los CSV llevan BOM para que Excel lea bien los acentos.
+  - Pruebas: `test/integrity.e2e-spec.ts`, que no necesita Docker.
+  - Nota: `ProctoringModule` y `PublicModule` siguen vacíos. Lo de supervisión quedó en `IntegrityModule`.
+
 ## Decisiones abiertas originales
 1. **Formato de los problemas.** Para el simulacro, stdin/stdout comparando por tokens (recomendado) o problemas por función desde el inicio.
 2. **Hash de contraseñas.** Quedarse con bcrypt, que ya se usa en todo el código (recomendado), o migrar a argon2.

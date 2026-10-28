@@ -8,6 +8,8 @@ import { TeamSessionsService } from '../../teams/services/team-sessions.service.
 import { TeamsService } from '../../teams/services/teams.service.js'
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js'
 import { RefreshTokensService } from './refresh-tokens.service.js'
+import { FlagsService } from '../../flags/flags.service.js'
+import { FlagType } from '@concurso/shared-types'
 import { StaffLoginDto } from '../dto/staff-login.dto.js'
 import { TeamLoginDto } from '../dto/team-login.dto.js'
 import { AccessTokenPayloadFactory, AccessTokenType, type AccessTokenPayload } from '../factories/access-token-payload.factory.js'
@@ -24,6 +26,7 @@ export class AuthService {
         private readonly teamSessionsService: TeamSessionsService,
         private readonly editionStaffService: EditionStaffService,
         private readonly teamsService: TeamsService,
+        private readonly flagsService: FlagsService,
         private readonly config: ConfigService,
     ) {}
 
@@ -63,8 +66,12 @@ export class AuthService {
 
         const { session, replaced } = await this.teamSessionsService.start(team.id, dto.machineId)
         if (replaced && replaced.machine_id !== dto.machineId) {
-            // TODO: generar alerta en el módulo de flags cuando exista
-            this.logger.warn(`Equipo #${team.id} inició sesión en otra máquina (${replaced.machine_id} → ${dto.machineId})`)
+            await this.flagsService.raise(
+                team.id,
+                FlagType.SESSION_REPLACED,
+                `Inició sesión en otra máquina: ${replaced.machine_id} → ${dto.machineId}`,
+                `${replaced.machine_id}→${dto.machineId}`,
+            )
         }
 
         // El token dura todo el concurso: se invalida cerrando o reemplazando la sesión
