@@ -19,6 +19,7 @@
     "migration:generate": "nest build && typeorm migration:generate -d dist/database/data-source.js",
     "migration:run": "nest build && node dist/database/migrate.js",
     "migration:baseline": "nest build && node dist/database/migrate.js baseline",
+    "migration:check": "nest build && node dist/database/check-migrations.js",
     "migration:revert": "nest build && typeorm migration:revert -d dist/database/data-source.js",
     "seed:base": "nest build && node dist/database/seeds/seed.js base",
     "seed:dev": "nest build && node dist/database/seeds/seed.js dev",

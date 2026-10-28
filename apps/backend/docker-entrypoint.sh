@@ -3,7 +3,7 @@ set -e
 
 # RUN_MIGRATIONS=true (solo la API): aplica las migraciones pendientes antes de sembrar. Si la BD
 # se creó con DB_SYNCHRONIZE=true, la primera vez hay que marcar la inicial como aplicada:
-#   docker compose run --rm api node dist/database/migrate.js baseline
+#   docker compose run --rm -e RUN_MIGRATIONS=false -e SEED_PROFILE=none api node dist/database/migrate.js baseline
 if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
     node dist/database/migrate.js
 fi

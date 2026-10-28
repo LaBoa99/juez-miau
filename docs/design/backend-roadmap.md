@@ -166,7 +166,7 @@ Hallazgos que cambian el orden:
   - **Migraciones de TypeORM**:
     - `src/database/data-source.ts` (CLI) y `migrate.ts`.
     - La migración inicial (`Initial`) se generó desde las entidades contra una BD vacía. Se verificó que, al aplicarla y volver a generar, no aparecen cambios, y que la BD de desarrollo creada con synchronize tampoco tiene diferencias.
-    - Scripts: `pnpm migration:generate|run|baseline|revert`.
+    - Scripts: `pnpm migration:generate|run|baseline|revert|check`. `check` arma una BD vacía con las migraciones y falla si una entidad cambió sin su migración: en desarrollo, `DB_SYNCHRONIZE=true` esconde ese olvido.
     - La API las aplica al arrancar (`RUN_MIGRATIONS=true` en el entrypoint) y el worker no.
     - En producción `DB_SYNCHRONIZE=false`. Una BD creada antes con synchronize se marca con `migrate.js baseline` (documentado en `deploy/README.md`).
   - **Observe** es opcional: solo se registra con `OBSERVE_APP_KEY` y `OBSERVE_APP_SECRET`. Antes las credenciales estaban fijas y daban 429.

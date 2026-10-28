@@ -115,12 +115,15 @@ una migración puede borrar columnas.
 
   ```bash
   scripts/backup.sh antes-de-migraciones
-  docker compose run --rm api node dist/database/migrate.js baseline
+  # RUN_MIGRATIONS=false: si no, el entrypoint intenta la migración normal primero y falla
+  docker compose run --rm -e RUN_MIGRATIONS=false -e SEED_PROFILE=none api node dist/database/migrate.js baseline
   docker compose up -d
   ```
 
 - Para un cambio de entidades, genera la migración en desarrollo con
   `pnpm migration:generate src/database/migrations/<Nombre>` y súbela con el código.
+  Antes de desplegar, `pnpm migration:check` (en `apps/backend`) arma una BD vacía solo con las
+  migraciones y falla si alguna entidad cambió sin su migración.
 
 ## Comandos útiles
 
