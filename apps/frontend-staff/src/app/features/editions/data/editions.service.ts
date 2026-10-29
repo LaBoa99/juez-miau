@@ -7,6 +7,7 @@ import {
   IEditionDetail,
   IEditionListItem,
   IEditionScheduleResponse,
+  IProblemListItem,
   IUpdateEdition,
 } from '@concurso/shared-types';
 import { Observable } from 'rxjs';
@@ -42,5 +43,14 @@ export class EditionsService {
 
   remove(id: number): Observable<void> {
     return this.http.delete<void>(`${EDITIONS}/${id}`);
+  }
+
+  // Lecturas ligeras para los requisitos de "Programar edición".
+  problems(id: number): Observable<IProblemListItem[]> {
+    return this.http.get<IProblemListItem[]>(`${EDITIONS}/${id}/problems`);
+  }
+
+  teams(id: number): Observable<unknown[]> {
+    return this.http.get<unknown[]>(`${EDITIONS}/${id}/teams`);
   }
 }

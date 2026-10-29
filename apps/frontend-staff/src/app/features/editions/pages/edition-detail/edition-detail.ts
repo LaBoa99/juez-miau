@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
-import { EditionStatus } from '@concurso/shared-types';
+import { ActivatedRoute, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { EditionStatus, ProblemStatus } from '@concurso/shared-types';
 import { Badge } from '../../../../shared/ui/badge.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { FormField } from '../../../../shared/ui/form-field.component';
@@ -20,6 +20,7 @@ import { EditionContext } from '../edition-layout/edition-context';
   imports: [
     DatePipe,
     ReactiveFormsModule,
+    RouterLink,
     RouterOutlet,
     Badge,
     ButtonDirective,
@@ -49,6 +50,7 @@ export class EditionDetail {
     return s === EditionStatus.DRAFT || s === EditionStatus.SCHEDULED;
   });
   protected readonly isDraft = computed(() => this.edition()?.status === EditionStatus.DRAFT);
+  protected readonly isScheduled = computed(() => this.edition()?.status === EditionStatus.SCHEDULED);
 
   protected readonly tabs = computed(() => {
     const c = this.ctx.counts();
@@ -61,6 +63,9 @@ export class EditionDetail {
       { label: 'Anti-trampas', link: `${base}/anti-trampas`, count: c.antitrampas },
     ];
   });
+
+  // Mensaje de éxito tras programar (ISO de la fecha)
+  protected readonly scheduledAt = signal<string | null>(null);
 
   // ─── Editar datos ───
   protected readonly editOpen = signal(false);
@@ -75,10 +80,22 @@ export class EditionDetail {
   // ─── Programar ───
   protected readonly scheduleOpen = signal(false);
   protected readonly scheduleSaving = signal(false);
-  protected readonly scheduleErrors = signal<string[]>([]);
+  protected readonly scheduleErrorMsg = signal<string | null>(null);
+  protected readonly scheduleErrorList = signal<string[]>([]);
+  protected readonly minStart = signal('');
   protected readonly scheduleForm = this.fb.nonNullable.group({
     start: ['', [Validators.required]],
   });
+
+  // Requisitos (solo al programar desde DRAFT). null = cargando.
+  protected readonly durationOk = computed(() => (this.edition()?.duration_ms ?? 0) > 0);
+  protected readonly problemsOk = signal<boolean | null>(null);
+  protected readonly teamsOk = signal<boolean | null>(null);
+  protected readonly allReqsOk = computed(
+    () => this.durationOk() && this.problemsOk() === true && this.teamsOk() === true,
+  );
+  // En SCHEDULED se reprograma sin lista de requisitos.
+  protected readonly canSubmitSchedule = computed(() => !this.isDraft() || this.allReqsOk());
 
   // ─── Eliminar ───
   private readonly deleteDialog = viewChild.required(ConfirmDialog);
@@ -87,6 +104,7 @@ export class EditionDetail {
     const e = this.edition();
     if (!e) return;
     this.scheduleOpen.set(false);
+    this.scheduledAt.set(null);
     this.editError.set(null);
     this.editForm.reset({
       name: e.name,
@@ -122,8 +140,26 @@ export class EditionDetail {
   openSchedule(): void {
     const e = this.edition();
     this.editOpen.set(false);
-    this.scheduleErrors.set([]);
+    this.scheduledAt.set(null);
+    this.scheduleErrorMsg.set(null);
+    this.scheduleErrorList.set([]);
+    this.minStart.set(this.toLocalInput(new Date()));
     this.scheduleForm.reset({ start: e?.scheduled_start ? this.toLocalInput(e.scheduled_start) : '' });
+
+    // Requisitos solo cuando se programa desde borrador.
+    if (this.isDraft()) {
+      this.problemsOk.set(null);
+      this.teamsOk.set(null);
+      this.service.problems(this.id).subscribe({
+        next: (ps) => this.problemsOk.set(ps.some((p) => p.status === ProblemStatus.PUBLISHED)),
+        error: () => this.problemsOk.set(false),
+      });
+      this.service.teams(this.id).subscribe({
+        next: (ts) => this.teamsOk.set(ts.length > 0),
+        error: () => this.teamsOk.set(false),
+      });
+    }
+
     this.scheduleOpen.set(true);
   }
 
@@ -132,22 +168,34 @@ export class EditionDetail {
       this.scheduleForm.markAllAsTouched();
       return;
     }
-    const iso = new Date(this.scheduleForm.getRawValue().start).toISOString();
+    const raw = this.scheduleForm.getRawValue().start;
+    const date = new Date(raw);
+    // Validación en cliente: debe ser futura.
+    if (isNaN(date.getTime()) || date.getTime() <= Date.now()) {
+      this.scheduleErrorMsg.set('La fecha debe ser futura.');
+      this.scheduleErrorList.set([]);
+      return;
+    }
+
+    const iso = date.toISOString();
     this.scheduleSaving.set(true);
-    this.scheduleErrors.set([]);
+    this.scheduleErrorMsg.set(null);
+    this.scheduleErrorList.set([]);
     this.service.schedule(this.id, iso).subscribe({
       next: () => {
         this.scheduleSaving.set(false);
         this.scheduleOpen.set(false);
+        this.scheduledAt.set(iso);
         this.ctx.reload();
       },
       error: (err) => {
         this.scheduleSaving.set(false);
-        // schedule 409 => { message, errors: string[] }; 400 => { message }
+        // 409 => { message, errors: string[] }
         const body = err?.error;
-        this.scheduleErrors.set(
-          Array.isArray(body?.errors) ? body.errors : [this.message(err, 'No se pudo programar.')],
+        this.scheduleErrorMsg.set(
+          typeof body?.message === 'string' ? body.message : this.message(err, 'No se pudo programar.'),
         );
+        this.scheduleErrorList.set(Array.isArray(body?.errors) ? body.errors : []);
       },
     });
   }
