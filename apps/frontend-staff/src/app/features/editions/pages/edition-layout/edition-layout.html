@@ -1,0 +1,20 @@
+<nav class="edition-bar" aria-label="Secciones de la edición">
+  <span class="edition-bar__code oj-mono">{{ code() }}</span>
+  @for (s of sections; track s.path) {
+    <a
+      class="edition-bar__link"
+      [routerLink]="['/ediciones', id, s.path]"
+      routerLinkActive="edition-bar__link--active"
+    >
+      {{ s.label }}
+    </a>
+  }
+</nav>
+
+<div class="edition-body">
+  @if (ctx.error()) {
+    <p class="edition-body__msg">No se pudo cargar la edición.</p>
+  } @else {
+    <router-outlet />
+  }
+</div>

@@ -1,0 +1,67 @@
+<div class="tab__main">
+  @if (loading()) {
+    <p class="tab__loading">Cargando…</p>
+  } @else if (error()) {
+    <oj-alert tone="error">No se pudieron cargar las categorías.</oj-alert>
+  } @else if (rows().length === 0) {
+    <p class="tab__loading">Aún no hay categorías.</p>
+  } @else {
+    <div class="oj-table-wrap">
+      <table class="oj-table">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of rows(); track c.id) {
+            <tr>
+              <td class="oj-mono">{{ c.code }}</td>
+              <td>{{ c.name }}</td>
+              <td>
+                <div class="tab__row-actions">
+                  <button type="button" class="tab__link" (click)="startEdit(c)">Editar</button>
+                  <button type="button" class="tab__link tab__danger" (click)="askDelete(c)">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<form class="tab__aside" [formGroup]="form" (ngSubmit)="submit()">
+  <h3 class="tab__aside-title">{{ editingId() ? 'Editar categoría' : 'Agregar categoría' }}</h3>
+
+  @if (formError()) {
+    <oj-alert tone="error">{{ formError() }}</oj-alert>
+  }
+
+  <oj-form-field label="Código" for="cat-code">
+    <input id="cat-code" class="oj-mono" type="text" formControlName="code" />
+  </oj-form-field>
+  <oj-form-field label="Nombre" for="cat-name">
+    <input id="cat-name" type="text" formControlName="name" />
+  </oj-form-field>
+
+  <div class="tab__actions">
+    @if (editingId()) {
+      <button ojButton variant="secondary" type="button" (click)="cancelEdit()">Cancelar</button>
+    }
+    <button ojButton variant="primary" type="submit" [disabled]="saving()">
+      {{ saving() ? 'Guardando…' : editingId() ? 'Guardar cambios' : 'Agregar' }}
+    </button>
+  </div>
+</form>
+
+<oj-confirm-dialog
+  title="Eliminar categoría"
+  message="Se eliminará la categoría. Esta acción no se puede deshacer."
+  confirmLabel="Eliminar"
+  [danger]="true"
+  (confirmed)="remove()"
+/>

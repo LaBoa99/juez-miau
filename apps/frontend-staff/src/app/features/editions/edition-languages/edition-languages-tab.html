@@ -1,0 +1,33 @@
+@if (loading()) {
+  <p class="lang__loading">Cargando…</p>
+} @else if (error()) {
+  <oj-alert tone="error">No se pudieron cargar los lenguajes.</oj-alert>
+} @else {
+  <ul class="lang__list">
+    @for (l of catalog(); track l.id) {
+      <li class="lang__item">
+        <label class="lang__label">
+          <input
+            type="checkbox"
+            [checked]="selected().has(l.id)"
+            (change)="toggle(l.id, $any($event.target).checked)"
+          />
+          <span class="lang__name">{{ l.code }}</span>
+          <span class="lang__tech oj-mono">{{ l.compiler_version }} · .{{ l.file_ext }}</span>
+        </label>
+        <span class="lang__mult oj-mono">×{{ l.time_multiplier }}</span>
+      </li>
+    }
+  </ul>
+
+  @if (saveError()) {
+    <oj-alert tone="error">{{ saveError() }}</oj-alert>
+  }
+
+  <div class="lang__footer">
+    <span class="lang__count">{{ enabledCount() }} de {{ total() }} habilitados</span>
+    <button ojButton variant="primary" type="button" [disabled]="saving()" (click)="save()">
+      {{ saving() ? 'Guardando…' : 'Guardar selección' }}
+    </button>
+  </div>
+}

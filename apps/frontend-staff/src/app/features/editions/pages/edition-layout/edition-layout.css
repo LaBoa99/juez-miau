@@ -1,0 +1,43 @@
+/* La barra rompe el padding del <main> del shell para quedar bajo el breadcrumb, a todo el ancho. */
+.edition-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--oj-space-sm);
+  min-height: 44px;
+  margin: -24px -24px 0;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--oj-border);
+}
+
+.edition-bar__code {
+  font-size: 12px;
+  font-weight: 700;
+  margin-right: var(--oj-space-sm);
+}
+
+.edition-bar__link {
+  padding: 10px 12px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--oj-neutral);
+  text-decoration: none;
+}
+
+.edition-bar__link--active {
+  font-weight: 600;
+  color: var(--oj-text);
+  border-bottom-color: var(--oj-text);
+}
+
+.edition-body {
+  padding-top: 24px;
+}
+
+.edition-body__msg {
+  margin: 0;
+  color: var(--oj-text-muted);
+  font-size: 13px;
+}

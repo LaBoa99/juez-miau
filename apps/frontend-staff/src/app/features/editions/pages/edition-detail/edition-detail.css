@@ -1,0 +1,143 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-lg);
+}
+
+.cfg__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--oj-space-md);
+}
+
+.cfg__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--oj-space-sm);
+}
+
+.cfg__name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.cfg__meta {
+  margin: var(--oj-space-xs) 0 0;
+  font-size: 13px;
+  color: var(--oj-text-muted);
+}
+
+.cfg__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oj-space-sm);
+}
+
+/* "Eliminar": texto y borde rojos */
+.cfg__danger:not([disabled]) {
+  color: var(--oj-danger);
+  border-color: var(--oj-danger);
+}
+
+.cfg__schedule,
+.cfg__anti {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-md);
+  padding: 16px;
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+}
+
+/* El formulario de programar lleva borde oscuro para resaltar */
+.cfg__schedule {
+  border-color: var(--oj-text);
+}
+
+.cfg__schedule-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--oj-space-md);
+}
+
+@media (max-width: 640px) {
+  .cfg__schedule-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cfg__schedule-actions,
+.cfg__anti-actions,
+.cfg__form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--oj-space-sm);
+}
+
+.cfg__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+
+.cfg__anti-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.cfg__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oj-space-sm);
+}
+
+.cfg__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oj-space-xs);
+  padding: 2px 6px;
+  font-size: 12px;
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+}
+
+.cfg__chip-x {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--oj-text-muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.cfg__add {
+  display: flex;
+  gap: var(--oj-space-sm);
+}
+
+.cfg__add input {
+  flex: 1;
+  min-width: 0;
+}
+
+.cfg__check {
+  display: flex;
+  align-items: center;
+  gap: var(--oj-space-sm);
+  font-size: 13px;
+}
+
+.cfg__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cfg__tab-body {
+  padding-top: var(--oj-space-lg);
+}

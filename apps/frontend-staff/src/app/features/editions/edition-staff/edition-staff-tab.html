@@ -1,0 +1,63 @@
+<div class="tab__main">
+  @if (formError()) {
+    <oj-alert tone="error">{{ formError() }}</oj-alert>
+  }
+
+  @if (loading()) {
+    <p class="tab__loading">Cargando…</p>
+  } @else if (error()) {
+    <oj-alert tone="error">No se pudo cargar el staff.</oj-alert>
+  } @else if (rows().length === 0) {
+    <p class="tab__loading">Aún no hay staff asignado.</p>
+  } @else {
+    <div class="oj-table-wrap">
+      <table class="oj-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Rol</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of rows(); track r.staff_user_id) {
+            <tr>
+              <td>{{ staffName(r.staff_user_id) }}</td>
+              <td><oj-badge tone="neutral">{{ r.role }}</oj-badge></td>
+              <td>
+                <button type="button" class="tab__link tab__danger" (click)="remove(r)">Quitar</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<form class="tab__aside" [formGroup]="form" (ngSubmit)="submit()">
+  <h3 class="tab__aside-title">Asignar staff</h3>
+
+  <oj-form-field label="Usuario" for="staff-user">
+    <select id="staff-user" formControlName="staff_user_id">
+      <option [ngValue]="null" disabled>Selecciona un usuario</option>
+      @for (u of available(); track u.id) {
+        <option [ngValue]="u.id">{{ u.name }}</option>
+      }
+    </select>
+  </oj-form-field>
+
+  <oj-form-field label="Rol" for="staff-role">
+    <select id="staff-role" formControlName="role">
+      @for (role of roles; track role) {
+        <option [ngValue]="role">{{ role }}</option>
+      }
+    </select>
+  </oj-form-field>
+
+  <div class="tab__actions">
+    <button ojButton variant="primary" type="submit" [disabled]="saving()">
+      {{ saving() ? 'Asignando…' : 'Asignar' }}
+    </button>
+  </div>
+</form>

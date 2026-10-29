@@ -1,0 +1,46 @@
+.rooms__obs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--oj-space-xs);
+}
+
+.rooms__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oj-space-xs);
+  padding: 2px 6px;
+  font-size: 12px;
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+}
+
+.rooms__chip-x {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--oj-text-muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.rooms__add-obs {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oj-space-xs);
+}
+
+.rooms__token-url {
+  margin: 0;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.rooms__qr {
+  width: 220px;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+}

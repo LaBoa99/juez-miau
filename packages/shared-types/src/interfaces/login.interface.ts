@@ -24,6 +24,16 @@ export interface ILoginResponse {
     user: IStaffUser;
 }
 
+// Lo que devuelve GET /staff (listado de usuarios de staff, superadmin-only)
+export interface IStaffListItem {
+    id: number;
+    name: string;
+    email: string;
+    active: boolean;
+    isSuperadmin: boolean;
+    createdAt: string | Date;
+}
+
 export interface IMeResponse extends IStaffUser {
     type: 'staff';
 }

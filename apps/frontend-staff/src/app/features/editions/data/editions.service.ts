@@ -4,7 +4,10 @@ import {
   EditionStatus,
   ICreateEdition,
   IEdition,
+  IEditionDetail,
   IEditionListItem,
+  IEditionScheduleResponse,
+  IUpdateEdition,
 } from '@concurso/shared-types';
 import { Observable } from 'rxjs';
 
@@ -19,7 +22,25 @@ export class EditionsService {
     return this.http.get<IEditionListItem[]>(EDITIONS, { params });
   }
 
+  get(id: number): Observable<IEditionDetail> {
+    return this.http.get<IEditionDetail>(`${EDITIONS}/${id}`);
+  }
+
   create(dto: ICreateEdition): Observable<IEdition> {
     return this.http.post<IEdition>(EDITIONS, dto);
+  }
+
+  update(id: number, dto: IUpdateEdition): Observable<IEdition> {
+    return this.http.patch<IEdition>(`${EDITIONS}/${id}`, dto);
+  }
+
+  schedule(id: number, scheduledStart: string): Observable<IEditionScheduleResponse> {
+    return this.http.post<IEditionScheduleResponse>(`${EDITIONS}/${id}/schedule`, {
+      scheduled_start: scheduledStart,
+    });
+  }
+
+  remove(id: number): Observable<void> {
+    return this.http.delete<void>(`${EDITIONS}/${id}`);
   }
 }

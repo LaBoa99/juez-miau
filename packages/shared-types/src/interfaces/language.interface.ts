@@ -16,4 +16,11 @@ export interface ILanguageSetEdition {
     ids: string[]
 }
 
+// Lo que devuelve GET /editions/:id/languages (sin id): el catálogo se cruza por `code`
+export interface IEditionLanguage {
+    code: string
+    active: boolean
+    time_multiplier: number
+}
+
 export type ICreateLanguage = Omit<ILanguage, "id" | "flags" | "active"> & Partial<Pick<ILanguage, "flags" | "active">>

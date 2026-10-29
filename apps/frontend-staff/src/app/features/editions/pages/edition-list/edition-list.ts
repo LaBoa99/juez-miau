@@ -12,6 +12,7 @@ import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { EditionStatusPipe } from '../../../../shared/pipes/edition-status.pipe';
+import { msToMin, minToMs } from '../../../../shared/time';
 import { EditionsService } from '../../data/editions.service';
 
 @Component({
@@ -37,6 +38,8 @@ import { EditionsService } from '../../data/editions.service';
 export class EditionList {
   private readonly service = inject(EditionsService);
   private readonly fb = inject(FormBuilder);
+
+  protected readonly msToMin = msToMin;
 
   readonly editions = signal<IEditionListItem[]>([]);
   readonly loading = signal(false);
@@ -113,8 +116,8 @@ export class EditionList {
     this.service
       .create({
         name,
-        duration_ms: durationMin! * 60000,
-        freeze_duration_ms: freezeMin * 60000,
+        duration_ms: minToMs(durationMin!),
+        freeze_duration_ms: minToMs(freezeMin),
         block_submissions_on_alert: blockOnAlert,
       })
       .subscribe({

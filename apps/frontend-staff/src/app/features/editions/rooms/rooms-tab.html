@@ -1,0 +1,114 @@
+<div class="tab__main">
+  @if (formError()) {
+    <oj-alert tone="error">{{ formError() }}</oj-alert>
+  }
+
+  @if (loading()) {
+    <p class="tab__loading">Cargando…</p>
+  } @else if (error()) {
+    <oj-alert tone="error">No se pudieron cargar los salones.</oj-alert>
+  } @else if (rows().length === 0) {
+    <p class="tab__loading">Aún no hay salones.</p>
+  } @else {
+    <div class="oj-table-wrap">
+      <table class="oj-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Categoría</th>
+            <th>Observadores</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of rows(); track r.id) {
+            <tr>
+              <td>{{ r.name }}</td>
+              <td>{{ categoryName(r.category_id) }}</td>
+              <td>
+                <div class="rooms__obs">
+                  @for (o of r.observers; track o.staff_user_id) {
+                    <span class="rooms__chip">
+                      {{ staffName(o.staff_user_id) }}
+                      <button
+                        type="button"
+                        class="rooms__chip-x"
+                        [attr.aria-label]="'Quitar ' + staffName(o.staff_user_id)"
+                        (click)="removeObserver(r.id, o.staff_user_id)"
+                      >×</button>
+                    </span>
+                  } @empty {
+                    <span class="tab__muted">—</span>
+                  }
+                  @if (availableObservers(r).length) {
+                    <span class="rooms__add-obs">
+                      <select #obs aria-label="Agregar observador">
+                        <option value="">+ Observador</option>
+                        @for (o of availableObservers(r); track o.staff_user_id) {
+                          <option [value]="o.staff_user_id">{{ staffName(o.staff_user_id) }}</option>
+                        }
+                      </select>
+                      <button type="button" class="tab__link" (click)="addObserver(r.id, obs.value); obs.value = ''">
+                        Asignar
+                      </button>
+                    </span>
+                  }
+                </div>
+              </td>
+              <td>
+                <div class="tab__row-actions">
+                  <button type="button" class="tab__link" (click)="generateToken(r)">Token de proyector</button>
+                  <button type="button" class="tab__link tab__danger" (click)="askDelete(r)">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<form class="tab__aside" [formGroup]="form" (ngSubmit)="submit()">
+  <h3 class="tab__aside-title">Agregar salón</h3>
+
+  <oj-form-field label="Nombre" for="room-name">
+    <input id="room-name" type="text" formControlName="name" />
+  </oj-form-field>
+  <oj-form-field label="Categoría" for="room-category">
+    <select id="room-category" formControlName="category_id">
+      <option [ngValue]="null">Sin categoría</option>
+      @for (c of categories(); track c.id) {
+        <option [ngValue]="c.id">{{ c.name }}</option>
+      }
+    </select>
+  </oj-form-field>
+
+  <div class="tab__actions">
+    <button ojButton variant="primary" type="submit" [disabled]="saving()">
+      {{ saving() ? 'Agregando…' : 'Agregar' }}
+    </button>
+  </div>
+</form>
+
+<oj-confirm-dialog
+  title="Eliminar salón"
+  message="Se eliminará el salón. Esta acción no se puede deshacer."
+  confirmLabel="Eliminar"
+  [danger]="true"
+  (confirmed)="remove()"
+/>
+
+@if (tokenRoom()) {
+  <oj-side-panel class="rooms__token" [title]="'Token de proyector · ' + tokenRoom()!.name" (closed)="closeToken()">
+    @if (token(); as t) {
+      <p class="rooms__token-url oj-mono">{{ t.url }}</p>
+      <img class="rooms__qr" [src]="'data:image/png;base64,' + t.qr_png" alt="QR del proyector" />
+      <div class="tab__actions">
+        <button ojButton variant="secondary" type="button" (click)="revokeToken()">Revocar</button>
+      </div>
+    } @else {
+      <p class="tab__loading">Generando…</p>
+    }
+  </oj-side-panel>
+}
