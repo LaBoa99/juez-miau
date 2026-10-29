@@ -1,0 +1,127 @@
+<h1>UI Showcase</h1>
+
+<section>
+  <h2>Tab nav</h2>
+  <oj-tab-nav [items]="tabs" />
+</section>
+
+<section>
+  <h2>Side panel</h2>
+  @if (panelOpen()) {
+    <oj-side-panel title="Test case" (closed)="panelOpen.set(false)">
+      <p>Contenido del panel lateral. No es un modal.</p>
+    </oj-side-panel>
+  } @else {
+    <button ojButton variant="secondary" size="sm" (click)="panelOpen.set(true)">Reabrir panel</button>
+  }
+</section>
+
+<section>
+  <h2>Confirm dialog</h2>
+  <div class="row">
+    <button ojButton variant="danger" size="sm" (click)="dlg.open()">Eliminar problema</button>
+    @if (lastConfirm()) {
+      <span class="oj-mono">último: {{ lastConfirm() }}</span>
+    }
+  </div>
+  <oj-confirm-dialog
+    #dlg
+    [danger]="true"
+    title="Eliminar problema"
+    message="Esta acción no se puede deshacer."
+    (confirmed)="lastConfirm.set('confirmado')"
+    (cancelled)="lastConfirm.set('cancelado')"
+  />
+</section>
+
+<section>
+  <h2>File drop</h2>
+  <oj-file-drop (fileSelected)="picked.set($event)" />
+  @if (picked(); as f) {
+    <p class="oj-mono">seleccionado: {{ f.name }}</p>
+  }
+</section>
+
+<section>
+  <h2>Page header</h2>
+  <oj-page-header title="Problems" subtitle="Manage problem statements and test sets">
+    <button actions ojButton variant="secondary" size="sm">Import</button>
+    <button actions ojButton variant="primary" size="sm">New problem</button>
+  </oj-page-header>
+</section>
+
+<section>
+  <h2>Breadcrumb</h2>
+  <oj-breadcrumb [items]="crumbs" />
+</section>
+
+<section>
+  <h2>Form field</h2>
+  <div class="col">
+    <oj-form-field label="Email" for="sc-email" hint="We never share it.">
+      <input id="sc-email" type="email" aria-describedby="sc-email-msg" />
+    </oj-form-field>
+    <oj-form-field label="Password" for="sc-pass" error="Password is required.">
+      <input id="sc-pass" type="password" aria-describedby="sc-pass-msg" />
+    </oj-form-field>
+  </div>
+</section>
+
+<section>
+  <h2>Segmented</h2>
+  <oj-segmented [options]="langOptions" [(value)]="lang" />
+  <p class="oj-mono">value: {{ lang() }}</p>
+</section>
+
+<section>
+  <h2>Empty state</h2>
+  <oj-empty-state message="No submissions yet." />
+</section>
+
+<section>
+  <h2>Buttons</h2>
+
+  <h3>md</h3>
+  <div class="row">
+    <button ojButton variant="primary">Primary</button>
+    <button ojButton variant="secondary">Secondary</button>
+    <button ojButton variant="danger">Danger</button>
+    <button ojButton variant="success">Success</button>
+    <button ojButton variant="primary" disabled>Disabled</button>
+  </div>
+
+  <h3>sm</h3>
+  <div class="row">
+    <button ojButton variant="primary" size="sm">Primary</button>
+    <button ojButton variant="secondary" size="sm">Secondary</button>
+    <button ojButton variant="danger" size="sm">Danger</button>
+    <button ojButton variant="success" size="sm">Success</button>
+    <button ojButton variant="secondary" size="sm" disabled>Disabled</button>
+  </div>
+
+  <h3>anchor</h3>
+  <div class="row">
+    <a ojButton variant="primary" href="#">Link button</a>
+  </div>
+</section>
+
+<section>
+  <h2>Badges</h2>
+  <div class="row">
+    <oj-badge tone="neutral">NEUTRAL</oj-badge>
+    <oj-badge tone="success">AC</oj-badge>
+    <oj-badge tone="warning">TLE</oj-badge>
+    <oj-badge tone="danger">WA</oj-badge>
+    <oj-badge tone="solid">SOLID</oj-badge>
+  </div>
+</section>
+
+<section>
+  <h2>Alerts</h2>
+  <div class="col">
+    <oj-alert tone="error" title="Compilation Error">Line 12: missing ';' at end of statement.</oj-alert>
+    <oj-alert tone="warning" title="Queue paused">Submissions are not being judged right now.</oj-alert>
+    <oj-alert tone="success" title="Accepted">All test cases passed.</oj-alert>
+    <oj-alert tone="info">Judging in progress, please wait.</oj-alert>
+  </div>
+</section>

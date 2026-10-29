@@ -1,0 +1,67 @@
+/* Button directive styles — [ojButton]. Solo tokens de tokens.css, sin sombras. */
+.oj-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--oj-space-xs);
+  font-family: var(--oj-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: var(--oj-radius);
+  cursor: pointer;
+  box-shadow: none;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* Sizes */
+.oj-btn--sm {
+  height: 28px;
+  padding: 0.25rem 0.625rem;
+}
+.oj-btn--md {
+  height: 34px;
+  padding: 0.375rem 0.875rem;
+}
+
+/* Variants */
+.oj-btn--primary {
+  background: var(--oj-primary);
+  color: var(--oj-bg);
+}
+.oj-btn--primary:hover {
+  background: var(--oj-primary-hover);
+}
+.oj-btn--primary:active {
+  background: var(--oj-primary-active);
+}
+
+.oj-btn--secondary {
+  background: var(--oj-bg);
+  border-color: var(--oj-border);
+  color: var(--oj-text);
+}
+.oj-btn--secondary:hover {
+  background: var(--oj-bg-muted);
+}
+
+.oj-btn--danger {
+  background: var(--oj-danger);
+  color: var(--oj-bg);
+}
+
+.oj-btn--success {
+  background: var(--oj-success);
+  color: var(--oj-bg);
+}
+
+/* Disabled */
+.oj-btn:disabled,
+.oj-btn[disabled] {
+  background: var(--oj-neutral-bg);
+  border-color: var(--oj-border);
+  color: var(--oj-text-muted);
+  cursor: not-allowed;
+}

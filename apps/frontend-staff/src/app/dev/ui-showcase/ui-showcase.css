@@ -1,0 +1,43 @@
+:host {
+  display: block;
+  padding: var(--oj-space-xl);
+}
+
+h1 {
+  font-size: var(--oj-text-xl);
+  font-weight: var(--oj-text-xl-weight);
+  margin: 0 0 var(--oj-space-lg);
+}
+
+h2 {
+  font-size: var(--oj-text-lg);
+  font-weight: var(--oj-text-lg-weight);
+  margin: var(--oj-space-xl) 0 var(--oj-space-md);
+}
+
+h3 {
+  font-size: var(--oj-text-label);
+  font-weight: var(--oj-text-label-weight);
+  text-transform: uppercase;
+  color: var(--oj-text-muted);
+  margin: var(--oj-space-md) 0 var(--oj-space-sm);
+}
+
+section {
+  border-top: 1px solid var(--oj-border);
+  padding-top: var(--oj-space-md);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--oj-space-md);
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-md);
+  max-width: 480px;
+}
