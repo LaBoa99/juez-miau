@@ -14,6 +14,7 @@ import { FormField } from '../../../shared/ui/form-field.component';
 import { Alert } from '../../../shared/ui/alert.component';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog.component';
 import { SidePanel } from '../../../shared/ui/side-panel.component';
+import { EmptyState } from '../../../shared/ui/empty-state.component';
 import { RoomsService } from './data/rooms.service';
 import { CategoriesService } from '../categories/data/categories.service';
 import { EditionStaffService } from '../edition-staff/data/edition-staff.service';
@@ -23,7 +24,7 @@ import { findEditionId, message } from '../tab-utils';
 @Component({
   selector: 'oj-rooms-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, ButtonDirective, FormField, Alert, ConfirmDialog, SidePanel],
+  imports: [ReactiveFormsModule, ButtonDirective, FormField, Alert, ConfirmDialog, SidePanel, EmptyState],
   templateUrl: './rooms-tab.html',
   styleUrls: ['../tab.css', './rooms-tab.css'],
 })

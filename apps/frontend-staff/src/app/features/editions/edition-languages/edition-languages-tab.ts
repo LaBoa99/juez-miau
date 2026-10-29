@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ILanguage } from '@concurso/shared-types';
 import { ButtonDirective } from '../../../shared/ui/button.directive';
 import { Alert } from '../../../shared/ui/alert.component';
+import { EmptyState } from '../../../shared/ui/empty-state.component';
 import { EditionLanguagesService } from './data/edition-languages.service';
 import { EditionContext } from '../pages/edition-layout/edition-context';
 import { findEditionId, message } from '../tab-utils';
@@ -10,7 +11,7 @@ import { findEditionId, message } from '../tab-utils';
 @Component({
   selector: 'oj-edition-languages-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonDirective, Alert],
+  imports: [ButtonDirective, Alert, EmptyState, RouterLink],
   templateUrl: './edition-languages-tab.html',
   styleUrl: './edition-languages-tab.css',
 })

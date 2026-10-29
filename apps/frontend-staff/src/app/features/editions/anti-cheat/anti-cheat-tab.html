@@ -1,0 +1,78 @@
+<p class="ac__desc">
+  Marca los programas que no se permiten durante el concurso. La app del competidor avisa si detecta
+  alguno abierto.
+</p>
+
+<div class="ac__grid">
+  @for (group of catalog; track group.grupo) {
+    <fieldset class="ac__group">
+      <legend class="ac__legend">{{ group.grupo }}</legend>
+      @for (opt of group.opciones; track opt.id) {
+        <label class="ac__option">
+          <input
+            type="checkbox"
+            [checked]="selected().has(opt.id)"
+            [disabled]="!editable()"
+            (change)="toggleOption(opt.id, $any($event.target).checked)"
+          />
+          <span class="ac__option-label">{{ opt.etiqueta }}</span>
+          <span class="ac__option-procs oj-mono">{{ procesosDe(opt.procesos) }}</span>
+        </label>
+      }
+    </fieldset>
+  }
+</div>
+
+<div class="ac__otros">
+  <h3 class="ac__otros-title">Otros procesos</h3>
+  <div class="ac__chips">
+    @for (p of otros(); track p) {
+      <span class="ac__chip oj-mono">
+        {{ p }}
+        @if (editable()) {
+          <button type="button" class="ac__chip-x" [attr.aria-label]="'Quitar ' + p" (click)="removeOtro(p)">×</button>
+        }
+      </span>
+    } @empty {
+      <span class="ac__muted">Ninguno</span>
+    }
+  </div>
+  @if (editable()) {
+    <div class="ac__add">
+      <input
+        #np
+        type="text"
+        placeholder="nombre del proceso"
+        (keydown.enter)="$event.preventDefault(); addOtro(np.value); np.value = ''"
+      />
+      <button ojButton variant="secondary" type="button" (click)="addOtro(np.value); np.value = ''">Agregar</button>
+    </div>
+  }
+</div>
+
+<label class="ac__block">
+  <input
+    type="checkbox"
+    [checked]="blockOnAlert()"
+    [disabled]="!editable()"
+    (change)="blockOnAlert.set($any($event.target).checked)"
+  />
+  Bloquear los envíos de un equipo mientras tenga una alerta abierta
+</label>
+
+@if (saveError()) {
+  <oj-alert tone="error">{{ saveError() }}</oj-alert>
+}
+
+@if (!editable()) {
+  <p class="ac__muted">La edición ya inició: esta sección es de solo lectura.</p>
+}
+
+<div class="ac__footer">
+  <span class="ac__count">{{ count() }} programas prohibidos</span>
+  @if (editable()) {
+    <button ojButton variant="primary" type="button" [disabled]="saving()" (click)="save()">
+      {{ saving() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  }
+</div>

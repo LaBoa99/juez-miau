@@ -8,6 +8,7 @@ import { CategoriesTab } from './categories/categories-tab';
 import { RoomsTab } from './rooms/rooms-tab';
 import { EditionLanguagesTab } from './edition-languages/edition-languages-tab';
 import { EditionStaffTab } from './edition-staff/edition-staff-tab';
+import { AntiCheatTab } from './anti-cheat/anti-cheat-tab';
 
 export const routes: Routes = [
   {
@@ -29,6 +30,7 @@ export const routes: Routes = [
               { path: 'salones', component: RoomsTab, data: { breadcrumb: 'Salones' } },
               { path: 'lenguajes', component: EditionLanguagesTab, data: { breadcrumb: 'Lenguajes' } },
               { path: 'staff', component: EditionStaffTab, data: { breadcrumb: 'Staff' } },
+              { path: 'anti-trampas', component: AntiCheatTab, data: { breadcrumb: 'Anti-trampas' } },
               { path: '', redirectTo: 'categorias', pathMatch: 'full' },
             ],
           },

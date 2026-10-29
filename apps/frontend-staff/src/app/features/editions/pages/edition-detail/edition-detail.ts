@@ -1,11 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { EditionStatus } from '@concurso/shared-types';
 import { Badge } from '../../../../shared/ui/badge.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
-import { SidePanel } from '../../../../shared/ui/side-panel.component';
 import { FormField } from '../../../../shared/ui/form-field.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
@@ -24,7 +23,6 @@ import { EditionContext } from '../edition-layout/edition-context';
     RouterOutlet,
     Badge,
     ButtonDirective,
-    SidePanel,
     FormField,
     Alert,
     ConfirmDialog,
@@ -60,6 +58,7 @@ export class EditionDetail {
       { label: 'Salones', link: `${base}/salones`, count: c.salones },
       { label: 'Lenguajes', link: `${base}/lenguajes`, count: c.lenguajes },
       { label: 'Staff', link: `${base}/staff`, count: c.staff },
+      { label: 'Anti-trampas', link: `${base}/anti-trampas`, count: c.antitrampas },
     ];
   });
 
@@ -84,26 +83,10 @@ export class EditionDetail {
   // ─── Eliminar ───
   private readonly deleteDialog = viewChild.required(ConfirmDialog);
 
-  // ─── Anti-trampas ───
-  protected readonly processes = signal<string[]>([]);
-  protected readonly blockOnAlert = signal(false);
-  protected readonly antiSaving = signal(false);
-  protected readonly antiError = signal<string | null>(null);
-
-  constructor() {
-    // Rehidrata la sección anti-trampas cuando llega/recarga la edición.
-    effect(() => {
-      const e = this.edition();
-      if (e) {
-        this.processes.set([...e.forbidden_processes]);
-        this.blockOnAlert.set(e.block_submissions_on_alert);
-      }
-    });
-  }
-
   openEdit(): void {
     const e = this.edition();
     if (!e) return;
+    this.scheduleOpen.set(false);
     this.editError.set(null);
     this.editForm.reset({
       name: e.name,
@@ -138,6 +121,7 @@ export class EditionDetail {
 
   openSchedule(): void {
     const e = this.edition();
+    this.editOpen.set(false);
     this.scheduleErrors.set([]);
     this.scheduleForm.reset({ start: e?.scheduled_start ? this.toLocalInput(e.scheduled_start) : '' });
     this.scheduleOpen.set(true);
@@ -176,36 +160,6 @@ export class EditionDetail {
     this.service.remove(this.id).subscribe({
       next: () => this.router.navigateByUrl('/ediciones'),
     });
-  }
-
-  addProcess(value: string): void {
-    const v = value.trim();
-    if (!v || this.processes().includes(v)) return;
-    this.processes.update((p) => [...p, v]);
-  }
-
-  removeProcess(value: string): void {
-    this.processes.update((p) => p.filter((x) => x !== value));
-  }
-
-  saveAntiCheat(): void {
-    this.antiSaving.set(true);
-    this.antiError.set(null);
-    this.service
-      .update(this.id, {
-        forbidden_processes: this.processes(),
-        block_submissions_on_alert: this.blockOnAlert(),
-      })
-      .subscribe({
-        next: () => {
-          this.antiSaving.set(false);
-          this.ctx.reload();
-        },
-        error: (err) => {
-          this.antiSaving.set(false);
-          this.antiError.set(this.message(err, 'No se pudo guardar.'));
-        },
-      });
   }
 
   private message(err: unknown, fallback: string): string {

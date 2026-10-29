@@ -8,7 +8,7 @@
   } @else if (error()) {
     <oj-alert tone="error">No se pudieron cargar los salones.</oj-alert>
   } @else if (rows().length === 0) {
-    <p class="tab__loading">Aún no hay salones.</p>
+    <oj-empty-state message="Aún no hay salones." />
   } @else {
     <div class="oj-table-wrap">
       <table class="oj-table">

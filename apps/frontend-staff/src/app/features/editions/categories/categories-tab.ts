@@ -6,6 +6,7 @@ import { ButtonDirective } from '../../../shared/ui/button.directive';
 import { FormField } from '../../../shared/ui/form-field.component';
 import { Alert } from '../../../shared/ui/alert.component';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog.component';
+import { EmptyState } from '../../../shared/ui/empty-state.component';
 import { CategoriesService } from './data/categories.service';
 import { EditionContext } from '../pages/edition-layout/edition-context';
 import { findEditionId, message } from '../tab-utils';
@@ -13,7 +14,7 @@ import { findEditionId, message } from '../tab-utils';
 @Component({
   selector: 'oj-categories-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, ButtonDirective, FormField, Alert, ConfirmDialog],
+  imports: [ReactiveFormsModule, ButtonDirective, FormField, Alert, ConfirmDialog, EmptyState],
   templateUrl: './categories-tab.html',
   styleUrl: '../tab.css',
 })

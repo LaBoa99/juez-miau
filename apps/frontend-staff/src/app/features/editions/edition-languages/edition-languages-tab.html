@@ -2,6 +2,9 @@
   <p class="lang__loading">Cargando…</p>
 } @else if (error()) {
   <oj-alert tone="error">No se pudieron cargar los lenguajes.</oj-alert>
+} @else if (catalog().length === 0) {
+  <oj-empty-state message="El catálogo de lenguajes está vacío." />
+  <p class="lang__empty-link"><a routerLink="/lenguajes">Ir a Lenguajes</a></p>
 } @else {
   <ul class="lang__list">
     @for (l of catalog(); track l.id) {

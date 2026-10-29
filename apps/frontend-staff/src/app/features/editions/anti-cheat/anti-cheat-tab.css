@@ -1,0 +1,136 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-lg);
+  max-width: 760px;
+}
+
+.ac__desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--oj-text-muted);
+}
+
+.ac__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--oj-space-md);
+}
+
+@media (max-width: 640px) {
+  .ac__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ac__group {
+  margin: 0;
+  padding: var(--oj-space-md);
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-sm);
+}
+
+.ac__legend {
+  padding: 0 var(--oj-space-xs);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--oj-text-muted);
+}
+
+.ac__option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--oj-space-sm);
+  cursor: pointer;
+}
+
+.ac__option-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ac__option-procs {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--oj-text-muted);
+  text-align: right;
+}
+
+.ac__otros {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-sm);
+  padding: var(--oj-space-md);
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+}
+
+.ac__otros-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ac__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oj-space-sm);
+}
+
+.ac__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oj-space-xs);
+  padding: 2px 6px;
+  font-size: 12px;
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+}
+
+.ac__chip-x {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--oj-text-muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.ac__add {
+  display: flex;
+  gap: var(--oj-space-sm);
+}
+
+.ac__add input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ac__block {
+  display: flex;
+  align-items: center;
+  gap: var(--oj-space-sm);
+  font-size: 13px;
+}
+
+.ac__muted {
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+
+.ac__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--oj-space-md);
+}
+
+.ac__count {
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}

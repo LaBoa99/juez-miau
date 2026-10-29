@@ -3,7 +3,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: var(--oj-space-lg);
+  gap: 24px;
 }
 
 .tab__main {

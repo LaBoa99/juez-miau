@@ -8,7 +8,7 @@
   } @else if (error()) {
     <oj-alert tone="error">No se pudo cargar el staff.</oj-alert>
   } @else if (rows().length === 0) {
-    <p class="tab__loading">Aún no hay staff asignado.</p>
+    <oj-empty-state message="Aún no hay staff asignado." />
   } @else {
     <div class="oj-table-wrap">
       <table class="oj-table">

@@ -6,6 +6,7 @@ import { ButtonDirective } from '../../../shared/ui/button.directive';
 import { FormField } from '../../../shared/ui/form-field.component';
 import { Badge } from '../../../shared/ui/badge.component';
 import { Alert } from '../../../shared/ui/alert.component';
+import { EmptyState } from '../../../shared/ui/empty-state.component';
 import { EditionStaffService } from './data/edition-staff.service';
 import { EditionContext } from '../pages/edition-layout/edition-context';
 import { findEditionId, message } from '../tab-utils';
@@ -13,7 +14,7 @@ import { findEditionId, message } from '../tab-utils';
 @Component({
   selector: 'oj-edition-staff-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, ButtonDirective, FormField, Badge, Alert],
+  imports: [ReactiveFormsModule, ButtonDirective, FormField, Badge, Alert, EmptyState],
   templateUrl: './edition-staff-tab.html',
   styleUrl: '../tab.css',
 })

@@ -1,7 +1,7 @@
 :host {
   display: flex;
   flex-direction: column;
-  gap: var(--oj-space-lg);
+  gap: 20px;
 }
 
 .cfg__header {
@@ -42,39 +42,67 @@
   border-color: var(--oj-danger);
 }
 
-.cfg__schedule,
-.cfg__anti {
+/* Caja compartida de "Editar datos" / "Programar edición", justo debajo del encabezado */
+.cfg__box {
   display: flex;
   flex-direction: column;
   gap: var(--oj-space-md);
   padding: 16px;
-  border: 1px solid var(--oj-border);
+  border: 1px solid var(--oj-text);
   border-radius: var(--oj-radius);
 }
 
-/* El formulario de programar lleva borde oscuro para resaltar */
-.cfg__schedule {
-  border-color: var(--oj-text);
-}
-
-.cfg__schedule-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+.cfg__box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--oj-space-md);
 }
 
-@media (max-width: 640px) {
-  .cfg__schedule-row {
-    grid-template-columns: 1fr;
-  }
+.cfg__box-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
 }
 
-.cfg__schedule-actions,
-.cfg__anti-actions,
-.cfg__form-actions {
+.cfg__box-close {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--oj-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--oj-text);
+}
+
+.cfg__box-actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--oj-space-sm);
+}
+
+.cfg__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cfg__row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--oj-space-md);
+}
+
+.cfg__row--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 640px) {
+  .cfg__row,
+  .cfg__row--3 {
+    grid-template-columns: 1fr;
+  }
 }
 
 .cfg__hint {
@@ -83,59 +111,9 @@
   color: var(--oj-text-muted);
 }
 
-.cfg__anti-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.cfg__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--oj-space-sm);
-}
-
-.cfg__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--oj-space-xs);
-  padding: 2px 6px;
-  font-size: 12px;
-  border: 1px solid var(--oj-border);
-  border-radius: var(--oj-radius);
-}
-
-.cfg__chip-x {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  color: var(--oj-text-muted);
-  font-size: 14px;
-  line-height: 1;
-}
-
-.cfg__add {
-  display: flex;
-  gap: var(--oj-space-sm);
-}
-
-.cfg__add input {
-  flex: 1;
-  min-width: 0;
-}
-
-.cfg__check {
-  display: flex;
-  align-items: center;
-  gap: var(--oj-space-sm);
-  font-size: 13px;
-}
-
-.cfg__form {
+.cfg__tabs {
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
 
 .cfg__tab-body {

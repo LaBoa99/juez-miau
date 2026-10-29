@@ -11,14 +11,28 @@
         Inicio
         <span class="oj-mono">{{ e.scheduled_start ? (e.scheduled_start | date: 'yyyy-MM-dd HH:mm') : '—' }}</span>
         · Duración <span class="oj-mono">{{ e.duration_ms ? msToMin(e.duration_ms) + ' min' : '—' }}</span>
-        · Congelamiento <span class="oj-mono">{{ msToMin(e.freeze_duration_ms) }} min</span>
+        · Congelamiento <span class="oj-mono">{{ e.freeze_duration_ms ? msToMin(e.freeze_duration_ms) + ' min' : '—' }}</span>
       </p>
     </div>
     <div class="cfg__actions">
-      <button ojButton variant="secondary" type="button" [disabled]="!editable()" (click)="openEdit()">
+      <button
+        ojButton
+        variant="secondary"
+        type="button"
+        [disabled]="!editable()"
+        [attr.aria-expanded]="editOpen()"
+        (click)="openEdit()"
+      >
         Editar datos
       </button>
-      <button ojButton variant="primary" type="button" [disabled]="!editable()" (click)="openSchedule()">
+      <button
+        ojButton
+        variant="primary"
+        type="button"
+        [disabled]="!editable()"
+        [attr.aria-expanded]="scheduleOpen()"
+        (click)="openSchedule()"
+      >
         Programar edición
       </button>
       <button class="cfg__danger" ojButton variant="secondary" type="button" [disabled]="!isDraft()" (click)="confirmDelete()">
@@ -27,95 +41,12 @@
     </div>
   </header>
 
-  @if (scheduleOpen()) {
-    <form class="cfg__schedule" [formGroup]="scheduleForm" (ngSubmit)="submitSchedule()">
-      @if (scheduleErrors().length) {
-        <oj-alert tone="error">
-          @for (err of scheduleErrors(); track err) {
-            <div>{{ err }}</div>
-          }
-        </oj-alert>
-      }
-      <div class="cfg__schedule-row">
-        <oj-form-field label="Inicio" for="sched-start">
-          <input id="sched-start" type="datetime-local" formControlName="start" />
-        </oj-form-field>
-        <oj-form-field label="Duración (min)" for="sched-duration">
-          <input id="sched-duration" class="oj-mono" type="number" [value]="msToMin(e.duration_ms)" disabled />
-        </oj-form-field>
-        <oj-form-field label="Congelamiento (min)" for="sched-freeze">
-          <input id="sched-freeze" class="oj-mono" type="number" [value]="msToMin(e.freeze_duration_ms)" disabled />
-        </oj-form-field>
-      </div>
-      <p class="cfg__hint">Al programarla, el concurso arranca y termina solo a la hora indicada.</p>
-      <div class="cfg__schedule-actions">
-        <button ojButton variant="secondary" type="button" (click)="scheduleOpen.set(false)">Cancelar</button>
-        <button ojButton variant="primary" type="submit" [disabled]="scheduleSaving()">
-          {{ scheduleSaving() ? 'Programando…' : 'Programar' }}
-        </button>
-      </div>
-    </form>
-  }
-
-  <section class="cfg__anti">
-    <h2 class="cfg__anti-title">Anti-trampas</h2>
-    <p class="cfg__hint">La app del competidor avisa si detecta alguno de estos programas abiertos.</p>
-
-    <div class="cfg__chips">
-      @for (p of processes(); track p) {
-        <span class="cfg__chip oj-mono">
-          {{ p }}
-          @if (editable()) {
-            <button type="button" class="cfg__chip-x" [attr.aria-label]="'Quitar ' + p" (click)="removeProcess(p)">×</button>
-          }
-        </span>
-      } @empty {
-        <span class="cfg__hint">Sin procesos.</span>
-      }
-    </div>
-
-    @if (editable()) {
-      <div class="cfg__add">
-        <input
-          #np
-          type="text"
-          placeholder="nombre del proceso"
-          (keydown.enter)="$event.preventDefault(); addProcess(np.value); np.value = ''"
-        />
-        <button ojButton variant="secondary" type="button" (click)="addProcess(np.value); np.value = ''">Agregar</button>
-      </div>
-
-      <label class="cfg__check">
-        <input type="checkbox" [checked]="blockOnAlert()" (change)="blockOnAlert.set($any($event.target).checked)" />
-        Bloquear los envíos de un equipo mientras tenga una alerta abierta
-      </label>
-
-      @if (antiError()) {
-        <oj-alert tone="error">{{ antiError() }}</oj-alert>
-      }
-
-      <div class="cfg__anti-actions">
-        <button ojButton variant="primary" type="button" [disabled]="antiSaving()" (click)="saveAntiCheat()">
-          {{ antiSaving() ? 'Guardando…' : 'Guardar' }}
-        </button>
-      </div>
-    } @else {
-      <label class="cfg__check">
-        <input type="checkbox" [checked]="blockOnAlert()" disabled />
-        Bloquear los envíos de un equipo mientras tenga una alerta abierta
-      </label>
-      <p class="cfg__hint">La edición ya inició: esta sección es de solo lectura.</p>
-    }
-  </section>
-
-  <oj-tab-nav [items]="tabs()" />
-  <div class="cfg__tab-body">
-    <router-outlet />
-  </div>
-
-  <!-- Editar datos -->
   @if (editOpen()) {
-    <oj-side-panel class="cfg__panel" title="Editar datos" (closed)="editOpen.set(false)">
+    <div class="cfg__box">
+      <div class="cfg__box-head">
+        <h2 class="cfg__box-title">Editar datos</h2>
+        <button type="button" class="cfg__box-close" (click)="editOpen.set(false)">Cerrar</button>
+      </div>
       <form class="cfg__form" [formGroup]="editForm" (ngSubmit)="submitEdit()">
         @if (editError()) {
           <oj-alert tone="error">{{ editError() }}</oj-alert>
@@ -123,21 +54,66 @@
         <oj-form-field label="Nombre" for="edit-name">
           <input id="edit-name" type="text" formControlName="name" />
         </oj-form-field>
-        <oj-form-field label="Duración (min)" for="edit-duration">
-          <input id="edit-duration" class="oj-mono" type="number" min="1" formControlName="durationMin" />
-        </oj-form-field>
-        <oj-form-field label="Congelamiento (min)" for="edit-freeze">
-          <input id="edit-freeze" class="oj-mono" type="number" min="0" formControlName="freezeMin" />
-        </oj-form-field>
-        <div class="cfg__form-actions">
+        <div class="cfg__row">
+          <oj-form-field label="Duración (min)" for="edit-duration">
+            <input id="edit-duration" class="oj-mono" type="number" min="1" formControlName="durationMin" />
+          </oj-form-field>
+          <oj-form-field label="Congelamiento (min)" for="edit-freeze">
+            <input id="edit-freeze" class="oj-mono" type="number" min="0" formControlName="freezeMin" />
+          </oj-form-field>
+        </div>
+        <div class="cfg__box-actions">
           <button ojButton variant="secondary" type="button" (click)="editOpen.set(false)">Cancelar</button>
           <button ojButton variant="primary" type="submit" [disabled]="editSaving()">
             {{ editSaving() ? 'Guardando…' : 'Guardar' }}
           </button>
         </div>
       </form>
-    </oj-side-panel>
+    </div>
   }
+
+  @if (scheduleOpen()) {
+    <div class="cfg__box">
+      <div class="cfg__box-head">
+        <h2 class="cfg__box-title">Programar edición</h2>
+        <button type="button" class="cfg__box-close" (click)="scheduleOpen.set(false)">Cerrar</button>
+      </div>
+      <form class="cfg__form" [formGroup]="scheduleForm" (ngSubmit)="submitSchedule()">
+        @if (scheduleErrors().length) {
+          <oj-alert tone="error">
+            @for (err of scheduleErrors(); track err) {
+              <div>{{ err }}</div>
+            }
+          </oj-alert>
+        }
+        <div class="cfg__row cfg__row--3">
+          <oj-form-field label="Inicio" for="sched-start">
+            <input id="sched-start" type="datetime-local" formControlName="start" />
+          </oj-form-field>
+          <oj-form-field label="Duración (min)" for="sched-duration">
+            <input id="sched-duration" class="oj-mono" type="number" [value]="msToMin(e.duration_ms)" disabled />
+          </oj-form-field>
+          <oj-form-field label="Congelamiento (min)" for="sched-freeze">
+            <input id="sched-freeze" class="oj-mono" type="number" [value]="msToMin(e.freeze_duration_ms)" disabled />
+          </oj-form-field>
+        </div>
+        <p class="cfg__hint">Al programarla, el concurso arranca y termina solo a la hora indicada.</p>
+        <div class="cfg__box-actions">
+          <button ojButton variant="secondary" type="button" (click)="scheduleOpen.set(false)">Cancelar</button>
+          <button ojButton variant="primary" type="submit" [disabled]="scheduleSaving()">
+            {{ scheduleSaving() ? 'Programando…' : 'Programar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <div class="cfg__tabs">
+    <oj-tab-nav [items]="tabs()" />
+    <div class="cfg__tab-body">
+      <router-outlet />
+    </div>
+  </div>
 
   <oj-confirm-dialog
     title="Eliminar edición"

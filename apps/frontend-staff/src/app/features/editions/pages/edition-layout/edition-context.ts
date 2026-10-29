@@ -6,12 +6,14 @@ import { IEditionDetail } from '@concurso/shared-types';
 import { EditionsService } from '../../data/editions.service';
 import { EditionLanguagesService } from '../../edition-languages/data/edition-languages.service';
 import { EditionStaffService } from '../../edition-staff/data/edition-staff.service';
+import { countPrograms } from '../../anti-cheat/forbidden-processes.catalog';
 
 export type TabCounts = {
   categorias?: number;
   salones?: number;
   lenguajes?: number;
   staff?: number;
+  antitrampas?: number;
 };
 
 // Edición actual, compartida por el layout y sus páginas hijas. Se provee en el componente
@@ -34,7 +36,12 @@ export class EditionContext {
       next: (e) => {
         this.edition.set(e);
         this.loading.set(false);
-        this.counts.update((c) => ({ ...c, categorias: e.categories.length, salones: e.rooms.length }));
+        this.counts.update((c) => ({
+          ...c,
+          categorias: e.categories.length,
+          salones: e.rooms.length,
+          antitrampas: countPrograms(e.forbidden_processes),
+        }));
       },
       error: () => {
         this.error.set(true);
