@@ -151,6 +151,8 @@ export const SOCKET_EVENTS = {
     STANDINGS_UPDATE: "standings:update",
     // Solo staff: alerta nueva o resuelta (IFlag)
     FLAG_UPDATE: "flag:update",
+    // Staff: pregunta nueva (IStaffClarification). Equipos: respuesta publicada (IClarification)
+    CLARIFICATION_UPDATE: "clarification:update",
 } as const
 
 export interface IJoinEdition {

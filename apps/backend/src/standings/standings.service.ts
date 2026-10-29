@@ -11,6 +11,7 @@ import { RealtimeService } from '../realtime/realtime.service.js'
 import { Submission } from '../submissions/entities/submission.entity.js'
 import { SubmissionsService } from '../submissions/services/submissions.service.js'
 import { Team } from '../teams/entities/team.entity.js'
+import { TeamSessionsService } from '../teams/services/team-sessions.service.js'
 import { computeStandings } from './icpc.js'
 
 export type StandingsView = 'public' | 'staff'
@@ -39,6 +40,7 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
         private readonly submissionsService: SubmissionsService,
         private readonly clockService: ContestClockService,
         private readonly realtime: RealtimeService,
+        private readonly teamSessionsService: TeamSessionsService,
     ) {}
 
     onModuleInit(): void {
@@ -70,7 +72,7 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
 
         const [categories, teams, problems, submissions] = await Promise.all([
             this.categoryRepository.find({ where: { edition_id: edition.id }, order: { sort_order: 'ASC', id: 'ASC' } }),
-            this.teamRepository.find({ where: { edition_id: edition.id }, select: { id: true, name: true, category_id: true } }),
+            this.teamRepository.find({ where: { edition_id: edition.id }, select: { id: true, name: true, category_id: true, suspended_at: true } }),
             this.problemRepository.find({
                 where: { edition_id: edition.id, status: ProblemStatus.PUBLISHED },
                 select: { id: true, letter: true, title: true, category_id: true },
@@ -88,10 +90,22 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
             frozen,
             freezeMinute: edition.freeze_duration_ms > 0 ? Math.floor(freezeStartMs(edition) / 60_000) : null,
             generatedAt: new Date().toISOString(),
-            categories: computeStandings({ categories, teams, problems, submissions }, freezeMs),
+            categories: computeStandings({
+                categories, problems, submissions,
+                teams: teams.map((team) => ({ ...team, suspended: team.suspended_at !== null })),
+            }, freezeMs),
         }
         this.cache.set(key, standings)
         return standings
+    }
+
+    // Staff: suspende o reactiva un equipo; el marcador se recalcula y se manda por socket
+    async setSuspended(editionId: number, teamId: number, suspended: boolean): Promise<void> {
+        const result = await this.teamRepository.update({ id: teamId, edition_id: editionId }, { suspended_at: suspended ? new Date() : null })
+        if(!result.affected) throw new NotFoundException('team not found #' + teamId)
+        // Suspendido no puede seguir: se cierra su sesión (su app vuelve al login) y ya no puede entrar ni enviar
+        if(suspended) await this.teamSessionsService.revoke(teamId, 'suspended')
+        this.changed(editionId)
     }
 
     private changed(editionId: number): void {

@@ -6,6 +6,7 @@ import { FlagsService, toFlagDto } from '../flags/flags.service.js'
 import { RealtimeService } from '../realtime/realtime.service.js'
 import { TeamSession } from '../teams/entities/team-session.entity.js'
 import { Team } from '../teams/entities/team.entity.js'
+import type { Edition } from '../editions/entities/edition.entity.js'
 import { HeartbeatDto } from './dto/heartbeat.dto.js'
 
 export const HEARTBEAT_EVERY_MS = 30_000
@@ -49,10 +50,35 @@ export class IntegrityService implements OnModuleInit {
             }
         }
 
-        return {
-            forbiddenProcesses: team.edition.forbidden_processes,
-            nextHeartbeatMs: HEARTBEAT_EVERY_MS,
-            submissionsBlocked: team.edition.block_submissions_on_alert && await this.flagsService.hasOpen(teamId),
+        await this.checkHardware(teamId, team.edition, dto)
+
+        // Sin la lista de prohibidos ni el estado de bloqueo: el equipo no debe saber qué se vigila
+        return { nextHeartbeatMs: HEARTBEAT_EVERY_MS }
+    }
+
+    // Reglas de hardware de la edición; cada una se levanta una vez mientras su alerta siga abierta
+    private async checkHardware(teamId: number, edition: Edition, dto: HeartbeatDto): Promise<void> {
+        if(edition.max_monitors !== null && dto.monitors !== undefined && dto.monitors > edition.max_monitors){
+            await this.flagsService.raise(teamId, FlagType.EXTRA_MONITOR,
+                `${dto.monitors} monitores conectados (máximo ${edition.max_monitors})`, 'monitors')
+        }
+        if(edition.watch_usb_storage){
+            for(const drive of dto.usbStorage ?? []){
+                await this.flagsService.raise(teamId, FlagType.USB_STORAGE, 'Almacenamiento USB conectado: ' + drive, drive)
+            }
+        }
+        if(edition.watch_network && dto.networkInterfaces){
+            const session = await this.sessionRepository.findOne({ where: { team_id: teamId } })
+            if(!session) return
+            if(session.network_baseline === null){
+                // El primer heartbeat de la sesión fija la base
+                await this.sessionRepository.update({ team_id: teamId }, { network_baseline: dto.networkInterfaces })
+                return
+            }
+            const baseline = new Set(session.network_baseline)
+            for(const name of dto.networkInterfaces.filter((name) => !baseline.has(name))){
+                await this.flagsService.raise(teamId, FlagType.NETWORK_CHANGE, 'Interfaz de red nueva: ' + name, name)
+            }
         }
     }
 

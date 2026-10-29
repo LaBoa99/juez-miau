@@ -27,6 +27,10 @@ export class TeamSession {
     @Column({ type: 'timestamptz', nullable: true })
     declare ended_at: Date | null
 
+    // Interfaces de red del primer heartbeat de la sesión; las nuevas levantan NETWORK_CHANGE
+    @Column({ type: 'simple-array', nullable: true })
+    declare network_baseline: string[] | null
+
     @OneToOne(() => Team, team => team.teamSession, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'team_id' })
     declare team: Relation<Team>

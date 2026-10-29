@@ -72,6 +72,10 @@ export class EditionsService {
         edition.duration_ms = dto.duration_ms
         edition.freeze_duration_ms = dto.freeze_duration_ms
         edition.forbidden_processes = dto.forbidden_processes ?? []
+        // Sin valor se queda el default de la columna (reglas activas)
+        if(dto.max_monitors !== undefined) edition.max_monitors = dto.max_monitors
+        if(dto.watch_usb_storage !== undefined) edition.watch_usb_storage = dto.watch_usb_storage
+        if(dto.watch_network !== undefined) edition.watch_network = dto.watch_network
 
         return this.editionRepository.save(edition)
     }

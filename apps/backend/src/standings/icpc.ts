@@ -5,7 +5,7 @@ export const PENALTY_PER_REJECTION = 20
 // Rechazos que suman penalización; CE no cuenta (el código ni siquiera corrió)
 const REJECTED = new Set<Verdict>([Verdict.WA, Verdict.TLE, Verdict.MLE, Verdict.RE])
 
-export interface StandingsTeam { id: number, name: string, category_id: number }
+export interface StandingsTeam { id: number, name: string, category_id: number, suspended?: boolean }
 export interface StandingsProblem { id: number, letter: string, title: string, category_id: number }
 export interface StandingsCategory { id: number, code: string, name: string }
 export interface StandingsSubmission {
@@ -79,7 +79,8 @@ export function computeStandings(input: StandingsInput, freezeMs: number | null)
             const solvedCells = teamCells.filter((cell) => cell.solved)
             return {
                 row: {
-                    rank: 0,
+                    rank: null as number | null,
+                    suspended: !!team.suspended,
                     teamId: team.id,
                     teamName: team.name,
                     solved: solvedCells.length,
@@ -90,14 +91,17 @@ export function computeStandings(input: StandingsInput, freezeMs: number | null)
             }
         })
 
+        // Los suspendidos van al final, sin lugar, y no le quitan lugares a nadie
         rows.sort((a, b) =>
-            b.row.solved - a.row.solved
+            Number(a.row.suspended) - Number(b.row.suspended)
+            || b.row.solved - a.row.solved
             || a.row.penalty - b.row.penalty
             || a.lastAc - b.lastAc
             || a.row.teamName.localeCompare(b.row.teamName))
 
         // Empate exacto en los tres criterios: mismo lugar (1, 2, 2, 4)
         rows.forEach((entry, index) => {
+            if(entry.row.suspended) return
             const previous = rows[index - 1]
             const tied = previous
                 && previous.row.solved === entry.row.solved

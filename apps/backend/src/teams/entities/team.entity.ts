@@ -39,6 +39,10 @@ export class Team {
     @CreateDateColumn({ type: 'timestamptz'})
     declare created_at: Date
 
+    // Suspendido por el staff: aparece tachado y al final del marcador, sin lugar
+    @Column({ type: 'timestamptz', nullable: true })
+    declare suspended_at: Date | null
+
     @OneToOne(() => TeamSession, teamSession => teamSession.team)
     declare teamSession: Relation<TeamSession> | null
 

@@ -23,6 +23,7 @@ import { PublicModule } from './public/public.module.js';
 import { HealthModule } from './health/health.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
 import { ContestModule } from './contest/contest.module.js';
+import { ClarificationsModule } from './clarifications/clarifications.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -52,6 +53,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     JudgingEventsModule,
     StandingsModule,
     IntegrityModule,
+    ClarificationsModule,
     ProctoringModule,
     FlagsModule,
     AuditModule,

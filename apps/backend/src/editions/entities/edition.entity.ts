@@ -48,6 +48,16 @@ export class Edition implements IEdition {
     @Column({ type: 'simple-array', default: '' })
     declare forbidden_processes: string[];
 
+    // Reglas de hardware que el cliente del concursante reporta en el heartbeat; null = no se vigila
+    @Column({ type: 'int', nullable: true, default: 1 })
+    declare max_monitors: number | null;
+
+    @Column({ type: 'boolean', default: true })
+    declare watch_usb_storage: boolean;
+
+    @Column({ type: 'boolean', default: true })
+    declare watch_network: boolean;
+
     @CreateDateColumn({ type: 'timestamptz' })
     declare created_at: Date;
 

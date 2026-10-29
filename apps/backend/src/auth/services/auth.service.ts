@@ -1,4 +1,4 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common'
+import { ForbiddenException, Injectable, Logger, UnauthorizedException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt'
 import type { Team } from '../../teams/entities/team.entity.js'
@@ -62,6 +62,9 @@ export class AuthService {
         }
         if (!team) {
             throw new UnauthorizedException('Credenciales inválidas')
+        }
+        if (team.suspended_at) {
+            throw new ForbiddenException('Tu equipo fue suspendido por el staff')
         }
 
         const { session, replaced } = await this.teamSessionsService.start(team.id, dto.machineId)

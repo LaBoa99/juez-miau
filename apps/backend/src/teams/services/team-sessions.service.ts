@@ -45,6 +45,7 @@ export class TeamSessionsService {
             last_heartbeat_at: now,
             ended_at: null,
             end_reason: null,
+            network_baseline: null,
         })
 
         return { session: await this._teamSessionRepository.save(session), replaced }

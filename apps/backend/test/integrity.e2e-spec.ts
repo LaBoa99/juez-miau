@@ -97,12 +97,48 @@ describe('Integridad: alertas, heartbeat, auditoría y exportaciones (e2e)', () 
       api().post('/api/v1/contest/heartbeat').set(bearer(teamToken)).send({ processes }).expect(200);
 
     const res = await heartbeat(['C:\\Program Files\\Google\\Chrome.EXE', 'code', 'explorer.exe']);
-    expect(res.body).toEqual({ forbiddenProcesses: ['chrome', 'Discord'], nextHeartbeatMs: 30_000, submissionsBlocked: true });
+    expect(res.body).toEqual({ nextHeartbeatMs: 30_000 });
     await heartbeat(['chrome.exe', 'discord']);
 
     const forbidden = (await flags()).filter((flag) => flag.type === FlagType.FORBIDDEN_PROCESS);
     expect(forbidden.map((flag) => flag.details).sort()).toEqual(['Proceso prohibido en ejecución: Discord', 'Proceso prohibido en ejecución: chrome']);
     await api().post('/api/v1/contest/heartbeat').set(bearer(adminToken)).send({}).expect(403);
+  });
+
+  it('el heartbeat reporta monitores de más, almacenamiento USB e interfaces de red nuevas, según la edición', async () => {
+    const heartbeat = (body: object) =>
+      api().post('/api/v1/contest/heartbeat').set(bearer(teamToken)).send(body).expect(200);
+    const hardware = async () => (await flags())
+      .filter((flag) => [FlagType.EXTRA_MONITOR, FlagType.USB_STORAGE, FlagType.NETWORK_CHANGE].includes(flag.type))
+      .map((flag) => flag.details).sort();
+
+    // El primer reporte de red de la sesión fija la base
+    await heartbeat({ monitors: 1, usbStorage: [], networkInterfaces: ['Ethernet'] });
+    expect(await hardware()).toEqual([]);
+
+    const suspicious = { monitors: 2, usbStorage: ['E:\\'], networkInterfaces: ['Ethernet', 'Wi-Fi'] };
+    await heartbeat(suspicious);
+    await heartbeat(suspicious);
+    expect(await hardware()).toEqual([
+      '2 monitores conectados (máximo 1)', 'Almacenamiento USB conectado: E:\\', 'Interfaz de red nueva: Wi-Fi',
+    ]);
+
+    // Con las reglas apagadas no se levanta nada nuevo
+    await repo(Edition).update(edition.id, { max_monitors: null, watch_usb_storage: false, watch_network: false });
+    await heartbeat({ monitors: 3, usbStorage: ['F:\\'], networkInterfaces: ['Ethernet', 'Hotspot'] });
+    expect(await hardware()).toHaveLength(3);
+    await repo(Edition).update(edition.id, { max_monitors: 1, watch_usb_storage: true, watch_network: true });
+
+    await api().post('/api/v1/contest/heartbeat').set(bearer(teamToken)).send({ monitors: -1 }).expect(400);
+  });
+
+  it('un equipo suspendido no puede iniciar sesión', async () => {
+    await repo(Team).update(team.id, { suspended_at: new Date() });
+    const res = await api().post('/api/v1/auth/team/login')
+      .send({ username: team.username, password: teamPassword, machineId: 'maquina-b' }).expect(403);
+    expect(res.body.message).toBe('Tu equipo fue suspendido por el staff');
+    await repo(Team).update(team.id, { suspended_at: null });
+    teamToken = await login('maquina-b');
   });
 
   it('con alertas abiertas no se puede enviar; al resolverlas sí', async () => {
