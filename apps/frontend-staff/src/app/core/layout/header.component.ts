@@ -12,7 +12,9 @@ import { ButtonDirective } from '../../shared/ui/button.directive';
         <span class="oj-hd__brand">[OJ]</span>
         <nav aria-label="Principal">
           <a class="oj-hd__link" routerLink="/ediciones" routerLinkActive="oj-hd__link--active">Ediciones</a>
+          <a class="oj-hd__link" routerLink="/lenguajes" routerLinkActive="oj-hd__link--active">Lenguajes</a>
           <a class="oj-hd__link" routerLink="/staff" routerLinkActive="oj-hd__link--active">Staff</a>
+          <a class="oj-hd__link" routerLink="/auditoria" routerLinkActive="oj-hd__link--active">Auditoría</a>
         </nav>
       </div>
       <div class="oj-hd__right">

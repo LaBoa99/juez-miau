@@ -25,6 +25,10 @@ export const routes: Routes = [
         path: 'lenguajes',
         loadChildren: () => import('./features/languages/languages.routes').then((m) => m.routes),
       },
+      {
+        path: 'auditoria',
+        loadChildren: () => import('./features/audit/audit.routes').then((m) => m.routes),
+      },
       { path: '', redirectTo: 'ediciones', pathMatch: 'full' },
     ],
   },

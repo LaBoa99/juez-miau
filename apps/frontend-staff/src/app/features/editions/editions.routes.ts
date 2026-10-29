@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
-import { EditionsPlaceholder } from './pages/editions-placeholder.component';
+import { EditionList } from './pages/edition-list/edition-list';
 
 export const routes: Routes = [
-  { path: '', component: EditionsPlaceholder, data: { breadcrumb: 'Ediciones' } },
+  { path: '', component: EditionList, data: { breadcrumb: 'Ediciones' } },
 ];

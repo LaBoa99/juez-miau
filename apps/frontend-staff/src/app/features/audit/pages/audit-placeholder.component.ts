@@ -3,11 +3,11 @@ import { PageHeader } from '../../../shared/ui/page-header.component';
 import { EmptyState } from '../../../shared/ui/empty-state.component';
 
 @Component({
-  selector: 'oj-editions-placeholder',
+  selector: 'oj-audit-placeholder',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [PageHeader, EmptyState],
   template: `
-    <oj-page-header title="Ediciones" />
+    <oj-page-header title="Auditoría" />
     <oj-empty-state message="En construcción" />
   `,
   styles: `
@@ -18,4 +18,4 @@ import { EmptyState } from '../../../shared/ui/empty-state.component';
     }
   `,
 })
-export class EditionsPlaceholder {}
+export class AuditPlaceholder {}

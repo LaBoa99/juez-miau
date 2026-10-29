@@ -1,0 +1,105 @@
+<oj-page-header
+  title="Ediciones"
+  [subtitle]="editions().length + ' ediciones registradas'"
+>
+  <button actions ojButton variant="primary" type="button" (click)="openPanel()">
+    Nueva edición
+  </button>
+</oj-page-header>
+
+<oj-segmented
+  [options]="filterOptions"
+  [value]="filter()"
+  (valueChange)="onFilter($event!)"
+/>
+
+<div class="editions__content">
+  <div class="editions__main">
+    @if (loading()) {
+      <p class="editions__loading">Cargando…</p>
+    } @else if (error()) {
+      <oj-alert tone="error">No se pudieron cargar las ediciones.</oj-alert>
+    } @else if (editions().length === 0) {
+      <oj-empty-state
+        [message]="filter() ? 'No hay ediciones con este estado.' : 'Aún no hay ediciones.'"
+      />
+    } @else {
+      <div class="oj-table-wrap">
+        <table class="oj-table">
+          <thead>
+            <tr>
+              <th>Edición</th>
+              <th>Inicio</th>
+              <th class="editions__num">Duración</th>
+              <th>Categorías</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of editions(); track e.id) {
+              @let s = e.status | editionStatus;
+              <tr>
+                <td>
+                  <div class="editions__name">{{ e.name }}</div>
+                  <div class="editions__id">#{{ e.id }}</div>
+                </td>
+                <td class="oj-mono">
+                  {{ e.scheduled_start ? (e.scheduled_start | date: 'yyyy-MM-dd HH:mm') : '—' }}
+                </td>
+                <td class="oj-mono editions__num">
+                  {{ e.duration_ms ? (e.duration_ms / 60000) + ' min' : '—' }}
+                </td>
+                <td>{{ e.categories.length ? categoryCodes(e.categories) : '—' }}</td>
+                <td><oj-badge [tone]="s.tone">{{ s.label }}</oj-badge></td>
+                <td>
+                  <a ojButton variant="secondary" size="sm" [routerLink]="['/ediciones', e.id]">
+                    Configurar
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  @if (panelOpen()) {
+    <oj-side-panel class="editions__panel" title="Nueva edición" (closed)="closePanel()">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="editions__form">
+        @if (createError()) {
+          <oj-alert tone="error">{{ createError() }}</oj-alert>
+        }
+
+        <oj-form-field label="Nombre" for="ed-name">
+          <input id="ed-name" type="text" formControlName="name" />
+        </oj-form-field>
+
+        <oj-form-field label="Duración (min)" for="ed-duration">
+          <input id="ed-duration" class="oj-mono" type="number" min="1" formControlName="durationMin" />
+        </oj-form-field>
+
+        <oj-form-field label="Congelación del marcador (min)" for="ed-freeze">
+          <input id="ed-freeze" class="oj-mono" type="number" min="0" formControlName="freezeMin" />
+        </oj-form-field>
+
+        <label class="editions__check">
+          <input type="checkbox" formControlName="blockOnAlert" />
+          Bloquear envíos ante una alerta
+        </label>
+
+        <p class="editions__note">
+          Se crea en Borrador. Categorías, salones, lenguajes y staff se configuran después.
+        </p>
+
+        <div class="editions__actions">
+          <button ojButton variant="secondary" type="button" (click)="closePanel()">Cancelar</button>
+          <button ojButton variant="primary" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Creando…' : 'Crear edición' }}
+          </button>
+        </div>
+      </form>
+    </oj-side-panel>
+  }
+</div>
