@@ -5,6 +5,7 @@ export * from "./enums/staff-role.enum.js";
 export * from "./interfaces/edition.interface.js";
 export * from "./interfaces/team.interface.js"
 export * from "./interfaces/language.interface.js"
+export * from "./interfaces/login.interface.js"
 
 export * from "./enums/problem-status.enum.js";
 export * from "./enums/testset-status.enum.js";
