@@ -10,13 +10,14 @@ import {
 import { filter, map, startWith } from 'rxjs';
 import { Header } from './header.component';
 import { Breadcrumb } from '../../shared/ui/breadcrumb.component';
+import { AuthService } from '../auth/auth.service';
 
 @Component({
   selector: 'oj-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterOutlet, Header, Breadcrumb],
   template: `
-    <oj-header (logout)="onLogout()" />
+    <oj-header [userName]="auth.user()?.name ?? 'Usuario'" (logout)="auth.logout()" />
     <div class="oj-sh__crumbs">
       <oj-breadcrumb [items]="crumbs()" />
     </div>
@@ -44,6 +45,7 @@ import { Breadcrumb } from '../../shared/ui/breadcrumb.component';
 export class Shell {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  protected readonly auth = inject(AuthService);
 
   protected readonly crumbs = toSignal(
     this.router.events.pipe(
@@ -53,10 +55,6 @@ export class Shell {
     ),
     { initialValue: [] as { label: string; link: string }[] },
   );
-
-  protected onLogout() {
-    this.router.navigate(['/login']);
-  }
 
   private buildCrumbs() {
     const crumbs: { label: string; link: string }[] = [];

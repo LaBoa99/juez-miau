@@ -3,6 +3,9 @@ import { LoginStaff } from './login-staff/login-staff';
 import { UiShowcase } from './dev/ui-showcase/ui-showcase';
 import { Shell } from './core/layout/shell.component';
 
+// shortcut: guards de auth diferidos para poder navegar el shell sin login durante el diseño.
+// Antes de cualquier deploy: re-añadir canActivate [authGuard] al Shell y [guestGuard] a 'login'
+// (están implementados y listos en ./core/auth/auth.guards).
 export const routes: Routes = [
   { path: 'login', component: LoginStaff },
   { path: 'dev/ui', component: UiShowcase },

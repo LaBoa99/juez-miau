@@ -5,6 +5,9 @@
     "changeOrigin": true,
     "pathRewrite": {
       "^/api": "/api/v1"
+    },
+    "cookiePathRewrite": {
+      "/api/v1/auth": "/api/auth"
     }
   }
 }
