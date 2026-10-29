@@ -1,0 +1,103 @@
+<div class="imp">
+  <header class="imp__head">
+    <h3 class="imp__title">Importar desde CSV</h3>
+    <div class="imp__steps">
+      @for (s of steps; track s.key) {
+        <span class="imp__chip" [class]="'imp__chip--' + chipState(s.key)">{{ s.label }}</span>
+      }
+    </div>
+  </header>
+
+  <div class="imp__body">
+    @if (!editable()) {
+      <p class="imp__muted">{{ disabledReason() || 'No se puede importar en el estado actual de la edición.' }}</p>
+    } @else {
+      @if (error()) {
+        <oj-alert tone="error">{{ error() }}</oj-alert>
+      }
+      @if (createdOk() !== null) {
+        <oj-alert tone="success">Se crearon {{ createdOk() }} equipos.</oj-alert>
+      }
+
+      <!-- Paso 1: Archivo -->
+      @if (step() === 'archivo') {
+        <oj-file-drop accept=".csv" (fileSelected)="onFile($event)" />
+        @if (file(); as f) {
+          <div class="imp__file-row">
+            <span class="oj-mono">{{ f.name }}</span>
+            <button ojButton variant="primary" type="button" [disabled]="validating()" (click)="validate()">
+              {{ validating() ? 'Validando…' : 'Validar archivo' }}
+            </button>
+          </div>
+        }
+      }
+
+      <!-- Paso 2: Validación -->
+      @if (step() === 'validacion' && validation(); as v) {
+        <div class="imp__cards">
+          <div class="imp__card imp__card--ok">
+            <span class="imp__card-num oj-mono">{{ v.validRows }}</span>
+            <span class="imp__card-label">filas válidas</span>
+          </div>
+          <div class="imp__card imp__card--bad">
+            <span class="imp__card-num oj-mono">{{ v.errors.length }}</span>
+            <span class="imp__card-label">filas con error (no se importan)</span>
+          </div>
+        </div>
+
+        @if (v.errors.length) {
+          <div class="oj-table-wrap">
+            <table class="oj-table">
+              <thead>
+                <tr><th>Fila</th><th>Columna</th><th>Problema</th></tr>
+              </thead>
+              <tbody>
+                @for (e of v.errors; track $index) {
+                  <tr>
+                    <td class="oj-mono">{{ e.row }}</td>
+                    <td class="oj-mono">{{ e.column ?? '—' }}</td>
+                    <td>{{ e.message }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <div class="imp__actions">
+          <button ojButton variant="secondary" type="button" (click)="chooseAnother()">Elegir otro archivo</button>
+          <button ojButton variant="primary" type="button" [disabled]="!canImport() || importing()" (click)="doImport()">
+            {{ importing() ? 'Importando…' : 'Importar ' + v.validRows + ' filas válidas' }}
+          </button>
+        </div>
+      }
+
+      <!-- Paso 3: Credenciales -->
+      @if (step() === 'credenciales') {
+        <oj-alert tone="warning">
+          Se crearon {{ credentials().length }} equipos. Guarda estas credenciales ahora: no se vuelven a mostrar.
+        </oj-alert>
+        <div class="oj-table-wrap">
+          <table class="oj-table">
+            <thead>
+              <tr><th>Equipo</th><th>Usuario</th><th>Contraseña</th></tr>
+            </thead>
+            <tbody>
+              @for (c of credentials(); track $index) {
+                <tr>
+                  <td>{{ c.teamName }}</td>
+                  <td class="oj-mono">{{ c.username }}</td>
+                  <td class="oj-mono">{{ c.password }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="imp__actions">
+          <button ojButton variant="secondary" type="button" (click)="downloadCsv()">Descargar CSV</button>
+          <button ojButton variant="primary" type="button" (click)="done()">Listo</button>
+        </div>
+      }
+    }
+  </div>
+</div>

@@ -1,0 +1,149 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-lg);
+}
+
+.teams__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oj-space-md);
+}
+
+.teams__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.teams__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oj-space-sm);
+}
+
+.teams__search {
+  min-width: 220px;
+}
+
+.teams__loading {
+  margin: 0;
+  color: var(--oj-text-muted);
+  font-size: 13px;
+}
+
+.teams__name {
+  font-weight: 600;
+}
+
+.teams__members {
+  font-size: 13px;
+  color: var(--oj-neutral);
+}
+
+.teams__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--oj-space-xs);
+  border-radius: 50%;
+  background: var(--oj-text-muted);
+  vertical-align: middle;
+}
+
+.teams__dot--on {
+  background: var(--oj-success);
+}
+
+.teams__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oj-space-xs);
+  justify-content: flex-end;
+}
+
+.teams__danger {
+  color: var(--oj-danger);
+}
+
+.teams__pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oj-space-md);
+}
+
+.teams__pager-info {
+  font-size: 13px;
+  color: var(--oj-text-muted);
+}
+
+.teams__pager-btns {
+  display: flex;
+  gap: var(--oj-space-sm);
+}
+
+.teams__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.teams__members-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-sm);
+}
+
+.teams__members-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.teams__member-row {
+  display: flex;
+  align-items: center;
+  gap: var(--oj-space-sm);
+}
+
+.teams__member-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.teams__member-x {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--oj-text-muted);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.teams__link {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--oj-font-sans);
+  color: var(--oj-text);
+  text-decoration: underline;
+}
+
+.teams__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+
+.teams__form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--oj-space-sm);
+}

@@ -1,0 +1,141 @@
+<oj-page-header title="Equipos" [subtitle]="total() + ' equipos en ' + editionName()" />
+
+<oj-team-import
+  [editionId]="editionId"
+  [editable]="canImport()"
+  disabledReason="La edición ya inició; no se pueden importar equipos."
+  (imported)="onImported()"
+/>
+
+@if (actionSuccess()) {
+  <oj-alert tone="success">{{ actionSuccess() }}</oj-alert>
+}
+@if (actionError()) {
+  <oj-alert tone="error">{{ actionError() }}</oj-alert>
+}
+
+<div class="teams__bar">
+  <h2 class="teams__title">Equipos registrados</h2>
+  <div class="teams__filters">
+    <select class="teams__select" [formControl]="categoryCtrl" aria-label="Filtrar por categoría">
+      <option [ngValue]="null">Todas las categorías</option>
+      @for (c of categories(); track c.id) {
+        <option [ngValue]="c.id">{{ c.name }}</option>
+      }
+    </select>
+    <input
+      class="teams__search"
+      type="search"
+      placeholder="Buscar equipo o usuario"
+      [formControl]="searchCtrl"
+      aria-label="Buscar equipo o usuario"
+    />
+  </div>
+</div>
+
+@if (loading()) {
+  <p class="teams__loading">Cargando…</p>
+} @else if (error()) {
+  <oj-alert tone="error">No se pudieron cargar los equipos.</oj-alert>
+} @else if (items().length === 0) {
+  <oj-empty-state message="Aún no hay equipos. Importa un CSV para empezar." />
+} @else {
+  <div class="oj-table-wrap">
+    <table class="oj-table">
+      <thead>
+        <tr>
+          <th>Equipo</th>
+          <th>Integrantes</th>
+          <th>Usuario</th>
+          <th>Categoría</th>
+          <th>Salón</th>
+          <th>Sesión</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (t of items(); track t.id) {
+          <tr>
+            <td class="teams__name">{{ t.name }}</td>
+            <td class="teams__members">{{ t.members.length ? memberNames(t) : '—' }}</td>
+            <td class="oj-mono">{{ t.username }}</td>
+            <td>
+              @if (t.category) {
+                <oj-badge tone="neutral">{{ t.category.code }}</oj-badge>
+              } @else {
+                —
+              }
+            </td>
+            <td>{{ t.room?.name ?? '—' }}</td>
+            <td>
+              <span class="teams__dot" [class.teams__dot--on]="t.online"></span>
+              {{ t.online ? 'Conectado' : 'Sin sesión' }}
+            </td>
+            <td>
+              <div class="teams__row-actions">
+                <button ojButton variant="secondary" size="sm" type="button" (click)="openEdit(t)">Editar</button>
+                <button ojButton variant="secondary" size="sm" type="button" (click)="askReset(t)">Nueva contraseña</button>
+                <button ojButton variant="secondary" size="sm" type="button" (click)="askCloseSession(t)">Cerrar sesión</button>
+                <button class="teams__danger" ojButton variant="secondary" size="sm" type="button" (click)="askDelete(t)">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="teams__pager">
+    <span class="teams__pager-info">Mostrando {{ showingFrom() }}–{{ showingTo() }} de {{ total() }}</span>
+    <div class="teams__pager-btns">
+      <button ojButton variant="secondary" size="sm" type="button" [disabled]="!hasPrev()" (click)="prev()">Anterior</button>
+      <button ojButton variant="secondary" size="sm" type="button" [disabled]="!hasNext()" (click)="next()">Siguiente</button>
+    </div>
+  </div>
+}
+
+@if (editOpen()) {
+  <oj-side-panel class="teams__panel" title="Editar equipo" (closed)="editOpen.set(false)">
+    <form class="teams__form" [formGroup]="editForm" (ngSubmit)="submitEdit()">
+      @if (editError()) {
+        <oj-alert tone="error">{{ editError() }}</oj-alert>
+      }
+      <oj-form-field label="Nombre" for="team-name">
+        <input id="team-name" type="text" formControlName="name" />
+      </oj-form-field>
+
+      <div class="teams__members-edit" formArrayName="members">
+        <span class="teams__members-title">Integrantes</span>
+        @for (m of members().controls; track $index) {
+          <div class="teams__member-row" [formGroupName]="$index">
+            <input type="text" placeholder="Nombre" formControlName="name" aria-label="Nombre del integrante" />
+            <input type="text" placeholder="Carrera" formControlName="career" aria-label="Carrera del integrante" />
+            @if (!m.get('id')?.value) {
+              <button type="button" class="teams__member-x" aria-label="Quitar integrante" (click)="removeNewMember($index)">×</button>
+            }
+          </div>
+        }
+        @if (members().length < 3) {
+          <button type="button" class="teams__link" (click)="addMember()">+ Agregar integrante</button>
+        }
+      </div>
+
+      <p class="teams__hint">El salón y la categoría se gestionan desde la edición, no aquí.</p>
+
+      <div class="teams__form-actions">
+        <button ojButton variant="secondary" type="button" (click)="editOpen.set(false)">Cancelar</button>
+        <button ojButton variant="primary" type="submit" [disabled]="editSaving()">
+          {{ editSaving() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </oj-side-panel>
+}
+
+<oj-confirm-dialog
+  [title]="confirmTitle()"
+  [message]="confirmMessage()"
+  [confirmLabel]="confirmLabel()"
+  [danger]="confirmDanger()"
+  (confirmed)="onConfirmed()"
+/>

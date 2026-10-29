@@ -9,6 +9,7 @@ import { RoomsTab } from './rooms/rooms-tab';
 import { EditionLanguagesTab } from './edition-languages/edition-languages-tab';
 import { EditionStaffTab } from './edition-staff/edition-staff-tab';
 import { AntiCheatTab } from './anti-cheat/anti-cheat-tab';
+import { TeamList } from '../teams/pages/team-list/team-list';
 
 export const routes: Routes = [
   {
@@ -34,7 +35,7 @@ export const routes: Routes = [
               { path: '', redirectTo: 'categorias', pathMatch: 'full' },
             ],
           },
-          { path: 'equipos', component: EditionSectionPlaceholder, data: { breadcrumb: 'Equipos' } },
+          { path: 'equipos', component: TeamList, data: { breadcrumb: 'Equipos' } },
           { path: 'problemas', component: EditionSectionPlaceholder, data: { breadcrumb: 'Problemas' } },
           { path: 'concurso', component: EditionSectionPlaceholder, data: { breadcrumb: 'Concurso' } },
           { path: 'envios', component: EditionSectionPlaceholder, data: { breadcrumb: 'Envíos' } },
