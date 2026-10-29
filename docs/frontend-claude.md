@@ -44,6 +44,22 @@ Si hace falta un componente nuevo, propónlo y espera confirmación antes de cre
 ## Idioma
 - Textos de la interfaz en español.
 
+## Antes del deploy
+Pendientes de seguridad/permisos que hoy están preparados pero NO activados:
+
+- **Reactivar los guards de sesión**: quitar el atajo de `src/app/app.routes.ts` que desactiva `authGuard`/`guestGuard`
+  (comentario `shortcut:`) y volver a poner `canActivate: [authGuard]` en el Shell (`''`) y `[guestGuard]` en `login`.
+- **Backend debe exponer `is_superadmin`** en `/auth/me` y en el login de staff. Hoy no lo hace, así que
+  `AuthService.isSuperadmin()` siempre es `false` y el gating de superadmin no funciona hasta que llegue ese flag.
+- **Aplicar `superadminGuard`** (`core/auth/role.guard.ts`) en las rutas que en el backend son superadmin-only:
+  - `/staff` → superadmin-only completo (`StaffController` es `@SuperadminOnly()` a nivel de clase).
+  - `/ediciones` y `/lenguajes` son **mixtos**: su listado/lectura está abierto a cualquier staff autenticado, así que
+    NO se gatea la ruta entera. Las acciones superadmin-only van a nivel de UI/acción, no de ruta:
+    crear edición (`POST /editions`) y crear/editar lenguaje (`POST`/`PATCH /languages`). Editar dentro de una edición
+    (schedule, borrar, subrecursos) es rol `ADMIN` de esa edición (usar `roleInEdition(editionId)`), con bypass de superadmin.
+- **Header: mostrar solo los enlaces usables**: ocultar "Staff" si el usuario no es superadmin.
+- **Probar el acceso** con: (a) un superadmin, (b) un staff sin ese rol, (c) sin sesión → cada uno debe ver/redirigir como corresponde.
+
 ## Antes de terminar una tarea
 - ng build sin errores ni warnings nuevos.
 - No tocar archivos fuera de lo que pide la tarea.

@@ -1,18 +1,36 @@
-<p>login-staff works!</p>
-<form (submit)="onSubmit($event)">
-    <div>
-        <label for="email">Correo electrónico:</label>
-        <input type="text" [formField]="loginForm.email">
-    </div>
-    <div>
-        <label for="password">Contraseña:</label>
-        <input type="password" [formField]="loginForm.password">
-    </div>
+<div class="login">
+  <header class="login__bar">
+    <span class="login__bar-brand">[OJ]</span>
+  </header>
 
-    <button type="submit">Log In</button>
+  <main class="login__main">
+    <form class="login__card" (submit)="onSubmit($event)" (input)="error.set(null)">
+      <span class="login__brand">[OJ]</span>
+      <h1 class="login__title">Panel de staff</h1>
+      <p class="login__subtitle">Juez Virtual · CUValles</p>
 
-</form>
+      @if (error()) {
+        <oj-alert tone="error">{{ error() }}</oj-alert>
+      }
 
+      <oj-form-field label="Correo electrónico" for="email">
+        <input id="email" type="email" autocomplete="username" [formField]="loginForm.email" />
+      </oj-form-field>
 
-{{loginForm.email().value()}}
-{{loginForm.password().value()}}
+      <oj-form-field label="Contraseña" for="password">
+        <input
+          id="password"
+          type="password"
+          autocomplete="current-password"
+          [formField]="loginForm.password"
+        />
+      </oj-form-field>
+
+      <button ojButton variant="primary" type="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Entrando…' : 'Entrar' }}
+      </button>
+    </form>
+
+    <p class="login__foot">Los equipos inician sesión desde la app del competidor.</p>
+  </main>
+</div>

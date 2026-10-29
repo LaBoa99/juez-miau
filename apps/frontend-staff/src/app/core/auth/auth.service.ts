@@ -7,6 +7,7 @@ import {
   IMeResponse,
   IRefreshResponse,
   IStaffUser,
+  StaffRole,
 } from '@concurso/shared-types';
 import { Observable, catchError, finalize, firstValueFrom, map, of, shareReplay, switchMap, tap } from 'rxjs';
 
@@ -24,6 +25,22 @@ export class AuthService {
   private readonly _user = signal<IStaffUser | null>(null);
   readonly user = this._user.asReadonly();
   readonly isAuthenticated = computed(() => this._user() !== null);
+
+  // Lee el flag que el backend debe exponer en /auth/me y login. Mientras no llegue → false.
+  readonly isSuperadmin = computed(() => this._user()?.isSuperadmin === true);
+
+  // Rol del usuario por edición, derivado de lo que /auth/me devuelve en roles[].
+  readonly editionRoles = computed(() => {
+    const map = new Map<number, StaffRole>();
+    for (const r of this._user()?.roles ?? []) {
+      map.set(r.editionId, r.role);
+    }
+    return map;
+  });
+
+  roleInEdition(editionId: number): StaffRole | null {
+    return this.editionRoles().get(editionId) ?? null;
+  }
 
   getAccessToken(): string | null {
     return this.accessToken;
