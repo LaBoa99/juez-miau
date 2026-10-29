@@ -8,6 +8,7 @@ async function bootstrap() {
   });
   configureApp(app);
   // HOST=127.0.0.1 deja la API solo en la máquina local; sin HOST escucha en todas las interfaces (Docker)
-  await app.listen(process.env.PORT ?? 3000, process.env.HOST);
+  const port = process.env.PORT ?? 3000;
+  await (process.env.HOST ? app.listen(port, process.env.HOST) : app.listen(port));
 }
 await bootstrap();
