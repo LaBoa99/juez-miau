@@ -18,6 +18,8 @@
     "@angular/platform-browser": "^22.1.0",
     "@angular/router": "^22.1.0",
     "@concurso/shared-types": "workspace:*",
+    "dompurify": "^3.4.17",
+    "marked": "^18.1.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

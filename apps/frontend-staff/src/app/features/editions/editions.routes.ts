@@ -10,6 +10,10 @@ import { EditionLanguagesTab } from './edition-languages/edition-languages-tab';
 import { EditionStaffTab } from './edition-staff/edition-staff-tab';
 import { AntiCheatTab } from './anti-cheat/anti-cheat-tab';
 import { TeamList } from '../teams/pages/team-list/team-list';
+import { ProblemWorkspace } from '../problems/pages/problem-workspace/problem-workspace';
+import { ProblemHome } from '../problems/pages/problem-home/problem-home.component';
+import { ProblemPanel } from '../problems/pages/problem-panel/problem-panel';
+import { problemBreadcrumbResolver } from '../problems/data/problems-bus';
 
 export const routes: Routes = [
   {
@@ -36,7 +40,26 @@ export const routes: Routes = [
             ],
           },
           { path: 'equipos', component: TeamList, data: { breadcrumb: 'Equipos' } },
-          { path: 'problemas', component: EditionSectionPlaceholder, data: { breadcrumb: 'Problemas' } },
+          // Casos de prueba: placeholder por ahora (se construye en el paso 12). Más específica, va primero.
+          {
+            path: 'problemas/:problemId/casos',
+            component: EditionSectionPlaceholder,
+            data: { breadcrumb: 'Casos de prueba' },
+          },
+          {
+            path: 'problemas',
+            component: ProblemWorkspace,
+            data: { breadcrumb: 'Problemas' },
+            children: [
+              { path: '', component: ProblemHome },
+              { path: 'nuevo', component: ProblemPanel, data: { breadcrumb: 'Nuevo problema' } },
+              {
+                path: ':problemId',
+                component: ProblemPanel,
+                resolve: { breadcrumb: problemBreadcrumbResolver },
+              },
+            ],
+          },
           { path: 'concurso', component: EditionSectionPlaceholder, data: { breadcrumb: 'Concurso' } },
           { path: 'envios', component: EditionSectionPlaceholder, data: { breadcrumb: 'Envíos' } },
           { path: 'marcador', component: EditionSectionPlaceholder, data: { breadcrumb: 'Marcador' } },

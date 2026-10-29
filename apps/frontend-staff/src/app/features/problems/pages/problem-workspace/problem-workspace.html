@@ -1,0 +1,50 @@
+<div class="pw">
+  <aside class="pw__list">
+    <header class="pw__list-head">Problemas de {{ code() }}</header>
+
+    <div class="pw__list-body">
+      @if (bus.loading()) {
+        <p class="pw__muted">Cargando…</p>
+      } @else if (bus.error()) {
+        <p class="pw__muted">No se pudieron cargar los problemas.</p>
+      } @else {
+        @for (g of groups(); track g.category.id) {
+          <div class="pw__group">
+            <div class="pw__group-name">{{ g.category.name }}</div>
+            @for (p of g.problems; track p.id) {
+              <button
+                type="button"
+                class="pw__item"
+                [class.pw__item--active]="selected() === (p.id + '')"
+                [attr.aria-current]="selected() === (p.id + '') ? 'true' : null"
+                (click)="selectProblem(p.id)"
+              >
+                <span class="pw__letter oj-mono">{{ p.letter }}</span>
+                <span class="pw__title">{{ p.title }}</span>
+                <oj-badge [tone]="statusTone(p.status)">{{ statusLabel(p.status) }}</oj-badge>
+              </button>
+            } @empty {
+              <p class="pw__empty">Sin problemas</p>
+            }
+          </div>
+        }
+      }
+    </div>
+
+    <div class="pw__list-foot">
+      <button ojButton variant="secondary" type="button" (click)="selectNew()">+ Nuevo problema</button>
+    </div>
+  </aside>
+
+  <section class="pw__panel">
+    <router-outlet />
+  </section>
+</div>
+
+<oj-confirm-dialog
+  title="Cambios sin guardar"
+  message="Tienes cambios sin guardar. ¿Descartarlos?"
+  confirmLabel="Descartar"
+  [danger]="true"
+  (confirmed)="discardAndContinue()"
+/>

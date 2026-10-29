@@ -1,0 +1,146 @@
+@if (loadError()) {
+  <oj-alert tone="error">No se pudo cargar el problema.</oj-alert>
+} @else {
+  <header class="pp__header">
+    <h1 class="pp__title">{{ title() }}</h1>
+    <div class="pp__header-right">
+      @if (published()) {
+        <oj-badge tone="success">Publicado</oj-badge>
+      }
+      @if (!isNew()) {
+        <oj-segmented [options]="viewOptions" [value]="view()" (valueChange)="onView($event!)" />
+      }
+    </div>
+  </header>
+
+  @if (view() === 'editar') {
+    <form class="pp__box pp__form" [formGroup]="form" (ngSubmit)="save()">
+      <div class="pp__row">
+        <oj-form-field label="Categoría" for="pp-category">
+          <select id="pp-category" formControlName="categoryId">
+            @for (c of categories(); track c.id) {
+              <option [ngValue]="c.id">{{ c.name }}</option>
+            }
+          </select>
+        </oj-form-field>
+        <oj-form-field label="Letra" for="pp-letter">
+          <input id="pp-letter" class="oj-mono" type="text" formControlName="letter" maxlength="2" />
+        </oj-form-field>
+        <oj-form-field label="Título" for="pp-title" class="pp__row-grow">
+          <input id="pp-title" type="text" formControlName="title" />
+        </oj-form-field>
+      </div>
+
+      <oj-form-field label="Enunciado (markdown)" for="pp-statement">
+        <textarea id="pp-statement" class="pp__code" rows="10" formControlName="statement"></textarea>
+      </oj-form-field>
+
+      <div class="pp__row">
+        <oj-form-field label="Formato de entrada" for="pp-input">
+          <textarea id="pp-input" class="pp__code" rows="5" formControlName="inputFormat"></textarea>
+        </oj-form-field>
+        <oj-form-field label="Formato de salida" for="pp-output">
+          <textarea id="pp-output" class="pp__code" rows="5" formControlName="outputFormat"></textarea>
+        </oj-form-field>
+      </div>
+
+      <oj-form-field label="Puntos" for="pp-points" hint="Solo se define al crear el problema.">
+        <input id="pp-points" class="oj-mono" type="number" min="0" max="100000" formControlName="points" />
+      </oj-form-field>
+    </form>
+  } @else {
+    <div class="pp__box pp__preview">
+      @if (previewLoading()) {
+        <p class="pp__muted">Cargando…</p>
+      } @else if (preview(); as p) {
+        <h2 class="pp__preview-title">{{ p.title }}</h2>
+        @if (p.limits) {
+          <span class="pp__limits oj-mono">{{ p.limits.timeLimitMs }} ms · {{ p.limits.memoryLimitMb }} MB</span>
+        }
+        <div class="pp__md" [innerHTML]="renderMd(p.statement)"></div>
+        <h3 class="pp__preview-h">Entrada</h3>
+        <div class="pp__md" [innerHTML]="renderMd(p.inputFormat)"></div>
+        <h3 class="pp__preview-h">Salida</h3>
+        <div class="pp__md" [innerHTML]="renderMd(p.outputFormat)"></div>
+        @if (p.samples.length) {
+          <h3 class="pp__preview-h">Ejemplos</h3>
+          @for (s of p.samples; track $index) {
+            <div class="pp__sample">
+              <div>
+                <div class="pp__sample-label">Entrada</div>
+                <pre class="pp__sample-block oj-mono">{{ s.input }}</pre>
+              </div>
+              <div>
+                <div class="pp__sample-label">Salida</div>
+                <pre class="pp__sample-block oj-mono">{{ s.output }}</pre>
+              </div>
+            </div>
+          }
+        }
+      } @else {
+        <p class="pp__muted">Sin vista previa.</p>
+      }
+    </div>
+  }
+
+  @if (!isNew() && detail(); as d) {
+    <div class="pp__box pp__cases">
+      <h3 class="pp__cases-title">Casos de prueba</h3>
+      @if (currentTestset(); as t) {
+        <div class="pp__cases-info">
+          <span class="oj-mono">v{{ t.version }}</span>
+          <oj-badge [tone]="testsetTone(t.status)">{{ t.status }}</oj-badge>
+          @if (t.generatedCount !== null) {
+            <span class="pp__muted">{{ t.generatedCount }} casos</span>
+          }
+          <span class="pp__muted">Comparación: {{ compareLabel(t.compareMode) }}</span>
+        </div>
+      } @else {
+        <p class="pp__muted">Este problema aún no tiene casos de prueba.</p>
+      }
+      <a ojButton variant="secondary" size="sm" [routerLink]="['/ediciones', editionId, 'problemas', d.id, 'casos']">
+        Gestionar casos de prueba
+      </a>
+    </div>
+  }
+
+  @if (publishErrors().length) {
+    <oj-alert tone="error">
+      <div>No se pudo publicar:</div>
+      <ul class="pp__err-list">
+        @for (err of publishErrors(); track err) {
+          <li>{{ err }}</li>
+        }
+      </ul>
+    </oj-alert>
+  }
+  @if (actionError()) {
+    <oj-alert tone="error">{{ actionError() }}</oj-alert>
+  }
+
+  <div class="pp__actions">
+    <div class="pp__actions-left">
+      @if (isDraft()) {
+        <button ojButton variant="danger-outline" type="button" (click)="askDelete()">Eliminar</button>
+      }
+    </div>
+    <div class="pp__actions-right">
+      <button ojButton variant="secondary" type="button" [disabled]="saving()" (click)="save()">
+        {{ saving() ? 'Guardando…' : 'Guardar' }}
+      </button>
+      @if (!isNew() && !published()) {
+        <button ojButton variant="success" type="button" [disabled]="publishing()" (click)="publish()">
+          {{ publishing() ? 'Publicando…' : 'Publicar' }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <oj-confirm-dialog
+    title="Eliminar problema"
+    message="Se eliminará el problema. Esta acción no se puede deshacer."
+    confirmLabel="Eliminar"
+    [danger]="true"
+    (confirmed)="remove()"
+  />
+}
