@@ -86,6 +86,8 @@ __pycache__/
 .ruff_cache/
 *.spec
 *.exe
+# Credenciales que generan los scripts de demo
+apps/app-competidores/scripts/*.csv
 
 # ===================================
 # DOCKER / DATOS LOCALES
