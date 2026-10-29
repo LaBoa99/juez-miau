@@ -25,7 +25,9 @@
               <td>{{ staffName(r.staff_user_id) }}</td>
               <td><oj-badge tone="neutral">{{ r.role }}</oj-badge></td>
               <td>
-                <button type="button" class="tab__link tab__danger" (click)="remove(r)">Quitar</button>
+                <div class="tab__row-actions">
+                  <button ojButton variant="danger-outline" size="sm" type="button" (click)="remove(r)">Quitar</button>
+                </div>
               </td>
             </tr>
           }

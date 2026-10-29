@@ -48,6 +48,21 @@ input[type='radio'] {
   accent-color: var(--oj-text);
 }
 
+/* Enlaces. Los que son acción usan [ojButton] (clase .oj-btn), que conserva su propio estilo. */
+a {
+  color: var(--oj-text);
+  text-decoration: none;
+}
+a:visited {
+  color: var(--oj-text);
+}
+a:hover:not(.oj-btn) {
+  text-decoration: underline;
+}
+a:focus-visible {
+  outline: 1px solid var(--oj-text);
+}
+
 .oj-mono {
   font-family: var(--oj-font-mono);
   font-variant-numeric: tabular-nums;

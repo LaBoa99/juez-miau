@@ -11,13 +11,14 @@ import { SidePanel } from '../../shared/ui/side-panel.component';
 import { TabNav } from '../../shared/ui/tab-nav.component';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog.component';
 import { FileDrop } from '../../shared/ui/file-drop.component';
+import { Modal } from '../../shared/ui/modal.component';
 
 @Component({
   selector: 'oj-ui-showcase',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ButtonDirective, Badge, Alert, FormField, Segmented, PageHeader, Breadcrumb, EmptyState,
-    SidePanel, TabNav, ConfirmDialog, FileDrop,
+    SidePanel, TabNav, ConfirmDialog, FileDrop, Modal,
   ],
   templateUrl: './ui-showcase.html',
   styleUrl: './ui-showcase.css',

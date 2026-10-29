@@ -52,6 +52,15 @@
   color: var(--oj-bg);
 }
 
+.oj-btn--danger-outline {
+  background: var(--oj-bg);
+  border-color: var(--oj-danger);
+  color: var(--oj-danger);
+}
+.oj-btn--danger-outline:hover {
+  background: var(--oj-danger-bg);
+}
+
 .oj-btn--success {
   background: var(--oj-success);
   color: var(--oj-bg);

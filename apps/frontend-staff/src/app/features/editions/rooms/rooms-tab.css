@@ -25,14 +25,62 @@
   line-height: 1;
 }
 
-.rooms__add-obs {
-  display: inline-flex;
-  align-items: center;
+/* Sin observador: ámbar 12px */
+.rooms__no-obs {
+  font-size: 12px;
+  color: var(--oj-warning);
+}
+
+/* Fieldset de observadores en los formularios de agregar/editar salón */
+.rooms__obs-set {
+  margin: 0;
+  padding: var(--oj-space-md);
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+  display: flex;
+  flex-direction: column;
   gap: var(--oj-space-xs);
 }
 
-.rooms__token-url {
+.rooms__obs-legend {
+  padding: 0 var(--oj-space-xs);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rooms__obs-hint {
+  font-weight: 400;
+  color: var(--oj-text-muted);
+}
+
+.rooms__obs-opt {
+  display: flex;
+  align-items: center;
+  gap: var(--oj-space-sm);
+  font-size: 13px;
+}
+
+.rooms__obs-empty {
   margin: 0;
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+
+.rooms__token-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-md);
+}
+
+.rooms__token-url-row {
+  display: flex;
+  align-items: center;
+  gap: var(--oj-space-sm);
+}
+
+.rooms__token-url {
+  flex: 1;
+  min-width: 0;
   font-size: 12px;
   word-break: break-all;
 }

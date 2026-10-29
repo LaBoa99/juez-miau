@@ -3,7 +3,10 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 @Component({
   selector: 'oj-empty-state',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<p>{{ message() }}</p>`,
+  template: `
+    <p>{{ message() }}</p>
+    <div class="oj-es__action"><ng-content /></div>
+  `,
   styles: `
     :host {
       display: block;
@@ -16,6 +19,12 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       margin: 0;
       font-size: 13px;
       color: var(--oj-text-muted);
+    }
+    .oj-es__action {
+      margin-top: var(--oj-space-md);
+    }
+    .oj-es__action:empty {
+      display: none;
     }
   `,
 })

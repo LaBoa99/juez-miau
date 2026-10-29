@@ -95,14 +95,55 @@
     <button ojButton variant="primary" size="sm">Primary</button>
     <button ojButton variant="secondary" size="sm">Secondary</button>
     <button ojButton variant="danger" size="sm">Danger</button>
+    <button ojButton variant="danger-outline" size="sm">Danger outline</button>
     <button ojButton variant="success" size="sm">Success</button>
     <button ojButton variant="secondary" size="sm" disabled>Disabled</button>
+  </div>
+
+  <h3>danger-outline</h3>
+  <div class="row">
+    <button ojButton variant="danger-outline">Eliminar</button>
+    <button ojButton variant="danger-outline" size="sm">Quitar</button>
   </div>
 
   <h3>anchor</h3>
   <div class="row">
     <a ojButton variant="primary" href="#">Link button</a>
   </div>
+</section>
+
+<section>
+  <h2>Enlaces</h2>
+  <div class="col">
+    <p>Enlace de texto: <a href="#">ver documentación</a> (subrayado solo en hover).</p>
+    <p>Enlace de acción: <a ojButton variant="secondary" size="sm" href="#">Ir a Lenguajes</a></p>
+  </div>
+</section>
+
+<section>
+  <h2>Modal</h2>
+  <p>Solo uno visible a la vez, con fondo oscuro y la página de atrás bloqueada.</p>
+  <div class="row">
+    <button ojButton variant="secondary" size="sm" (click)="modalA.open()">Abrir modal A</button>
+    <button ojButton variant="secondary" size="sm" (click)="modalB.open()">Abrir modal B</button>
+  </div>
+
+  <oj-modal #modalA title="Modal A" size="md">
+    <oj-form-field label="Nombre" for="sc-modal-a">
+      <input id="sc-modal-a" type="text" />
+    </oj-form-field>
+    <div footer>
+      <button ojButton variant="secondary" (click)="modalA.close()">Cancelar</button>
+      <button ojButton variant="primary" (click)="modalA.close()">Guardar</button>
+    </div>
+  </oj-modal>
+
+  <oj-modal #modalB title="Modal B" size="sm">
+    <p>Abrir este mientras A está abierto cierra A primero.</p>
+    <div footer>
+      <button ojButton variant="primary" (click)="modalB.close()">Cerrar</button>
+    </div>
+  </oj-modal>
 </section>
 
 <section>

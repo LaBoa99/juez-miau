@@ -7,7 +7,7 @@ import { Directive, computed, input } from '@angular/core';
   },
 })
 export class ButtonDirective {
-  readonly variant = input<'primary' | 'secondary' | 'danger' | 'success'>('secondary');
+  readonly variant = input<'primary' | 'secondary' | 'danger' | 'danger-outline' | 'success'>('secondary');
   readonly size = input<'sm' | 'md'>('md');
 
   protected readonly hostClasses = computed(

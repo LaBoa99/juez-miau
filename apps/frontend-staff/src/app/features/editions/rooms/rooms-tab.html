@@ -2,6 +2,9 @@
   @if (formError()) {
     <oj-alert tone="error">{{ formError() }}</oj-alert>
   }
+  @if (obsWarning()) {
+    <oj-alert tone="warning">{{ obsWarning() }}</oj-alert>
+  }
 
   @if (loading()) {
     <p class="tab__loading">Cargando…</p>
@@ -26,39 +29,29 @@
               <td>{{ r.name }}</td>
               <td>{{ categoryName(r.category_id) }}</td>
               <td>
-                <div class="rooms__obs">
-                  @for (o of r.observers; track o.staff_user_id) {
-                    <span class="rooms__chip">
-                      {{ staffName(o.staff_user_id) }}
-                      <button
-                        type="button"
-                        class="rooms__chip-x"
-                        [attr.aria-label]="'Quitar ' + staffName(o.staff_user_id)"
-                        (click)="removeObserver(r.id, o.staff_user_id)"
-                      >×</button>
-                    </span>
-                  } @empty {
-                    <span class="tab__muted">—</span>
-                  }
-                  @if (availableObservers(r).length) {
-                    <span class="rooms__add-obs">
-                      <select #obs aria-label="Agregar observador">
-                        <option value="">+ Observador</option>
-                        @for (o of availableObservers(r); track o.staff_user_id) {
-                          <option [value]="o.staff_user_id">{{ staffName(o.staff_user_id) }}</option>
-                        }
-                      </select>
-                      <button type="button" class="tab__link" (click)="addObserver(r.id, obs.value); obs.value = ''">
-                        Asignar
-                      </button>
-                    </span>
-                  }
-                </div>
+                @if (r.observers.length) {
+                  <div class="rooms__obs">
+                    @for (o of r.observers; track o.staff_user_id) {
+                      <span class="rooms__chip">
+                        {{ staffName(o.staff_user_id) }}
+                        <button
+                          type="button"
+                          class="rooms__chip-x"
+                          [attr.aria-label]="'Quitar a ' + staffName(o.staff_user_id)"
+                          (click)="askRemoveObserver(r, o.staff_user_id)"
+                        >×</button>
+                      </span>
+                    }
+                  </div>
+                } @else {
+                  <span class="rooms__no-obs">Sin observador</span>
+                }
               </td>
               <td>
                 <div class="tab__row-actions">
-                  <button type="button" class="tab__link" (click)="generateToken(r)">Token de proyector</button>
-                  <button type="button" class="tab__link tab__danger" (click)="askDelete(r)">Eliminar</button>
+                  <button ojButton variant="secondary" size="sm" type="button" (click)="openEdit(r)">Editar</button>
+                  <button ojButton variant="secondary" size="sm" type="button" (click)="openToken(r)">Token de proyector</button>
+                  <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDelete(r)">Eliminar</button>
                 </div>
               </td>
             </tr>
@@ -84,6 +77,27 @@
     </select>
   </oj-form-field>
 
+  <fieldset class="rooms__obs-set">
+    <legend class="rooms__obs-legend">Observadores <span class="rooms__obs-hint">(staff con rol observer)</span></legend>
+    @if (observers().length) {
+      @for (o of observers(); track o.staff_user_id) {
+        <label class="rooms__obs-opt">
+          <input
+            type="checkbox"
+            [checked]="addObs().has(o.staff_user_id)"
+            (change)="toggleAdd(o.staff_user_id, $any($event.target).checked)"
+          />
+          {{ staffName(o.staff_user_id) }}
+        </label>
+      }
+    } @else {
+      <p class="rooms__obs-empty">
+        Aún no hay observadores en esta edición.
+        <a [routerLink]="['/ediciones', editionId, 'configuracion', 'staff']">Ir a Staff</a>
+      </p>
+    }
+  </fieldset>
+
   <div class="tab__actions">
     <button ojButton variant="primary" type="submit" [disabled]="saving()">
       {{ saving() ? 'Agregando…' : 'Agregar' }}
@@ -91,7 +105,77 @@
   </div>
 </form>
 
+<!-- Editar salón -->
+<oj-modal title="Editar salón" size="sm">
+  <form id="room-edit-form" class="tab__modal-form" [formGroup]="editForm" (ngSubmit)="submitEdit()">
+    @if (editError()) {
+      <oj-alert tone="error">{{ editError() }}</oj-alert>
+    }
+    <oj-form-field label="Nombre" for="room-edit-name">
+      <input id="room-edit-name" type="text" formControlName="name" />
+    </oj-form-field>
+    <oj-form-field label="Categoría" for="room-edit-category">
+      <select id="room-edit-category" formControlName="category_id">
+        <option [ngValue]="null">Sin categoría</option>
+        @for (c of categories(); track c.id) {
+          <option [ngValue]="c.id">{{ c.name }}</option>
+        }
+      </select>
+    </oj-form-field>
+
+    <fieldset class="rooms__obs-set">
+      <legend class="rooms__obs-legend">Observadores <span class="rooms__obs-hint">(staff con rol observer)</span></legend>
+      @if (observers().length) {
+        @for (o of observers(); track o.staff_user_id) {
+          <label class="rooms__obs-opt">
+            <input
+              type="checkbox"
+              [checked]="editObs().has(o.staff_user_id)"
+              (change)="toggleEdit(o.staff_user_id, $any($event.target).checked)"
+            />
+            {{ staffName(o.staff_user_id) }}
+          </label>
+        }
+      } @else {
+        <p class="rooms__obs-empty">
+          Aún no hay observadores en esta edición.
+          <a [routerLink]="['/ediciones', editionId, 'configuracion', 'staff']">Ir a Staff</a>
+        </p>
+      }
+    </fieldset>
+  </form>
+  <div footer>
+    <button ojButton variant="secondary" type="button" (click)="closeEdit()">Cancelar</button>
+    <button ojButton variant="primary" type="submit" form="room-edit-form" [disabled]="editSaving()">
+      {{ editSaving() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </div>
+</oj-modal>
+
+<!-- Token de proyector -->
+<oj-modal [title]="'Token de proyector · ' + (tokenRoom()?.name ?? '')" size="sm">
+  @if (token(); as t) {
+    <div class="rooms__token-body">
+      <div class="rooms__token-url-row">
+        <span class="rooms__token-url oj-mono">{{ t.url }}</span>
+        <button ojButton variant="secondary" size="sm" type="button" (click)="copyUrl()">
+          {{ copied() ? 'Copiado' : 'Copiar' }}
+        </button>
+      </div>
+      @if (t.qr_png) {
+        <img class="rooms__qr" [src]="'data:image/png;base64,' + t.qr_png" alt="QR del proyector" />
+      }
+    </div>
+  } @else {
+    <p class="tab__loading">Generando…</p>
+  }
+  <div footer>
+    <button ojButton variant="danger-outline" type="button" (click)="revokeToken()">Revocar</button>
+  </div>
+</oj-modal>
+
 <oj-confirm-dialog
+  #deleteDlg
   title="Eliminar salón"
   message="Se eliminará el salón. Esta acción no se puede deshacer."
   confirmLabel="Eliminar"
@@ -99,16 +183,11 @@
   (confirmed)="remove()"
 />
 
-@if (tokenRoom()) {
-  <oj-side-panel class="rooms__token" [title]="'Token de proyector · ' + tokenRoom()!.name" (closed)="closeToken()">
-    @if (token(); as t) {
-      <p class="rooms__token-url oj-mono">{{ t.url }}</p>
-      <img class="rooms__qr" [src]="'data:image/png;base64,' + t.qr_png" alt="QR del proyector" />
-      <div class="tab__actions">
-        <button ojButton variant="secondary" type="button" (click)="revokeToken()">Revocar</button>
-      </div>
-    } @else {
-      <p class="tab__loading">Generando…</p>
-    }
-  </oj-side-panel>
-}
+<oj-confirm-dialog
+  #obsDlg
+  title="Quitar observador"
+  [message]="obsConfirmMessage()"
+  confirmLabel="Quitar"
+  [danger]="true"
+  (confirmed)="removeObserver()"
+/>

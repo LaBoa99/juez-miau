@@ -62,8 +62,3 @@
   font-size: 13px;
   color: var(--oj-text-muted);
 }
-
-.lang__empty-link {
-  margin: var(--oj-space-sm) 0 0;
-  font-size: 13px;
-}

@@ -36,7 +36,10 @@
 
 .tab__row-actions {
   display: flex;
-  gap: var(--oj-space-sm);
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 6px;
 }
 
 .tab__loading {
@@ -49,17 +52,9 @@
   color: var(--oj-text-muted);
 }
 
-.tab__danger {
-  color: var(--oj-danger);
-}
-
-.tab__link {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  font-size: 13px;
-  font-family: var(--oj-font-sans);
-  color: var(--oj-text);
-  text-decoration: underline;
+/* Formulario dentro de un oj-modal (Editar) */
+.tab__modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }

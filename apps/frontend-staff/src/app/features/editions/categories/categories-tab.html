@@ -22,8 +22,8 @@
               <td>{{ c.name }}</td>
               <td>
                 <div class="tab__row-actions">
-                  <button type="button" class="tab__link" (click)="startEdit(c)">Editar</button>
-                  <button type="button" class="tab__link tab__danger" (click)="askDelete(c)">Eliminar</button>
+                  <button ojButton variant="secondary" size="sm" type="button" (click)="openEdit(c)">Editar</button>
+                  <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDelete(c)">Eliminar</button>
                 </div>
               </td>
             </tr>
@@ -35,7 +35,7 @@
 </div>
 
 <form class="tab__aside" [formGroup]="form" (ngSubmit)="submit()">
-  <h3 class="tab__aside-title">{{ editingId() ? 'Editar categoría' : 'Agregar categoría' }}</h3>
+  <h3 class="tab__aside-title">Agregar categoría</h3>
 
   @if (formError()) {
     <oj-alert tone="error">{{ formError() }}</oj-alert>
@@ -49,14 +49,31 @@
   </oj-form-field>
 
   <div class="tab__actions">
-    @if (editingId()) {
-      <button ojButton variant="secondary" type="button" (click)="cancelEdit()">Cancelar</button>
-    }
     <button ojButton variant="primary" type="submit" [disabled]="saving()">
-      {{ saving() ? 'Guardando…' : editingId() ? 'Guardar cambios' : 'Agregar' }}
+      {{ saving() ? 'Guardando…' : 'Agregar' }}
     </button>
   </div>
 </form>
+
+<oj-modal title="Editar categoría" size="sm">
+  <form id="cat-edit-form" [formGroup]="editForm" (ngSubmit)="submitEdit()" class="tab__modal-form">
+    @if (editError()) {
+      <oj-alert tone="error">{{ editError() }}</oj-alert>
+    }
+    <oj-form-field label="Código" for="cat-edit-code">
+      <input id="cat-edit-code" class="oj-mono" type="text" formControlName="code" />
+    </oj-form-field>
+    <oj-form-field label="Nombre" for="cat-edit-name">
+      <input id="cat-edit-name" type="text" formControlName="name" />
+    </oj-form-field>
+  </form>
+  <div footer>
+    <button ojButton variant="secondary" type="button" (click)="closeEdit()">Cancelar</button>
+    <button ojButton variant="primary" type="submit" form="cat-edit-form" [disabled]="editSaving()">
+      {{ editSaving() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </div>
+</oj-modal>
 
 <oj-confirm-dialog
   title="Eliminar categoría"

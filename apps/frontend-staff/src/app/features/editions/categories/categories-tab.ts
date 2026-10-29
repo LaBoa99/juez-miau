@@ -7,6 +7,7 @@ import { FormField } from '../../../shared/ui/form-field.component';
 import { Alert } from '../../../shared/ui/alert.component';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog.component';
 import { EmptyState } from '../../../shared/ui/empty-state.component';
+import { Modal } from '../../../shared/ui/modal.component';
 import { CategoriesService } from './data/categories.service';
 import { EditionContext } from '../pages/edition-layout/edition-context';
 import { findEditionId, message } from '../tab-utils';
@@ -14,7 +15,7 @@ import { findEditionId, message } from '../tab-utils';
 @Component({
   selector: 'oj-categories-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, ButtonDirective, FormField, Alert, ConfirmDialog, EmptyState],
+  imports: [ReactiveFormsModule, ButtonDirective, FormField, Alert, ConfirmDialog, EmptyState, Modal],
   templateUrl: './categories-tab.html',
   styleUrl: '../tab.css',
 })
@@ -29,11 +30,21 @@ export class CategoriesTab {
   protected readonly rows = signal<ICategory[]>([]);
   protected readonly loading = signal(false);
   protected readonly error = signal(false);
+
+  // Alta (formulario a la derecha de la tabla)
   protected readonly saving = signal(false);
   protected readonly formError = signal<string | null>(null);
-  protected readonly editingId = signal<number | null>(null);
-
   protected readonly form = this.fb.nonNullable.group({
+    code: ['', [Validators.required, Validators.maxLength(255)]],
+    name: ['', [Validators.required, Validators.maxLength(255)]],
+  });
+
+  // Edición (modal)
+  private readonly editModal = viewChild.required(Modal);
+  private editingId: number | null = null;
+  protected readonly editSaving = signal(false);
+  protected readonly editError = signal<string | null>(null);
+  protected readonly editForm = this.fb.nonNullable.group({
     code: ['', [Validators.required, Validators.maxLength(255)]],
     name: ['', [Validators.required, Validators.maxLength(255)]],
   });
@@ -61,31 +72,17 @@ export class CategoriesTab {
     });
   }
 
-  startEdit(cat: ICategory): void {
-    this.editingId.set(cat.id);
-    this.formError.set(null);
-    this.form.reset({ code: cat.code, name: cat.name });
-  }
-
-  cancelEdit(): void {
-    this.editingId.set(null);
-    this.form.reset({ code: '', name: '' });
-  }
-
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
-    const dto = this.form.getRawValue();
-    const id = this.editingId();
     this.saving.set(true);
     this.formError.set(null);
-    const req = id ? this.service.update(id, dto) : this.service.create(this.editionId, dto);
-    req.subscribe({
+    this.service.create(this.editionId, this.form.getRawValue()).subscribe({
       next: () => {
         this.saving.set(false);
-        this.cancelEdit();
+        this.form.reset({ code: '', name: '' });
         this.load();
       },
       error: (err) => {
@@ -93,6 +90,37 @@ export class CategoriesTab {
         this.formError.set(message(err, 'No se pudo guardar.'));
       },
     });
+  }
+
+  openEdit(cat: ICategory): void {
+    this.editingId = cat.id;
+    this.editError.set(null);
+    this.editForm.reset({ code: cat.code, name: cat.name });
+    this.editModal().open();
+  }
+
+  submitEdit(): void {
+    if (this.editForm.invalid || this.editingId == null) {
+      this.editForm.markAllAsTouched();
+      return;
+    }
+    this.editSaving.set(true);
+    this.editError.set(null);
+    this.service.update(this.editingId, this.editForm.getRawValue()).subscribe({
+      next: () => {
+        this.editSaving.set(false);
+        this.editModal().close();
+        this.load();
+      },
+      error: (err) => {
+        this.editSaving.set(false);
+        this.editError.set(message(err, 'No se pudo guardar.'));
+      },
+    });
+  }
+
+  closeEdit(): void {
+    this.editModal().close();
   }
 
   askDelete(cat: ICategory): void {

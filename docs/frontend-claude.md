@@ -16,9 +16,11 @@ src/app/
   dev/       ui-showcase/                -> página /dev/ui con todos los componentes
 
 ## Componentes existentes (reusar, no duplicar)
-shared/ui: ojButton (directiva sobre <button> y <a>), oj-badge, oj-alert, oj-form-field, oj-segmented,
-oj-page-header, oj-breadcrumb, oj-empty-state, oj-side-panel, oj-tab-nav, oj-confirm-dialog, oj-file-drop.
+shared/ui: ojButton (directiva sobre <button> y <a>; variantes primary, secondary, danger, danger-outline, success),
+oj-badge, oj-alert, oj-form-field, oj-segmented, oj-page-header, oj-breadcrumb, oj-empty-state, oj-side-panel,
+oj-tab-nav, oj-confirm-dialog, oj-file-drop, oj-modal.
 Tablas: <div class="oj-table-wrap"><table class="oj-table">. Números, fechas y códigos: clase oj-mono.
+Regla: crear con formulario inline (Agregar…); editar, programar, ver detalles y confirmar con oj-modal.
 Si hace falta un componente nuevo, propónlo y espera confirmación antes de crearlo.
 
 ## Estilos

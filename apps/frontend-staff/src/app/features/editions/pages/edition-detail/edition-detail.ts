@@ -8,6 +8,7 @@ import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { FormField } from '../../../../shared/ui/form-field.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
+import { Modal } from '../../../../shared/ui/modal.component';
 import { TabNav } from '../../../../shared/ui/tab-nav.component';
 import { EditionStatusPipe } from '../../../../shared/pipes/edition-status.pipe';
 import { msToMin, minToMs } from '../../../../shared/time';
@@ -27,6 +28,7 @@ import { EditionContext } from '../edition-layout/edition-context';
     FormField,
     Alert,
     ConfirmDialog,
+    Modal,
     TabNav,
     EditionStatusPipe,
   ],
@@ -68,7 +70,7 @@ export class EditionDetail {
   protected readonly scheduledAt = signal<string | null>(null);
 
   // ─── Editar datos ───
-  protected readonly editOpen = signal(false);
+  private readonly editModal = viewChild.required<Modal>('editModal');
   protected readonly editSaving = signal(false);
   protected readonly editError = signal<string | null>(null);
   protected readonly editForm = this.fb.nonNullable.group({
@@ -78,7 +80,7 @@ export class EditionDetail {
   });
 
   // ─── Programar ───
-  protected readonly scheduleOpen = signal(false);
+  private readonly scheduleModal = viewChild.required<Modal>('scheduleModal');
   protected readonly scheduleSaving = signal(false);
   protected readonly scheduleErrorMsg = signal<string | null>(null);
   protected readonly scheduleErrorList = signal<string[]>([]);
@@ -103,7 +105,6 @@ export class EditionDetail {
   openEdit(): void {
     const e = this.edition();
     if (!e) return;
-    this.scheduleOpen.set(false);
     this.scheduledAt.set(null);
     this.editError.set(null);
     this.editForm.reset({
@@ -111,7 +112,7 @@ export class EditionDetail {
       durationMin: msToMin(e.duration_ms),
       freezeMin: msToMin(e.freeze_duration_ms),
     });
-    this.editOpen.set(true);
+    this.editModal().open();
   }
 
   submitEdit(): void {
@@ -127,7 +128,7 @@ export class EditionDetail {
       .subscribe({
         next: () => {
           this.editSaving.set(false);
-          this.editOpen.set(false);
+          this.editModal().close();
           this.ctx.reload();
         },
         error: (err) => {
@@ -139,7 +140,6 @@ export class EditionDetail {
 
   openSchedule(): void {
     const e = this.edition();
-    this.editOpen.set(false);
     this.scheduledAt.set(null);
     this.scheduleErrorMsg.set(null);
     this.scheduleErrorList.set([]);
@@ -160,7 +160,7 @@ export class EditionDetail {
       });
     }
 
-    this.scheduleOpen.set(true);
+    this.scheduleModal().open();
   }
 
   submitSchedule(): void {
@@ -184,7 +184,7 @@ export class EditionDetail {
     this.service.schedule(this.id, iso).subscribe({
       next: () => {
         this.scheduleSaving.set(false);
-        this.scheduleOpen.set(false);
+        this.scheduleModal().close();
         this.scheduledAt.set(iso);
         this.ctx.reload();
       },
@@ -198,6 +198,14 @@ export class EditionDetail {
         this.scheduleErrorList.set(Array.isArray(body?.errors) ? body.errors : []);
       },
     });
+  }
+
+  closeEdit(): void {
+    this.editModal().close();
+  }
+
+  closeSchedule(): void {
+    this.scheduleModal().close();
   }
 
   confirmDelete(): void {

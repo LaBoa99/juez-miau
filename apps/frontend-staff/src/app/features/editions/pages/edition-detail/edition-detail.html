@@ -23,14 +23,12 @@
     </div>
     @if (editable()) {
       <div class="cfg__actions">
-        <button ojButton variant="secondary" type="button" [attr.aria-expanded]="editOpen()" (click)="openEdit()">
-          Editar datos
-        </button>
-        <button ojButton variant="primary" type="button" [attr.aria-expanded]="scheduleOpen()" (click)="openSchedule()">
+        <button ojButton variant="secondary" type="button" (click)="openEdit()">Editar datos</button>
+        <button ojButton variant="primary" type="button" (click)="openSchedule()">
           {{ isDraft() ? 'Programar edición' : 'Cambiar fecha de inicio' }}
         </button>
         @if (isDraft()) {
-          <button class="cfg__danger" ojButton variant="secondary" type="button" (click)="confirmDelete()">Eliminar</button>
+          <button ojButton variant="danger-outline" type="button" (click)="confirmDelete()">Eliminar</button>
         }
       </div>
     }
@@ -40,132 +38,109 @@
     <oj-alert tone="success">Edición programada para el {{ scheduledAt() | date: 'yyyy-MM-dd HH:mm' }}.</oj-alert>
   }
 
-  @if (editOpen()) {
-    <div class="cfg__box">
-      <div class="cfg__box-head">
-        <h2 class="cfg__box-title">Editar datos</h2>
-        <button type="button" class="cfg__box-close" (click)="editOpen.set(false)">Cerrar</button>
-      </div>
-      <form class="cfg__form" [formGroup]="editForm" (ngSubmit)="submitEdit()">
-        @if (editError()) {
-          <oj-alert tone="error">{{ editError() }}</oj-alert>
-        }
-        <oj-form-field label="Nombre" for="edit-name">
-          <input id="edit-name" type="text" formControlName="name" />
+  <oj-modal #editModal title="Editar datos" size="md">
+    <form id="cfg-edit-form" class="cfg__form" [formGroup]="editForm" (ngSubmit)="submitEdit()">
+      @if (editError()) {
+        <oj-alert tone="error">{{ editError() }}</oj-alert>
+      }
+      <oj-form-field label="Nombre" for="edit-name">
+        <input id="edit-name" type="text" formControlName="name" />
+      </oj-form-field>
+      <div class="cfg__row">
+        <oj-form-field label="Duración (min)" for="edit-duration">
+          <input id="edit-duration" class="oj-mono" type="number" min="1" formControlName="durationMin" />
         </oj-form-field>
-        <div class="cfg__row">
-          <oj-form-field label="Duración (min)" for="edit-duration">
-            <input id="edit-duration" class="oj-mono" type="number" min="1" formControlName="durationMin" />
-          </oj-form-field>
-          <oj-form-field label="Congelamiento (min)" for="edit-freeze">
-            <input id="edit-freeze" class="oj-mono" type="number" min="0" formControlName="freezeMin" />
-          </oj-form-field>
-        </div>
-        <div class="cfg__box-actions">
-          <button ojButton variant="secondary" type="button" (click)="editOpen.set(false)">Cancelar</button>
-          <button ojButton variant="primary" type="submit" [disabled]="editSaving()">
-            {{ editSaving() ? 'Guardando…' : 'Guardar' }}
-          </button>
-        </div>
-      </form>
-    </div>
-  }
-
-  @if (scheduleOpen()) {
-    <div class="cfg__box">
-      <div class="cfg__box-head">
-        <h2 class="cfg__box-title">{{ isDraft() ? 'Programar edición' : 'Cambiar fecha de inicio' }}</h2>
-        <button type="button" class="cfg__box-close" (click)="scheduleOpen.set(false)">Cerrar</button>
+        <oj-form-field label="Congelamiento (min)" for="edit-freeze">
+          <input id="edit-freeze" class="oj-mono" type="number" min="0" formControlName="freezeMin" />
+        </oj-form-field>
       </div>
-      <form class="cfg__form" [formGroup]="scheduleForm" (ngSubmit)="submitSchedule()">
-        @if (scheduleErrorMsg()) {
-          <oj-alert tone="error">
-            <div>{{ scheduleErrorMsg() }}</div>
-            @if (scheduleErrorList().length) {
-              <ul class="cfg__err-list">
-                @for (err of scheduleErrorList(); track err) {
-                  <li>{{ err }}</li>
-                }
-              </ul>
-            }
-          </oj-alert>
-        }
-
-        <div class="cfg__sched-grid">
-          <div class="cfg__sched-main">
-            <oj-form-field
-              label="Fecha y hora de inicio"
-              for="sched-start"
-              hint="Debe ser una fecha futura."
-            >
-              <input
-                id="sched-start"
-                class="oj-mono"
-                type="datetime-local"
-                [min]="minStart()"
-                formControlName="start"
-              />
-            </oj-form-field>
-            <p class="cfg__hint">
-              Duración {{ e.duration_ms ? msToMin(e.duration_ms) : '—' }} min · congela
-              {{ e.freeze_duration_ms ? msToMin(e.freeze_duration_ms) : '—' }} min antes (se cambian en Editar datos)
-            </p>
-          </div>
-
-          @if (isDraft()) {
-            <div class="cfg__reqs">
-              <h3 class="cfg__reqs-title">Antes de programar</h3>
-              <ul class="cfg__reqs-list">
-                <li [class.cfg__req--bad]="!durationOk()">
-                  <span class="cfg__req-icon" [class.cfg__ok]="durationOk()" [class.cfg__bad]="!durationOk()" aria-hidden="true">
-                    {{ durationOk() ? '✓' : '✕' }}
-                  </span>
-                  <span>Duración configurada</span>
-                  <span class="oj-visually-hidden">{{ durationOk() ? 'cumplido' : 'falta' }}</span>
-                </li>
-                <li [class.cfg__req--bad]="problemsOk() === false">
-                  <span class="cfg__req-icon" [class.cfg__ok]="problemsOk() === true" [class.cfg__bad]="problemsOk() === false" aria-hidden="true">
-                    {{ problemsOk() === false ? '✕' : '✓' }}
-                  </span>
-                  <span>
-                    Al menos un problema publicado
-                    @if (problemsOk() === false) {
-                      · <a [routerLink]="['/ediciones', id, 'problemas']">ir a Problemas</a>
-                    }
-                  </span>
-                  <span class="oj-visually-hidden">{{ problemsOk() === true ? 'cumplido' : problemsOk() === false ? 'falta' : 'verificando' }}</span>
-                </li>
-                <li [class.cfg__req--bad]="teamsOk() === false">
-                  <span class="cfg__req-icon" [class.cfg__ok]="teamsOk() === true" [class.cfg__bad]="teamsOk() === false" aria-hidden="true">
-                    {{ teamsOk() === false ? '✕' : '✓' }}
-                  </span>
-                  <span>
-                    Al menos un equipo registrado
-                    @if (teamsOk() === false) {
-                      · <a [routerLink]="['/ediciones', id, 'equipos']">ir a Equipos</a>
-                    }
-                  </span>
-                  <span class="oj-visually-hidden">{{ teamsOk() === true ? 'cumplido' : teamsOk() === false ? 'falta' : 'verificando' }}</span>
-                </li>
-              </ul>
-            </div>
-          }
-        </div>
-
-        <oj-alert tone="warning">
-          Una vez programada, la edición ya no se puede eliminar ni volver a borrador. Podrás cambiar la fecha
-          hasta que inicie; el concurso arranca y termina solo.
-        </oj-alert>
-
-        <div class="cfg__box-actions">
-          <button ojButton variant="secondary" type="button" (click)="scheduleOpen.set(false)">Cancelar</button>
-          <button ojButton variant="primary" type="submit" [disabled]="scheduleSaving() || !canSubmitSchedule()">
-            {{ scheduleSaving() ? 'Programando…' : 'Programar' }}
-          </button>
-        </div>
-      </form>
+    </form>
+    <div footer>
+      <button ojButton variant="secondary" type="button" (click)="closeEdit()">Cancelar</button>
+      <button ojButton variant="primary" type="submit" form="cfg-edit-form" [disabled]="editSaving()">
+        {{ editSaving() ? 'Guardando…' : 'Guardar' }}
+      </button>
     </div>
-  }
+  </oj-modal>
+
+  <oj-modal #scheduleModal [title]="isDraft() ? 'Programar edición' : 'Cambiar fecha de inicio'" size="md">
+    <form id="cfg-schedule-form" class="cfg__form" [formGroup]="scheduleForm" (ngSubmit)="submitSchedule()">
+      @if (scheduleErrorMsg()) {
+        <oj-alert tone="error">
+          <div>{{ scheduleErrorMsg() }}</div>
+          @if (scheduleErrorList().length) {
+            <ul class="cfg__err-list">
+              @for (err of scheduleErrorList(); track err) {
+                <li>{{ err }}</li>
+              }
+            </ul>
+          }
+        </oj-alert>
+      }
+
+      <div class="cfg__sched-grid">
+        <div class="cfg__sched-main">
+          <oj-form-field label="Fecha y hora de inicio" for="sched-start" hint="Debe ser una fecha futura.">
+            <input id="sched-start" class="oj-mono" type="datetime-local" [min]="minStart()" formControlName="start" />
+          </oj-form-field>
+          <p class="cfg__hint">
+            Duración {{ e.duration_ms ? msToMin(e.duration_ms) : '—' }} min · congela
+            {{ e.freeze_duration_ms ? msToMin(e.freeze_duration_ms) : '—' }} min antes (se cambian en Editar datos)
+          </p>
+        </div>
+
+        @if (isDraft()) {
+          <div class="cfg__reqs">
+            <h3 class="cfg__reqs-title">Antes de programar</h3>
+            <ul class="cfg__reqs-list">
+              <li [class.cfg__req--bad]="!durationOk()">
+                <span class="cfg__req-icon" [class.cfg__ok]="durationOk()" [class.cfg__bad]="!durationOk()" aria-hidden="true">
+                  {{ durationOk() ? '✓' : '✕' }}
+                </span>
+                <span>Duración configurada</span>
+                <span class="oj-visually-hidden">{{ durationOk() ? 'cumplido' : 'falta' }}</span>
+              </li>
+              <li [class.cfg__req--bad]="problemsOk() === false">
+                <span class="cfg__req-icon" [class.cfg__ok]="problemsOk() === true" [class.cfg__bad]="problemsOk() === false" aria-hidden="true">
+                  {{ problemsOk() === false ? '✕' : '✓' }}
+                </span>
+                <span>
+                  Al menos un problema publicado
+                  @if (problemsOk() === false) {
+                    · <a [routerLink]="['/ediciones', id, 'problemas']">ir a Problemas</a>
+                  }
+                </span>
+                <span class="oj-visually-hidden">{{ problemsOk() === true ? 'cumplido' : problemsOk() === false ? 'falta' : 'verificando' }}</span>
+              </li>
+              <li [class.cfg__req--bad]="teamsOk() === false">
+                <span class="cfg__req-icon" [class.cfg__ok]="teamsOk() === true" [class.cfg__bad]="teamsOk() === false" aria-hidden="true">
+                  {{ teamsOk() === false ? '✕' : '✓' }}
+                </span>
+                <span>
+                  Al menos un equipo registrado
+                  @if (teamsOk() === false) {
+                    · <a [routerLink]="['/ediciones', id, 'equipos']">ir a Equipos</a>
+                  }
+                </span>
+                <span class="oj-visually-hidden">{{ teamsOk() === true ? 'cumplido' : teamsOk() === false ? 'falta' : 'verificando' }}</span>
+              </li>
+            </ul>
+          </div>
+        }
+      </div>
+
+      <oj-alert tone="warning">
+        Una vez programada, la edición ya no se puede eliminar ni volver a borrador. Podrás cambiar la fecha
+        hasta que inicie; el concurso arranca y termina solo.
+      </oj-alert>
+    </form>
+    <div footer>
+      <button ojButton variant="secondary" type="button" (click)="closeSchedule()">Cancelar</button>
+      <button ojButton variant="primary" type="submit" form="cfg-schedule-form" [disabled]="scheduleSaving() || !canSubmitSchedule()">
+        {{ scheduleSaving() ? 'Programando…' : 'Programar' }}
+      </button>
+    </div>
+  </oj-modal>
 
   <div class="cfg__tabs">
     <oj-tab-nav [items]="tabs()" />

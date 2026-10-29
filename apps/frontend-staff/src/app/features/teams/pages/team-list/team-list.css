@@ -59,13 +59,10 @@
 
 .teams__row-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--oj-space-xs);
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 6px;
   justify-content: flex-end;
-}
-
-.teams__danger {
-  color: var(--oj-danger);
 }
 
 .teams__pager {
