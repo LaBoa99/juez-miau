@@ -48,6 +48,70 @@
         <input id="pp-points" class="oj-mono" type="number" min="0" max="100000" formControlName="points" />
       </oj-form-field>
     </form>
+
+    @if (!isNew()) {
+      <div class="pp__box pp__sig" [formGroup]="signatureForm">
+        <h3 class="pp__sig-title">Firma de la función</h3>
+        @if (!signatureEditable()) {
+          <p class="pp__muted">La firma no se puede cambiar una vez publicado el problema o con un testset ya construido.</p>
+        }
+        @if (signatureError()) {
+          <oj-alert tone="error">{{ signatureError() }}</oj-alert>
+        }
+
+        <oj-form-field label="Nombre de la función" for="sig-fn">
+          <input id="sig-fn" class="oj-mono" type="text" formControlName="functionName" />
+        </oj-form-field>
+
+        <div class="pp__sig-params" formArrayName="params">
+          <span class="pp__sig-label">Parámetros</span>
+          @for (p of sigParams.controls; track $index) {
+            <div class="pp__sig-row" [formGroupName]="$index">
+              <input class="oj-mono" type="text" placeholder="nombre" formControlName="name" aria-label="Nombre del parámetro" />
+              <select formControlName="base" aria-label="Tipo">
+                @for (t of scalarTypes; track t) {
+                  <option [value]="t">{{ t }}</option>
+                }
+              </select>
+              <select formControlName="depth" aria-label="Arreglo">
+                @for (d of depths; track d) {
+                  <option [ngValue]="d">{{ d === 0 ? 'escalar' : '[]'.repeat(d) }}</option>
+                }
+              </select>
+              @if (signatureEditable()) {
+                <button type="button" class="pp__sig-x" aria-label="Quitar parámetro" (click)="removeParam($index)">×</button>
+              }
+            </div>
+          }
+          @if (signatureEditable()) {
+            <button type="button" class="pp__link" (click)="addParam()">+ Agregar parámetro</button>
+          }
+        </div>
+
+        <oj-form-field label="Tipo de retorno" for="sig-ret">
+          <div class="pp__sig-return">
+            <select id="sig-ret" formControlName="returnBase" aria-label="Tipo de retorno">
+              @for (t of scalarTypes; track t) {
+                <option [value]="t">{{ t }}</option>
+              }
+            </select>
+            <select formControlName="returnDepth" aria-label="Arreglo del retorno">
+              @for (d of depths; track d) {
+                <option [ngValue]="d">{{ d === 0 ? 'escalar' : '[]'.repeat(d) }}</option>
+              }
+            </select>
+          </div>
+        </oj-form-field>
+
+        @if (signatureEditable()) {
+          <div class="pp__actions-right">
+            <button ojButton variant="primary" type="button" [disabled]="signatureSaving()" (click)="saveSignature()">
+              {{ signatureSaving() ? 'Guardando…' : 'Guardar firma' }}
+            </button>
+          </div>
+        }
+      </div>
+    }
   } @else {
     <div class="pp__box pp__preview">
       @if (previewLoading()) {

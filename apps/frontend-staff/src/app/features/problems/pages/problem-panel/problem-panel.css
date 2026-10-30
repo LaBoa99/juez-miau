@@ -167,3 +167,65 @@
   display: flex;
   gap: var(--oj-space-sm);
 }
+
+/* Firma de la función */
+.pp__sig {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pp__sig-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pp__sig-params {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-sm);
+}
+
+.pp__sig-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pp__sig-row {
+  display: flex;
+  align-items: center;
+  gap: var(--oj-space-sm);
+}
+
+.pp__sig-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.pp__sig-return {
+  display: flex;
+  gap: var(--oj-space-sm);
+}
+
+.pp__sig-x {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--oj-text-muted);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.pp__link {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--oj-font-sans);
+  color: var(--oj-text);
+  text-decoration: underline;
+}

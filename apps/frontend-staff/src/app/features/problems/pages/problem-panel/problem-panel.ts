@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
@@ -10,10 +10,13 @@ import {
   CompareMode,
   IProblemDetail,
   IProblemPreview,
+  IProblemSignature,
   IProblemTestset,
   ProblemStatus,
+  ScalarType,
   TestsetStatus,
 } from '@concurso/shared-types';
+import { MAX_ARRAY_DEPTH, SCALAR_TYPES, signatureToString, typeToUi, uiToType } from '../../../../shared/type-ref';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Badge } from '../../../../shared/ui/badge.component';
 import { Alert } from '../../../../shared/ui/alert.component';
@@ -74,6 +77,29 @@ export class ProblemPanel {
     points: [1, [Validators.required, Validators.min(0), Validators.max(100000)]],
   });
 
+  // ─── Firma de la función ───
+  protected readonly scalarTypes = SCALAR_TYPES;
+  protected readonly depths = Array.from({ length: MAX_ARRAY_DEPTH + 1 }, (_, i) => i);
+  protected readonly signatureSaving = signal(false);
+  protected readonly signatureError = signal<string | null>(null);
+  protected readonly signatureForm = this.fb.group({
+    functionName: ['', [Validators.required]],
+    params: this.fb.array<FormGroup>([]),
+    returnBase: ['int' as ScalarType],
+    returnDepth: [0],
+  });
+  // La firma solo cambia con el problema en DRAFT y su testset vigente editable (DRAFT/FAILED).
+  protected readonly signatureEditable = computed(() => {
+    const d = this.detail();
+    if (!d || d.status !== ProblemStatus.DRAFT) return false;
+    const t = this.currentTestset();
+    return !t || t.status === TestsetStatus.DRAFT || t.status === TestsetStatus.FAILED;
+  });
+  protected readonly signaturePreview = computed(() => {
+    const s = this.detail()?.signature;
+    return s ? signatureToString(s) : null;
+  });
+
   private readonly deleteDialog = viewChild.required(ConfirmDialog);
 
   protected readonly title = computed(() => {
@@ -107,6 +133,12 @@ export class ProblemPanel {
     });
 
     this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.bus.dirty.set(this.form.dirty));
+
+    // Habilita/deshabilita la firma según el estado del problema/testset.
+    effect(() => {
+      if (this.signatureEditable()) this.signatureForm.enable({ emitEvent: false });
+      else this.signatureForm.disable({ emitEvent: false });
+    });
   }
 
   private resetFor(id: string | null): void {
@@ -149,9 +181,72 @@ export class ProblemPanel {
         // El backend no permite cambiar categoría ni puntos al editar.
         this.form.get('categoryId')?.disable();
         this.form.get('points')?.disable();
+        this.populateSignature(d.signature);
         this.bus.dirty.set(false);
       },
       error: () => this.loadError.set(true),
+    });
+  }
+
+  // ─── Firma ───
+  get sigParams(): FormArray<FormGroup> {
+    return this.signatureForm.get('params') as FormArray<FormGroup>;
+  }
+
+  private paramGroup(name = '', base: ScalarType = 'int', depth = 0): FormGroup {
+    return this.fb.group({ name: [name, [Validators.required]], base: [base], depth: [depth] });
+  }
+
+  private populateSignature(sig: IProblemSignature | null): void {
+    this.signatureError.set(null);
+    this.sigParams.clear();
+    if (sig) {
+      const ret = typeToUi(sig.returns);
+      this.signatureForm.patchValue({ functionName: sig.functionName, returnBase: ret.base, returnDepth: ret.depth });
+      for (const p of sig.params) {
+        const ui = typeToUi(p.type);
+        this.sigParams.push(this.paramGroup(p.name, ui.base, ui.depth));
+      }
+    } else {
+      this.signatureForm.patchValue({ functionName: '', returnBase: 'int', returnDepth: 0 });
+    }
+  }
+
+  addParam(): void {
+    this.sigParams.push(this.paramGroup());
+  }
+
+  removeParam(i: number): void {
+    this.sigParams.removeAt(i);
+  }
+
+  saveSignature(): void {
+    if (this.signatureForm.invalid) {
+      this.signatureForm.markAllAsTouched();
+      return;
+    }
+    const id = this.detail()?.id;
+    if (!id) return;
+    const raw = this.signatureForm.getRawValue();
+    const sig: IProblemSignature = {
+      functionName: raw.functionName!,
+      params: (raw.params as { name: string; base: ScalarType; depth: number }[]).map((p) => ({
+        name: p.name,
+        type: uiToType(p.base, p.depth),
+      })),
+      returns: uiToType(raw.returnBase as ScalarType, raw.returnDepth as number),
+    };
+    this.signatureSaving.set(true);
+    this.signatureError.set(null);
+    this.service.updateSignature(id, sig).subscribe({
+      next: () => {
+        this.signatureSaving.set(false);
+        this.resetFor(String(id));
+      },
+      error: (err) => {
+        this.signatureSaving.set(false);
+        this.signatureError.set(message(err, 'No se pudo guardar la firma.'));
+      },
     });
   }
 

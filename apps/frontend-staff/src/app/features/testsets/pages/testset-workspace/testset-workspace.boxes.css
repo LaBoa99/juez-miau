@@ -1,0 +1,26 @@
+.tw__box { display: flex; flex-direction: column; gap: var(--oj-space-md); padding: 16px; border: 1px solid var(--oj-border); border-radius: var(--oj-radius); }
+.tw__box-title { margin: 0; font-size: 15px; font-weight: 600; }
+.tw__box-actions { display: flex; justify-content: flex-end; }
+.tw__row { display: flex; flex-wrap: wrap; gap: var(--oj-space-md); }
+.tw__row > oj-form-field { flex: 1 1 120px; }
+.tw__src, .tw__src-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--oj-space-md);
+  padding: var(--oj-space-sm) var(--oj-space-md); background: var(--oj-bg-muted); border-radius: var(--oj-radius);
+}
+.tw__src-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tw__src-name { font-size: 13px; font-weight: 600; }
+.tw__src-actions { display: flex; gap: var(--oj-space-xs); }
+.tw__cases-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oj-space-sm); }
+.tw__cases-head .tw__box-title { margin-right: auto; }
+.tw__num { text-align: right; }
+.tw__vis { display: inline-block; padding: 1px 6px; font-size: 12px; border: 1px solid var(--oj-border); border-radius: var(--oj-radius); color: var(--oj-text-muted); }
+.tw__vis--pub { border-color: var(--oj-text); color: var(--oj-text); }
+.tw__summary { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--oj-text-muted); }
+.tw__row-actions { display: flex; justify-content: flex-end; flex-wrap: nowrap; white-space: nowrap; gap: 6px; }
+.tw__groups, .tw__case-fields { display: flex; flex-direction: column; gap: var(--oj-space-sm); }
+.tw__group-row { display: flex; align-items: center; gap: var(--oj-space-sm); }
+.tw__group-row input { flex: 1; min-width: 0; }
+.tw__json { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--oj-font-mono); font-size: 13px; }
+.tw__x, .tw__link { border: 0; background: transparent; padding: 0; cursor: pointer; font-family: var(--oj-font-sans); }
+.tw__x { color: var(--oj-text-muted); font-size: 16px; line-height: 1; }
+.tw__link { align-self: flex-start; font-size: 13px; color: var(--oj-text); text-decoration: underline; }

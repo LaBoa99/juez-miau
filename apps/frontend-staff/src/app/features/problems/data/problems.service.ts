@@ -7,6 +7,7 @@ import {
   IProblemDetail,
   IProblemListItem,
   IProblemPreview,
+  IProblemSignature,
   IPublishProblemResponse,
   IUpdateProblem,
 } from '@concurso/shared-types';
@@ -37,6 +38,10 @@ export class ProblemsService {
 
   update(id: number, dto: IUpdateProblem): Observable<IProblem> {
     return this.http.patch<IProblem>(`${API}/problems/${id}`, dto);
+  }
+
+  updateSignature(problemId: number, sig: IProblemSignature): Observable<IProblem> {
+    return this.http.patch<IProblem>(`${API}/problems/${problemId}/signature`, sig);
   }
 
   publish(id: number): Observable<IPublishProblemResponse> {
