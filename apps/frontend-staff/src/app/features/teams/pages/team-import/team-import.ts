@@ -4,6 +4,7 @@ import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { FileDrop } from '../../../../shared/ui/file-drop.component';
 import { TeamsService } from '../../data/teams.service';
+import { backendMessage } from '../../../../core/http/backend-error.mapper';
 
 type Step = 'archivo' | 'validacion' | 'credenciales';
 const ORDER: Step[] = ['archivo', 'validacion', 'credenciales'];
@@ -127,7 +128,5 @@ export class TeamImport {
 }
 
 function message(err: unknown, fallback: string): string {
-  const m = (err as { error?: { message?: unknown } })?.error?.message;
-  if (Array.isArray(m)) return m.join(', ');
-  return typeof m === 'string' ? m : fallback;
+  return backendMessage(err, fallback);
 }

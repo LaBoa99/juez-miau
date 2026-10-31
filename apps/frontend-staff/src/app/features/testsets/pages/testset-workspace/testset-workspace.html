@@ -5,6 +5,11 @@
     <a ojButton variant="secondary" size="sm" [routerLink]="['/ediciones', editionId, 'problemas', problemId]">Ir a Problemas</a>
   </oj-empty-state>
 } @else if (problem(); as p) {
+  <div class="tw__steps">
+    @for (s of steps(); track s.label) {
+      <span class="tw__step" [class]="'tw__step--' + s.state">{{ s.label }}</span>
+    }
+  </div>
   <div class="tw">
     <!-- Columna izquierda: versiones -->
     <aside class="tw__list">
@@ -23,7 +28,7 @@
           >
             <span class="tw__v oj-mono">v{{ v.version }}</span>
             <span class="tw__note">{{ v.id === currentId() ? 'vigente' : v.reason || '—' }}</span>
-            <oj-badge [tone]="statusTone(v.status)">{{ v.status }}</oj-badge>
+            <oj-badge [tone]="(v.status | testsetStatus).tone">{{ (v.status | testsetStatus).label }}</oj-badge>
           </button>
         }
       </div>
@@ -42,7 +47,7 @@
         <header class="tw__header">
           <div class="tw__header-left">
             <h1 class="tw__title">Versión {{ t.version }}</h1>
-            <oj-badge [tone]="statusTone(t.status)">{{ t.status }}</oj-badge>
+            <oj-badge [tone]="(t.status | testsetStatus).tone">{{ (t.status | testsetStatus).label }}</oj-badge>
             @if (isCurrent()) {
               <span class="tw__current">Vigente para el concurso</span>
             }
@@ -52,10 +57,16 @@
           }
         </header>
 
-        <p class="tw__sig oj-mono">
-          {{ signatureText() }}
-          · <a [routerLink]="['/ediciones', editionId, 'problemas', problemId]">Editar firma</a>
-        </p>
+        <div class="tw__sig-row">
+          <span class="tw__sig oj-mono">{{ signatureText() }}</span>
+          <a ojButton variant="secondary" size="sm" [routerLink]="['/ediciones', editionId, 'problemas', problemId]">Editar firma</a>
+        </div>
+        @if (!hasParams()) {
+          <oj-alert tone="warning">
+            La firma no tiene parámetros. Agrégalos para poder crear casos.
+            <a [routerLink]="['/ediciones', editionId, 'problemas', problemId]">Editar firma</a>
+          </oj-alert>
+        }
 
         @if (actionError()) {
           <oj-alert tone="error">{{ actionError() }}</oj-alert>
@@ -170,11 +181,11 @@
         <div class="tw__box">
           <div class="tw__cases-head">
             <h3 class="tw__box-title">Casos</h3>
-            <span class="tw__muted oj-mono">
-              {{ caseStats().total }} · {{ caseStats().pub }} públicos · {{ caseStats().hidden }} ocultos
-            </span>
+            <span class="tw__muted oj-mono">{{ caseSummaryLine() }}</span>
             @if (editable()) {
-              <button ojButton variant="secondary" size="sm" type="button" (click)="openAddCase()">+ Agregar caso</button>
+              <button ojButton variant="secondary" size="sm" type="button" [disabled]="!hasParams()" (click)="openAddCase()">
+                + Agregar caso
+              </button>
             }
           </div>
 
@@ -209,9 +220,8 @@
                       <td class="oj-mono tw__num">{{ c.refTimeMs !== null ? c.refTimeMs + ' ms' : '—' }}</td>
                       <td>
                         <div class="tw__row-actions">
-                          <button ojButton variant="secondary" size="sm" type="button" (click)="download(c, 'in')">.in</button>
-                          <button ojButton variant="secondary" size="sm" type="button" (click)="download(c, 'out')">.out</button>
-                          @if (editable()) {
+                          <button ojButton variant="secondary" size="sm" type="button" (click)="openView(c)">Ver</button>
+                          @if (editable() && c.origin === TestCaseOrigin.MANUAL) {
                             <button ojButton variant="secondary" size="sm" type="button" (click)="openEditCase(c)">Editar</button>
                             <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDeleteCase(c)">Eliminar</button>
                           }
@@ -224,8 +234,8 @@
             </div>
           }
 
-          <p class="tw__note">
-            Las salidas esperadas (.out) se generan al construir, ejecutando la solución oficial sobre cada entrada.
+          <p class="tw__muted">
+            Las salidas esperadas se generan al construir, ejecutando la solución oficial con los parámetros de cada caso.
           </p>
         </div>
       } @else {
@@ -291,13 +301,20 @@
 
   <!-- Caso -->
   <oj-modal #caseModal [title]="caseEditing() ? 'Editar caso' : 'Agregar caso'" size="md">
+    @if (signatureText(); as sig) {
+      <p class="tw__sig oj-mono tw__muted">{{ sig }}</p>
+    }
     @if (caseError()) {
       <oj-alert tone="error">{{ caseError() }}</oj-alert>
     }
     @if (caseInputEditable()) {
       <div class="tw__case-fields" [formGroup]="caseForm()">
         @for (cp of caseParams(); track cp.param.name) {
-          <oj-form-field [label]="cp.param.name + ' : ' + typeLabel(cp.param)" [for]="'tw-case-' + cp.param.name">
+          <div class="tw__field">
+            <label class="tw__field-label" [for]="'tw-case-' + cp.param.name">
+              <span class="oj-mono">{{ cp.param.name }}</span>
+              <span class="tw__muted">{{ typeLabel(cp.param) }}</span>
+            </label>
             @switch (controlType(cp.param)) {
               @case ('bool') {
                 <select [id]="'tw-case-' + cp.param.name" [formControlName]="cp.param.name">
@@ -306,29 +323,68 @@
                 </select>
               }
               @case ('json') {
-                <textarea [id]="'tw-case-' + cp.param.name" class="tw__json" rows="3" [formControlName]="cp.param.name" placeholder="JSON, p. ej. [1, 2, 3]"></textarea>
+                <textarea [id]="'tw-case-' + cp.param.name" class="tw__json" rows="3" [formControlName]="cp.param.name"
+                  placeholder="JSON, p. ej. [1, 2, 3]" (blur)="validateCaseField(cp.param)"></textarea>
               }
               @default {
-                <input [id]="'tw-case-' + cp.param.name" class="oj-mono" type="text" [formControlName]="cp.param.name" />
+                <input [id]="'tw-case-' + cp.param.name" class="oj-mono" type="text" [formControlName]="cp.param.name"
+                  (blur)="validateCaseField(cp.param)" />
               }
             }
-          </oj-form-field>
+            @if (fieldError(cp.param.name); as fe) {
+              <p class="tw__field-error" role="alert">{{ fe }}</p>
+            }
+          </div>
         }
       </div>
     } @else {
       <p class="tw__muted">Este caso es {{ originLabel(caseEditing()!.origin) }}; solo puedes cambiar su visibilidad.</p>
     }
-    <oj-form-field label="Visibilidad" for="tw-case-vis">
+
+    <div class="tw__field">
+      <label class="tw__field-label" for="tw-case-vis">Visibilidad</label>
       <select id="tw-case-vis" [value]="caseVisibility()" (change)="caseVisibility.set($any($event.target).value)">
         <option [value]="TestCaseVisibility.HIDDEN">Oculto</option>
-        <option [value]="TestCaseVisibility.PUBLIC">Público</option>
+        <option [value]="TestCaseVisibility.PUBLIC">Público (ejemplo del enunciado)</option>
       </select>
-    </oj-form-field>
+    </div>
+
+    <p class="tw__muted">La salida esperada se calcula al construir con la solución oficial.</p>
+
     <div footer>
       <button ojButton variant="secondary" type="button" (click)="closeModal('case')">Cancelar</button>
       <button ojButton variant="primary" type="button" [disabled]="caseSaving()" (click)="saveCase()">
         {{ caseSaving() ? 'Guardando…' : 'Guardar' }}
       </button>
+    </div>
+  </oj-modal>
+
+  <!-- Ver caso (solo lectura) -->
+  <oj-modal #viewModal [title]="viewCase() ? 'Caso #' + viewCase()!.ordinal : 'Caso'" size="md">
+    @if (viewLoading()) {
+      <p class="tw__muted">Cargando…</p>
+    } @else {
+      <div class="tw__case-fields">
+        @for (p of viewParams(); track p.name) {
+          <div class="tw__field">
+            <span class="tw__field-label"><span class="oj-mono">{{ p.name }}</span></span>
+            <pre class="tw__sample-block oj-mono">{{ p.value }}</pre>
+          </div>
+        } @empty {
+          <p class="tw__muted">Sin parámetros.</p>
+        }
+        <div class="tw__field">
+          <span class="tw__field-label">Salida esperada</span>
+          @if (viewOutput(); as out) {
+            <pre class="tw__sample-block oj-mono">{{ out }}</pre>
+          } @else {
+            <p class="tw__muted">Se calcula al construir con la solución oficial.</p>
+          }
+        </div>
+      </div>
+    }
+    <div footer>
+      <button ojButton variant="secondary" type="button" (click)="closeModal('view')">Cerrar</button>
     </div>
   </oj-modal>
 

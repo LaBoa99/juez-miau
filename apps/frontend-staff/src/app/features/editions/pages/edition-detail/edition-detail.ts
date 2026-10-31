@@ -14,6 +14,7 @@ import { EditionStatusPipe } from '../../../../shared/pipes/edition-status.pipe'
 import { msToMin, minToMs } from '../../../../shared/time';
 import { EditionsService } from '../../data/editions.service';
 import { EditionContext } from '../edition-layout/edition-context';
+import { backendMessage, translateBackendError } from '../../../../core/http/backend-error.mapper';
 
 @Component({
   selector: 'oj-edition-detail',
@@ -191,12 +192,10 @@ export class EditionDetail {
       },
       error: (err) => {
         this.scheduleSaving.set(false);
-        // 409 => { message, errors: string[] }
-        const body = err?.error;
-        this.scheduleErrorMsg.set(
-          typeof body?.message === 'string' ? body.message : this.message(err, 'No se pudo programar.'),
-        );
-        this.scheduleErrorList.set(Array.isArray(body?.errors) ? body.errors : []);
+        // 409 => { message, errors: string[] }; se traduce a español.
+        const t = translateBackendError(err, 'No se pudo programar', 'No se pudo programar la edición. Revisa los requisitos.');
+        this.scheduleErrorMsg.set(t.title);
+        this.scheduleErrorList.set(t.messages);
       },
     });
   }
@@ -222,9 +221,7 @@ export class EditionDetail {
   }
 
   private message(err: unknown, fallback: string): string {
-    const m = (err as { error?: { message?: unknown } })?.error?.message;
-    if (Array.isArray(m)) return m.join(', ');
-    return typeof m === 'string' ? m : fallback;
+    return backendMessage(err, fallback);
   }
 
   // ISO -> valor para <input type="datetime-local"> en hora local

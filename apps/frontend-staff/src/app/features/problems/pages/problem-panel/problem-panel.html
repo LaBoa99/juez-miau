@@ -12,7 +12,9 @@
       @if (published()) {
         <oj-badge tone="success">Publicado</oj-badge>
       }
-      <oj-segmented [options]="viewOptions" [value]="view()" [disabled]="isNew()" (valueChange)="onView($event!)" />
+      @if (!isNew()) {
+        <oj-segmented [options]="viewOptions" [value]="view()" (valueChange)="onView($event!)" />
+      }
     </div>
   </header>
 
@@ -169,7 +171,7 @@
       } @else if (currentTestset(); as t) {
         <div class="pp__cases-info">
           <span class="oj-mono">v{{ t.version }}</span>
-          <oj-badge [tone]="testsetTone(t.status)">{{ t.status }}</oj-badge>
+          <oj-badge [tone]="(t.status | testsetStatus).tone">{{ (t.status | testsetStatus).label }}</oj-badge>
           @if (t.generatedCount !== null) {
             <span class="pp__muted">{{ t.generatedCount }} casos</span>
           }
@@ -178,6 +180,25 @@
       } @else {
         <p class="pp__muted">Este problema aún no tiene casos de prueba.</p>
       }
+
+      @if (!published()) {
+        <div class="pp__check">
+          <div class="pp__check-title">Para publicar</div>
+          <ul class="pp__check-list">
+            @for (item of publishChecklist(); track item.label) {
+              <li class="pp__check-item" [class.pp__check-item--fail]="!item.ok">
+                <span class="pp__check-icon" aria-hidden="true">{{ item.ok ? '✓' : '✕' }}</span>
+                <span class="oj-visually-hidden">{{ item.ok ? 'Cumplido: ' : 'Falta: ' }}</span>
+                <span class="pp__check-text">{{ item.label }}</span>
+                @if (!item.ok && item.link) {
+                  <a ojButton variant="secondary" size="sm" [routerLink]="item.link">{{ item.actionLabel }}</a>
+                }
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
       <a ojButton variant="secondary" size="sm" [routerLink]="['/ediciones', editionId, 'problemas', d.id, 'casos']">
         Gestionar casos de prueba
       </a>
@@ -215,11 +236,14 @@
         }
       </div>
       <div class="oj-actions">
+        @if (!published() && !canPublish()) {
+          <span class="pp__muted">Completa los pasos para publicar</span>
+        }
         <button ojButton variant="secondary" type="button" [disabled]="saving()" (click)="save()">
           {{ saving() ? 'Guardando…' : 'Guardar' }}
         </button>
         @if (!published()) {
-          <button ojButton variant="success" type="button" [disabled]="publishing()" (click)="publish()">
+          <button ojButton variant="success" type="button" [disabled]="publishing() || !canPublish()" (click)="publish()">
             {{ publishing() ? 'Publicando…' : 'Publicar' }}
           </button>
         }

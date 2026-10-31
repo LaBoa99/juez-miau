@@ -15,6 +15,7 @@ import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { EditionContext } from '../../../editions/pages/edition-layout/edition-context';
 import { TeamsService } from '../../data/teams.service';
 import { TeamImport } from '../team-import/team-import';
+import { backendMessage } from '../../../../core/http/backend-error.mapper';
 
 const PAGE_SIZE = 20;
 
@@ -261,7 +262,5 @@ function findEditionId(route: ActivatedRoute): number {
 }
 
 function message(err: unknown, fallback: string): string {
-  const m = (err as { error?: { message?: unknown } })?.error?.message;
-  if (Array.isArray(m)) return m.join(', ');
-  return typeof m === 'string' ? m : fallback;
+  return backendMessage(err, fallback);
 }

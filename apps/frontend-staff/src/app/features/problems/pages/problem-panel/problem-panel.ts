@@ -24,14 +24,19 @@ import { FormField } from '../../../../shared/ui/form-field.component';
 import { Segmented } from '../../../../shared/ui/segmented.component';
 import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
+import { TestsetStatusPipe } from '../../../../shared/pipes/testset-status.pipe';
 import { ProblemsService } from '../../data/problems.service';
 import { ProblemsBus } from '../../data/problems-bus';
 import { EditionContext } from '../../../editions/pages/edition-layout/edition-context';
+import { backendMessage, translateBackendError } from '../../../../core/http/backend-error.mapper';
+
+// Identificador válido (igual que el backend): letras, dígitos y _, hasta 64, sin empezar por dígito.
+const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 
 @Component({
   selector: 'oj-problem-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, Badge, Alert, FormField, Segmented, EmptyState, ConfirmDialog],
+  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, Badge, Alert, FormField, Segmented, EmptyState, ConfirmDialog, TestsetStatusPipe],
   templateUrl: './problem-panel.html',
   styleUrl: './problem-panel.css',
 })
@@ -89,7 +94,7 @@ export class ProblemPanel {
   protected readonly signatureSaving = signal(false);
   protected readonly signatureError = signal<string | null>(null);
   protected readonly signatureForm = this.fb.group({
-    functionName: ['', [Validators.required]],
+    functionName: ['', [Validators.required, Validators.pattern(IDENTIFIER)]],
     params: this.fb.array<FormGroup>([]),
     returnBase: ['int' as ScalarType],
     returnDepth: [0],
@@ -123,6 +128,20 @@ export class ProblemPanel {
     if (!d || d.currentTestsetId === null) return null;
     return d.testsets.find((t) => t.id === d.currentTestsetId) ?? null;
   });
+
+  // Requisitos para publicar (los mismos que valida el backend, derivables del detalle del problema).
+  // Un testset READY implica que ya tiene casos, casos públicos y salidas; por eso ese paso los engloba.
+  protected readonly publishChecklist = computed(() => {
+    const d = this.detail();
+    const t = this.currentTestset();
+    const casos = ['/ediciones', this.editionId, 'problemas', d?.id, 'casos'];
+    return [
+      { ok: !!d?.signature, label: 'Firma de la función definida', actionLabel: 'Editar firma', link: null as unknown[] | null },
+      { ok: t?.refSolutionId != null, label: 'Solución oficial cargada', actionLabel: 'Subir solución', link: casos },
+      { ok: t?.status === TestsetStatus.READY, label: 'Casos de prueba construidos (versión vigente lista)', actionLabel: 'Construir', link: casos },
+    ];
+  });
+  protected readonly canPublish = computed(() => this.publishChecklist().every((i) => i.ok));
 
   // Markdown saneado (marked -> DOMPurify) listo para [innerHTML].
   renderMd(md: string | null | undefined): SafeHtml {
@@ -207,7 +226,7 @@ export class ProblemPanel {
   }
 
   private paramGroup(name = '', base: ScalarType = 'int', depth = 0): FormGroup {
-    return this.fb.group({ name: [name, [Validators.required]], base: [base], depth: [depth] });
+    return this.fb.group({ name: [name, [Validators.required, Validators.pattern(IDENTIFIER)]], base: [base], depth: [depth] });
   }
 
   private populateSignature(sig: IProblemSignature | null): void {
@@ -236,17 +255,27 @@ export class ProblemPanel {
   saveSignature(): void {
     if (this.signatureForm.invalid) {
       this.signatureForm.markAllAsTouched();
+      this.signatureError.set(
+        'Revisa la firma: el nombre de la función y de cada parámetro son obligatorios y deben ser identificadores válidos (letras, dígitos y _).',
+      );
       return;
     }
     const id = this.detail()?.id;
     if (!id) return;
     const raw = this.signatureForm.getRawValue();
+    const paramRows = raw.params as { name: string; base: ScalarType; depth: number }[];
+
+    // Nombres de parámetro únicos (el backend también lo valida, pero avisamos antes de enviar).
+    const names = paramRows.map((p) => p.name);
+    const dup = names.find((n, i) => names.indexOf(n) !== i);
+    if (dup) {
+      this.signatureError.set(`El parámetro "${dup}" está repetido. Usa nombres únicos.`);
+      return;
+    }
+
     const sig: IProblemSignature = {
       functionName: raw.functionName!,
-      params: (raw.params as { name: string; base: ScalarType; depth: number }[]).map((p) => ({
-        name: p.name,
-        type: uiToType(p.base, p.depth),
-      })),
+      params: paramRows.map((p) => ({ name: p.name, type: uiToType(p.base, p.depth) })),
       returns: uiToType(raw.returnBase as ScalarType, raw.returnDepth as number),
     };
     this.signatureSaving.set(true);
@@ -367,9 +396,8 @@ export class ProblemPanel {
       },
       error: (err) => {
         this.publishing.set(false);
-        const errs = err?.error?.errors;
-        if (Array.isArray(errs)) this.publishErrors.set(errs);
-        else this.actionError.set(message(err, 'No se pudo publicar.'));
+        const t = translateBackendError(err, 'No se pudo publicar', 'No se pudo publicar el problema. Revisa los casos de prueba.');
+        this.publishErrors.set(t.messages);
       },
     });
   }
@@ -419,7 +447,5 @@ function findEditionId(route: ActivatedRoute): number {
 }
 
 function message(err: unknown, fallback: string): string {
-  const m = (err as { error?: { message?: unknown } })?.error?.message;
-  if (Array.isArray(m)) return m.join(', ');
-  return typeof m === 'string' ? m : fallback;
+  return backendMessage(err, fallback);
 }

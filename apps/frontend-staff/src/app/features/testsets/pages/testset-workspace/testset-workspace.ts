@@ -34,7 +34,9 @@ import { Modal } from '../../../../shared/ui/modal.component';
 import { FileDrop } from '../../../../shared/ui/file-drop.component';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
 import { EmptyState } from '../../../../shared/ui/empty-state.component';
+import { TestsetStatusPipe } from '../../../../shared/pipes/testset-status.pipe';
 import { scalarBase, signatureToString, typeToString } from '../../../../shared/type-ref';
+import { backendMessage } from '../../../../core/http/backend-error.mapper';
 import { ProblemsService } from '../../../problems/data/problems.service';
 import { EditionLanguagesService } from '../../../editions/edition-languages/data/edition-languages.service';
 import { TestsetsService } from '../../data/testsets.service';
@@ -59,6 +61,7 @@ interface EnabledLanguage {
     FileDrop,
     ConfirmDialog,
     EmptyState,
+    TestsetStatusPipe,
   ],
   templateUrl: './testset-workspace.html',
   styleUrls: ['./testset-workspace.css', './testset-workspace.boxes.css'],
@@ -104,6 +107,36 @@ export class TestsetWorkspace {
     return { total: cases.length, pub, hidden: cases.length - pub };
   });
 
+  // Resumen con singular/plural correctos: "1 caso · 1 público · 0 ocultos".
+  protected readonly caseSummaryLine = computed(() => {
+    const s = this.caseStats();
+    const caso = s.total === 1 ? 'caso' : 'casos';
+    const pub = s.pub === 1 ? 'público' : 'públicos';
+    const oc = s.hidden === 1 ? 'oculto' : 'ocultos';
+    return `${s.total} ${caso} · ${s.pub} ${pub} · ${s.hidden} ${oc}`;
+  });
+
+  // La firma debe tener parámetros para poder armar un caso.
+  protected readonly hasParams = computed(() => (this.signature()?.params.length ?? 0) > 0);
+
+  // Barra de pasos (como el importador de CSV). El actual es el primero no hecho.
+  protected readonly steps = computed(() => {
+    const t = this.testset();
+    const done = [
+      !!this.signature(),
+      (t?.cases.length ?? 0) > 0,
+      t?.refSolutionId != null,
+      t?.status === TestsetStatus.READY,
+      this.isCurrent() && t?.status === TestsetStatus.READY,
+    ];
+    const labels = ['1 Firma', '2 Casos', '3 Solución oficial', '4 Construir', '5 Activar'];
+    const current = done.findIndex((d) => !d);
+    return labels.map((label, i) => ({
+      label,
+      state: done[i] ? 'hecho' : i === current ? 'actual' : 'pendiente',
+    }));
+  });
+
   // ─── Evaluación ───
   protected readonly compareModes = [
     { value: CompareMode.EXACT, label: 'Exacta' },
@@ -144,7 +177,16 @@ export class TestsetWorkspace {
   protected readonly caseForm = signal<FormGroup>(this.fb.group({}));
   protected readonly caseSaving = signal(false);
   protected readonly caseError = signal<string | null>(null);
+  // Error por campo (JSON inválido, número inválido), debajo del campo correspondiente.
+  protected readonly caseFieldErrors = signal<Record<string, string>>({});
   private pendingDeleteCase: ITestCase | null = null;
+
+  // Modal "Ver" (solo lectura)
+  private readonly viewModal = viewChild.required<Modal>('viewModal');
+  protected readonly viewCase = signal<ITestCase | null>(null);
+  protected readonly viewParams = signal<{ name: string; value: string }[]>([]);
+  protected readonly viewOutput = signal<string | null>(null);
+  protected readonly viewLoading = signal(false);
 
   constructor() {
     this.loadLanguages();
@@ -430,6 +472,7 @@ export class TestsetWorkspace {
     this.caseEditing.set(null);
     this.caseVisibility.set(TestCaseVisibility.HIDDEN);
     this.caseError.set(null);
+    this.caseFieldErrors.set({});
     this.buildCaseControls();
     this.caseModal().open();
   }
@@ -438,6 +481,7 @@ export class TestsetWorkspace {
     this.caseEditing.set(c);
     this.caseVisibility.set(c.visibility);
     this.caseError.set(null);
+    this.caseFieldErrors.set({});
     this.buildCaseControls();
     const t = this.testset();
     // El input solo se puede editar en casos manuales; cargamos sus valores actuales.
@@ -492,14 +536,19 @@ export class TestsetWorkspace {
       return;
     }
 
-    // Arma el input por parámetro según su tipo.
+    // Arma el input por parámetro según su tipo; los errores van debajo de cada campo.
     const input: Record<string, unknown> = {};
-    try {
-      for (const { param } of this.caseParams()) {
+    const fieldErrors: Record<string, string> = {};
+    for (const { param } of this.caseParams()) {
+      try {
         input[param.name] = this.parseParam(param, String(this.caseForm().get(param.name)?.value ?? ''));
+      } catch (e) {
+        fieldErrors[param.name] = (e as Error).message;
       }
-    } catch (e) {
-      this.caseError.set((e as Error).message);
+    }
+    this.caseFieldErrors.set(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) {
+      this.caseError.set('Revisa los campos marcados.');
       return;
     }
 
@@ -515,21 +564,74 @@ export class TestsetWorkspace {
     const kind = this.controlType(param);
     const text = raw.trim();
     if (kind === 'json') {
+      let parsed: unknown;
       try {
-        return JSON.parse(text);
+        parsed = JSON.parse(text);
       } catch {
-        throw new Error(`"${param.name}": JSON inválido`);
+        throw new Error(`No es un JSON válido (p. ej. ${this.jsonExample(param)}).`);
       }
+      if (!Array.isArray(parsed)) throw new Error(`Debe ser un arreglo JSON, p. ej. ${this.jsonExample(param)}.`);
+      return parsed;
     }
     if (kind === 'bool') return text === 'true';
     if (kind === 'string') return raw;
     if (kind === 'long') {
       // Enteros grandes como string; el backend acepta número o string.
+      if (!/^-?\d+$/.test(text) && !Number.isFinite(Number(text))) throw new Error('Número entero inválido.');
       return /^-?\d+$/.test(text) ? text : Number(text);
     }
     const n = Number(text);
-    if (!Number.isFinite(n)) throw new Error(`"${param.name}": número inválido`);
+    if (text === '' || !Number.isFinite(n)) throw new Error('Número inválido.');
     return n;
+  }
+
+  // Ejemplo de JSON según el tipo del parámetro, para el mensaje de error.
+  private jsonExample(param: ISignatureParam): string {
+    return typeToString(param.type).includes('[][]') ? '[[1, 2], [3]]' : '[1, 2, 3]';
+  }
+
+  // Valida un campo al salir de él (deja el error debajo).
+  validateCaseField(param: ISignatureParam): void {
+    const errs = { ...this.caseFieldErrors() };
+    try {
+      this.parseParam(param, String(this.caseForm().get(param.name)?.value ?? ''));
+      delete errs[param.name];
+    } catch (e) {
+      errs[param.name] = (e as Error).message;
+    }
+    this.caseFieldErrors.set(errs);
+  }
+
+  fieldError(name: string): string | undefined {
+    return this.caseFieldErrors()[name];
+  }
+
+  // ─── Ver caso (solo lectura) ───
+  openView(c: ITestCase): void {
+    const t = this.testset();
+    if (!t) return;
+    this.viewCase.set(c);
+    this.viewParams.set([]);
+    this.viewOutput.set(null);
+    this.viewLoading.set(true);
+    this.viewModal().open();
+    this.service.getCase(t.id, c.id).subscribe({
+      next: (content) => {
+        this.viewLoading.set(false);
+        this.viewOutput.set(content.output);
+        try {
+          const input = JSON.parse(content.input) as Record<string, unknown>;
+          this.viewParams.set(Object.entries(input).map(([name, value]) => ({ name, value: JSON.stringify(value) })));
+        } catch {
+          this.viewParams.set([]);
+        }
+      },
+      error: (err) => {
+        this.viewLoading.set(false);
+        this.actionError.set(message(err, 'No se pudo cargar el caso.'));
+        this.viewModal().close();
+      },
+    });
   }
 
   private afterCaseSaved(testsetId: number): void {
@@ -558,45 +660,23 @@ export class TestsetWorkspace {
     });
   }
 
-  closeModal(m: 'newVersion' | 'source' | 'case'): void {
+  closeModal(m: 'newVersion' | 'source' | 'case' | 'view'): void {
     if (m === 'newVersion') this.newVersionModal().close();
     else if (m === 'source') this.sourceModal().close();
+    else if (m === 'view') this.viewModal().close();
     else this.caseModal().close();
   }
 
-  // Resumen de los parámetros de un caso (del inputPreview JSON) en una línea.
+  // Resumen de los parámetros de un caso (del inputPreview JSON) en una línea: "a = 2, b = 3".
   caseSummary(c: ITestCase): string {
     if (!c.inputPreview) return '—';
     try {
       const input = JSON.parse(c.inputPreview) as Record<string, unknown>;
-      return Object.entries(input)
-        .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
-        .join(', ');
+      const parts = Object.entries(input).map(([k, v]) => `${k} = ${JSON.stringify(v)}`);
+      return parts.length ? parts.join(', ') : '—';
     } catch {
       return c.inputPreview;
     }
-  }
-
-  // Descarga la entrada o la salida de un caso como archivo.
-  download(c: ITestCase, which: 'in' | 'out'): void {
-    const t = this.testset();
-    if (!t) return;
-    this.service.getCase(t.id, c.id).subscribe({
-      next: (content) => {
-        const text = which === 'in' ? content.input : content.output;
-        if (text === null) {
-          this.actionError.set('La salida se genera al construir.');
-          return;
-        }
-        const url = URL.createObjectURL(new Blob([text], { type: 'application/json;charset=utf-8;' }));
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `caso-${c.ordinal}.${which === 'in' ? 'in' : 'out'}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-      },
-      error: (err) => this.actionError.set(message(err, 'No se pudo descargar.')),
-    });
   }
 
   protected readonly TestsetStatus = TestsetStatus;
@@ -610,14 +690,10 @@ function findParam(route: ActivatedRoute, name: string): string | null {
 }
 
 function message(err: unknown, fallback: string): string {
-  const m = (err as { error?: { message?: unknown } })?.error?.message;
-  if (Array.isArray(m)) return m.join(', ');
-  return typeof m === 'string' ? m : fallback;
+  return backendMessage(err, fallback);
 }
 
-// Los 422 de testsets vienen como { errors: string[] }.
+// Alias histórico: los 422 de testsets vienen como { errors: string[] }, ya los maneja el traductor.
 function messageOrErrors(err: unknown, fallback: string): string {
-  const body = (err as { error?: { errors?: unknown; message?: unknown } })?.error;
-  if (Array.isArray(body?.errors)) return body.errors.join(' · ');
-  return message(err, fallback);
+  return backendMessage(err, fallback);
 }

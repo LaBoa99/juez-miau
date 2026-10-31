@@ -1,4 +1,5 @@
 import type { ActivatedRoute } from '@angular/router';
+import { backendMessage } from '../../core/http/backend-error.mapper';
 
 // El id de la edición vive en el segmento ':id', varios niveles arriba de la pestaña.
 export function findEditionId(route: ActivatedRoute): number {
@@ -6,9 +7,7 @@ export function findEditionId(route: ActivatedRoute): number {
   return Number(param);
 }
 
-// Mensaje de error del backend (string o array de class-validator), con texto de respaldo.
+// Error del backend traducido a español; nunca devuelve el texto crudo (ese va a consola).
 export function message(err: unknown, fallback: string): string {
-  const m = (err as { error?: { message?: unknown } })?.error?.message;
-  if (Array.isArray(m)) return m.join(', ');
-  return typeof m === 'string' ? m : fallback;
+  return backendMessage(err, fallback);
 }

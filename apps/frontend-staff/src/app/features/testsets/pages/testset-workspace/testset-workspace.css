@@ -37,3 +37,24 @@
   .tw__list-body { overflow-y: auto; }
 }
 .tw__muted { color: var(--oj-text-muted); font-size: 13px; }
+
+/* Barra de pasos (como el importador CSV) */
+.tw__steps { display: flex; flex-wrap: wrap; gap: var(--oj-space-xs); width: 100%; margin-bottom: var(--oj-space-md); }
+.tw__step { padding: 2px 8px; border: 1px solid transparent; border-radius: var(--oj-radius); font-size: 12px; font-weight: 600; }
+.tw__step--actual { background: var(--oj-primary); color: var(--oj-bg); }
+.tw__step--hecho { border-color: var(--oj-success); color: var(--oj-success); background: var(--oj-success-bg); }
+.tw__step--pendiente { border-color: var(--oj-border); color: var(--oj-text-muted); }
+
+/* Firma de referencia: texto + botón separados */
+.tw__sig-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oj-space-sm); }
+.tw__sig-row .tw__sig { flex: 1; min-width: 0; }
+
+/* Campos del modal de caso y del "Ver" */
+.tw__field { display: flex; flex-direction: column; gap: 6px; }
+.tw__field-label { display: flex; align-items: baseline; gap: var(--oj-space-sm); font-size: 12px; font-weight: 600; color: var(--oj-text); }
+.tw__field-error { margin: 0; font-size: 12px; color: var(--oj-danger); }
+.tw__sample-block {
+  margin: 0; padding: var(--oj-space-sm); background: var(--oj-bg-muted);
+  border: 1px solid var(--oj-border); border-radius: var(--oj-radius);
+  font-size: 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+}

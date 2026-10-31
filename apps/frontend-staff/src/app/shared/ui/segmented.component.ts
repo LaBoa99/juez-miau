@@ -36,9 +36,11 @@ import { ChangeDetectionStrategy, Component, input, model } from '@angular/core'
       font-family: var(--oj-font-sans);
       font-size: 12px;
       font-weight: 600;
+      text-align: center;
       cursor: pointer;
       box-shadow: none;
     }
+    /* Línea divisoria entre opciones (todas menos la primera). */
     .oj-seg__btn + .oj-seg__btn {
       border-left: 1px solid var(--oj-border);
     }
@@ -47,9 +49,21 @@ import { ChangeDetectionStrategy, Component, input, model } from '@angular/core'
       background: var(--oj-primary);
       color: var(--oj-bg);
     }
+    /* La divisoria no debe verse como borde doble junto al bloque oscuro de la opción activa. */
+    .oj-seg__btn--active {
+      border-left-color: transparent;
+    }
+    .oj-seg__btn--active + .oj-seg__btn {
+      border-left-color: transparent;
+    }
     .oj-seg__btn:disabled:not(.oj-seg__btn--active) {
       color: var(--oj-text-muted);
       cursor: not-allowed;
+    }
+    /* Foco de teclado visible, con el outline hacia dentro para no romper el borde del grupo. */
+    .oj-seg__btn:focus-visible {
+      outline: 1px solid var(--oj-text);
+      outline-offset: -1px;
     }
     /* Tamaño grande: solo para el proyector. */
     :host(.oj-seg--lg) .oj-seg__btn {

@@ -51,7 +51,21 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - Evaluación por FUNCIÓN: cada problema tiene firma (nombre de función, parámetros con tipo, tipo de retorno).
   La firma se edita en Problemas (sección "Firma de la función"); en Testsets solo se muestra con enlace "Editar firma".
 - Casos manuales: JSON con un valor por parámetro de la firma (no archivos .in). Se agregan y editan en DRAFT con un
-  modal que arma un campo por parámetro según su tipo.
+  modal que arma un campo por parámetro según su tipo. El DTO (`ICreateTestCase`) es solo `{ input, visibility? }`;
+  **el caso manual NO lleva `group`** (solo los generados lo tienen) — enviarlo daría 400. El `ordinal` lo asigna el
+  backend. La **salida esperada NO se escribe a mano: la calcula la solución oficial al construir**.
+- Tipos que acepta la firma: escalares `int`, `long`, `float`, `bool`, `string` y `array` anidado de cualquiera de ellos.
+  El backend valida: identificador (≤64, sin palabras reservadas), nombres de parámetro únicos, ≤16 parámetros, ningún
+  parámetro igual al nombre de la función. El cliente valida lo mismo antes de enviar.
+- Visibilidad de un caso: `public` ("Público (ejemplo del enunciado)") u `hidden` ("Oculto"); por defecto oculto.
+- Condiciones para publicar un problema (las valida el backend; el panel las muestra como lista ✓/✕ y deshabilita
+  "Publicar" mientras falten): firma definida · solución oficial cargada · testset vigente **READY** (que a su vez exige
+  ≥1 caso, ≥1 caso público y todas las salidas calculadas). Enunciado/formatos vacíos no ocurren porque el formulario
+  los exige.
+- Estados del testset con pipe en español (`testsetStatus`): DRAFT→"Borrador" (neutral), BUILDING→"Construyendo"
+  (warning), READY→"Lista" (success), FAILED→"Falló" (danger). Nunca el valor crudo.
+- Errores del backend: se traducen con `core/http/backend-error.mapper` (ver "Reglas de errores y estados" en
+  frontend-claude.md). Nunca se muestra el texto crudo en inglés; el original va a la consola.
 - Generación: solo generador en código (`generate(seed, group, index)`) por ahora; el esquema declarativo queda fuera.
 - Testset: DRAFT → BUILDING → READY / FAILED. READY es inmutable (se crea otra versión). compare_mode: exacto,
   tolerancia, checker.
@@ -119,7 +133,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 9 – 9.3.2 | Configuración, programar, modales, observadores | hecho |
 | 10 – 10.1 | Equipos y plantilla CSV | hecho |
 | 11 | Problemas (+ firma de la función) | hecho |
-| 12 | Casos de prueba | hecho (sin "Activar": el backend no lo soporta — ver decisiones) |
+| 12 | Casos de prueba | hecho (sin "Activar": no hay endpoint; el vigente cambia al construir — ver decisiones) |
 | 13 | Staff | pendiente |
 | 14 | Lenguajes | pendiente |
 | 15 | Tiempo real | pendiente |

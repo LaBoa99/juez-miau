@@ -82,6 +82,19 @@ Cada paso debe revisar esta lista y reportar el resultado (qué se revisó y qu�
 - Estados vacíos con `oj-empty-state`; errores con `oj-alert`.
 - Comparar con la pantalla correspondiente del diseño y anotar las diferencias.
 - Al terminar un paso, revisar la consola del navegador: sin errores en rojo.
+- Ningún mensaje crudo del backend ni valor técnico en inglés en pantalla: todo pasa por el traductor de errores y por
+  pipes de estado en español.
+- Las acciones con requisitos muestran la lista ✓/✕ antes y quedan deshabilitadas mientras falte algo.
+- No mostrar controles que no hacen nada en el estado actual (por ejemplo, Vista previa antes de crear).
+
+## Reglas de errores y estados
+- **Nunca** se muestra en pantalla el texto crudo del backend ni valores técnicos en inglés (estados, códigos, mensajes
+  de clase-validator). Todo error del backend pasa por `core/http/backend-error.mapper` (`backendMessage` para un string,
+  `translateBackendError` para una lista con título). El mensaje original va SOLO a la consola.
+- Los estados se muestran con pipes en español (`editionStatus`, `testsetStatus`, veredictos…), nunca el valor crudo del
+  enum. El badge usa el `tone` del pipe.
+- Si una acción tiene requisitos (p. ej. publicar), mostrarlos antes como lista con ✓ (`--oj-success`) / ✕ (`--oj-danger`),
+  con el ícono `aria-hidden` y el estado también en texto, y deshabilitar la acción mientras falte algo.
 
 ## Reglas de datos y navegación
 - Los datos que se muestran viven en signals; nada de propiedades normales con `OnPush`.

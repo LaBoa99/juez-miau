@@ -14,6 +14,7 @@ import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { EditionStatusPipe } from '../../../../shared/pipes/edition-status.pipe';
 import { msToMin, minToMs } from '../../../../shared/time';
 import { EditionsService } from '../../data/editions.service';
+import { backendMessage } from '../../../../core/http/backend-error.mapper';
 
 @Component({
   selector: 'oj-edition-list',
@@ -130,10 +131,7 @@ export class EditionList {
         },
         error: (err) => {
           this.saving.set(false);
-          const msg = err?.error?.message;
-          this.createError.set(
-            Array.isArray(msg) ? msg.join(', ') : (msg ?? 'No se pudo crear la edición.'),
-          );
+          this.createError.set(backendMessage(err, 'No se pudo crear la edición.'));
         },
       });
   }
