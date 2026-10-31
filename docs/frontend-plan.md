@@ -119,6 +119,18 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - **El backend NO emite un evento al terminar de construir un testset** (solo `clock/standings/submission*/flag`). Por eso
   el paso 12 mantiene el poll cada 2 s para el build; no hay evento que lo reemplace (paso 7 no aplica).
 
+### Control del concurso (pantalla 09)
+- `features/contest`: `ContestClockService` (get/start/pause/resume/finish) y `HealthService` (GET /health).
+- Reloj local: se re-ancla en cada `clock:update` (socket) y en la carga HTTP; un `setInterval` de 1 s suma el tiempo
+  local solo mientras `RUNNING` (en pausa/programado/terminado queda fijo), topado a `durationMs`. El intervalo se limpia
+  al salir. No se confía en el reloj absoluto del cliente: la base siempre viene del `elapsedMs` del servidor.
+- Función compartida `msToClock(ms)` en `shared/time.ts` (HH:MM:SS) para marcador y proyector.
+- Botón "Pausar": nuevo variant `warning` de `ojButton` (fondo `--oj-warning`, texto blanco), reutilizable.
+- `/health` responde 503 si BD/Redis caen; el body llega igual en el error y se usa; si no, se muestra todo "Sin conexión".
+  Se consulta cada 10 s. `IHealth` se agregó a `@concurso/shared-types` (no existía) copiando el shape del backend.
+- "Abrir proyector" apunta a `/proyector/:editionId` (ruta pública del paso 19, aún no implementada; el enlace abrirá
+  404 hasta entonces).
+
 ### Concurso en vivo y público
 - Socket.io en `/ws`. Staff: `edition:join` (con token). Público: `public:join { editionId }` sin token.
 - Eventos: `clock:update`, `standings:update` (público y staff), `submission:update`, `submission:progress`,
@@ -175,7 +187,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 13 | Staff | hecho (sin "Reactivar": el backend no lo permite — ver decisiones) |
 | 14 | Lenguajes | hecho (sin edición de campos: el backend solo alterna `active` — ver decisiones) |
 | 15 | Tiempo real | hecho (sin mock de eventos; sin evento de build — ver decisiones) |
-| 16 | Control del concurso | pendiente |
+| 16 | Control del concurso | hecho |
 | 17 | Envíos y detalle | pendiente |
 | 18 | Marcador de staff | pendiente |
 | 19 | Proyector | pendiente |

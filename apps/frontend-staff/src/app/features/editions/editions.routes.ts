@@ -15,6 +15,7 @@ import { ProblemHome } from '../problems/pages/problem-home/problem-home.compone
 import { ProblemPanel } from '../problems/pages/problem-panel/problem-panel';
 import { problemBreadcrumbResolver } from '../problems/data/problems-bus';
 import { TestsetWorkspace } from '../testsets/pages/testset-workspace/testset-workspace';
+import { ContestControl } from '../contest/pages/contest-control/contest-control';
 
 export const routes: Routes = [
   {
@@ -61,7 +62,7 @@ export const routes: Routes = [
               },
             ],
           },
-          { path: 'concurso', component: EditionSectionPlaceholder, data: { breadcrumb: 'Concurso' } },
+          { path: 'concurso', component: ContestControl, data: { breadcrumb: 'Concurso' } },
           { path: 'envios', component: EditionSectionPlaceholder, data: { breadcrumb: 'Envíos' } },
           { path: 'marcador', component: EditionSectionPlaceholder, data: { breadcrumb: 'Marcador' } },
           { path: 'revision', component: EditionSectionPlaceholder, data: { breadcrumb: 'Revisión' } },

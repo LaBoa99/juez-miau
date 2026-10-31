@@ -66,6 +66,11 @@
   color: var(--oj-bg);
 }
 
+.oj-btn--warning {
+  background: var(--oj-warning);
+  color: var(--oj-bg);
+}
+
 /* Disabled */
 .oj-btn:disabled,
 .oj-btn[disabled] {

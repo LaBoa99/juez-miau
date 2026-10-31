@@ -1,0 +1,142 @@
+<oj-page-header title="Concurso" subtitle="Control del reloj, estado del juez y proyector." />
+
+@if (clockError()) {
+  <oj-alert tone="error">No se pudo cargar el reloj del concurso.</oj-alert>
+} @else if (status() === EditionStatus.DRAFT) {
+  <oj-empty-state message="Programa la edición para poder iniciar el concurso.">
+    <a ojButton variant="secondary" size="sm" [routerLink]="['/ediciones', editionId, 'configuracion']">
+      Ir a Configuración
+    </a>
+  </oj-empty-state>
+} @else if (clock(); as c) {
+  <div class="cc">
+    <!-- Caja principal del reloj -->
+    <section class="cc__clock">
+      <header class="cc__head">
+        <span class="cc__head-label">Reloj del concurso</span>
+        <oj-badge [tone]="statusView().tone">{{ statusView().label }}</oj-badge>
+      </header>
+
+      <div class="cc__center">
+        <span class="cc__time-label">Tiempo transcurrido</span>
+        <div class="cc__time oj-mono">{{ elapsedText() }}</div>
+        @if (status() === EditionStatus.PAUSED) {
+          <p class="cc__paused">En pausa · los envíos están bloqueados</p>
+        }
+      </div>
+
+      <dl class="cc__facts">
+        <div>
+          <dt>Inicio</dt>
+          <dd class="oj-mono">{{ startAt() ? (startAt() | date: 'yyyy-MM-dd HH:mm') : '—' }}</dd>
+        </div>
+        <div>
+          <dt>Duración</dt>
+          <dd class="oj-mono">{{ durationText() }}</dd>
+        </div>
+        <div>
+          <dt>Transcurrido</dt>
+          <dd class="oj-mono">{{ elapsedText() }}</dd>
+        </div>
+        <div>
+          <dt>Congela marcador</dt>
+          <dd class="oj-mono">{{ freezeText() }}</dd>
+        </div>
+      </dl>
+
+      @if (actionError()) {
+        <oj-alert tone="error">{{ actionError() }}</oj-alert>
+      }
+
+      @switch (status()) {
+        @case (EditionStatus.SCHEDULED) {
+          <div class="oj-actions cc__actions">
+            <button ojButton variant="success" type="button" [disabled]="busy()" (click)="askStart()">
+              Iniciar ahora
+            </button>
+          </div>
+        }
+        @case (EditionStatus.RUNNING) {
+          <div class="oj-actions cc__actions">
+            <button ojButton variant="warning" type="button" [disabled]="busy()" (click)="pause()">Pausar</button>
+            <button ojButton variant="danger-outline" type="button" [disabled]="busy()" (click)="askFinish()">
+              Finalizar concurso
+            </button>
+          </div>
+        }
+        @case (EditionStatus.PAUSED) {
+          <div class="oj-actions cc__actions">
+            <button ojButton variant="success" type="button" [disabled]="busy()" (click)="resume()">Reanudar</button>
+            <button ojButton variant="danger-outline" type="button" [disabled]="busy()" (click)="askFinish()">
+              Finalizar concurso
+            </button>
+          </div>
+        }
+        @case (EditionStatus.FINISHED) {
+          <p class="cc__done">El concurso terminó. Los resultados oficiales ya están en el marcador.</p>
+        }
+      }
+    </section>
+
+    <!-- Columna derecha -->
+    <aside class="cc__side">
+      <section class="cc__box">
+        <h3 class="cc__box-title">Juez automático</h3>
+        @if (health(); as h) {
+          <div class="cc__grid">
+            <div class="cc__metric">
+              <span class="cc__metric-label">Workers</span>
+              <span class="cc__metric-value oj-mono">{{ h.judgeWorkers ?? '—' }}</span>
+            </div>
+            <div class="cc__metric">
+              <span class="cc__metric-label">En cola</span>
+              <span class="cc__metric-value oj-mono">{{ h.queuedSubmissions ?? '—' }}</span>
+            </div>
+            <div class="cc__metric">
+              <span class="cc__metric-label">Base de datos</span>
+              <span class="cc__status" [class.cc__status--up]="h.database === 'up'">
+                <span class="cc__dot" aria-hidden="true"></span>
+                {{ h.database === 'up' ? 'En línea' : 'Sin conexión' }}
+              </span>
+            </div>
+            <div class="cc__metric">
+              <span class="cc__metric-label">Redis</span>
+              <span class="cc__status" [class.cc__status--up]="h.redis === 'up'">
+                <span class="cc__dot" aria-hidden="true"></span>
+                {{ h.redis === 'up' ? 'En línea' : 'Sin conexión' }}
+              </span>
+            </div>
+          </div>
+        } @else {
+          <p class="cc__muted">Consultando…</p>
+        }
+      </section>
+
+      <section class="cc__box">
+        <h3 class="cc__box-title">Proyector</h3>
+        <p class="cc__proj oj-mono">{{ projectorFullUrl }}</p>
+        <a ojButton variant="secondary" size="sm" [href]="projectorUrl" target="_blank" rel="noopener">
+          Abrir proyector
+        </a>
+      </section>
+    </aside>
+  </div>
+} @else {
+  <p class="cc__muted">Cargando…</p>
+}
+
+<oj-confirm-dialog
+  #startDlg
+  title="Iniciar concurso"
+  message="¿Iniciar el concurso ahora? El reloj empezará a correr para todos los equipos."
+  confirmLabel="Iniciar"
+  (confirmed)="start()"
+/>
+<oj-confirm-dialog
+  #finishDlg
+  title="Finalizar concurso"
+  message="¿Finalizar el concurso ahora? Se cierran los envíos para todos los equipos y se publican los resultados. No se puede deshacer."
+  confirmLabel="Finalizar"
+  [danger]="true"
+  (confirmed)="finish()"
+/>
