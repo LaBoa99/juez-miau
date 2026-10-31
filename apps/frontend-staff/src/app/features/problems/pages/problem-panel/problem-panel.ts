@@ -22,6 +22,7 @@ import { Badge } from '../../../../shared/ui/badge.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { FormField } from '../../../../shared/ui/form-field.component';
 import { Segmented } from '../../../../shared/ui/segmented.component';
+import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
 import { ProblemsService } from '../../data/problems.service';
 import { ProblemsBus } from '../../data/problems-bus';
@@ -30,7 +31,7 @@ import { EditionContext } from '../../../editions/pages/edition-layout/edition-c
 @Component({
   selector: 'oj-problem-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, Badge, Alert, FormField, Segmented, ConfirmDialog],
+  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, Badge, Alert, FormField, Segmented, EmptyState, ConfirmDialog],
   templateUrl: './problem-panel.html',
   styleUrl: './problem-panel.css',
 })
@@ -44,12 +45,15 @@ export class ProblemPanel {
   private readonly sanitizer = inject(DomSanitizer);
 
   protected readonly editionId = findEditionId(this.route);
-  private readonly param = toSignal(this.route.paramMap.pipe(map((p) => p.get('problemId'))), {
-    initialValue: this.route.snapshot.paramMap.get('problemId'),
+  // La ruta 'nuevo' no lleva :problemId; leemos el último segmento de ESTA ruta
+  // ('nuevo' o el id) para no pedir al backend un problema inexistente en modo nuevo.
+  private readonly param = toSignal(this.route.url.pipe(map((segs) => segs.at(-1)?.path ?? null)), {
+    initialValue: this.route.snapshot.url.at(-1)?.path ?? null,
   });
   protected readonly isNew = computed(() => this.param() === 'nuevo');
 
   protected readonly categories = computed(() => this.ctx.edition()?.categories ?? []);
+  protected readonly noCategories = computed(() => this.isNew() && this.categories().length === 0);
 
   protected readonly detail = signal<IProblemDetail | null>(null);
   protected readonly view = signal<'editar' | 'vista'>('editar');
@@ -61,6 +65,7 @@ export class ProblemPanel {
   protected readonly saving = signal(false);
   protected readonly publishing = signal(false);
   protected readonly loadError = signal(false);
+  protected readonly notFound = signal(false);
   protected readonly publishErrors = signal<string[]>([]);
   protected readonly actionError = signal<string | null>(null);
 
@@ -147,6 +152,7 @@ export class ProblemPanel {
     this.publishErrors.set([]);
     this.actionError.set(null);
     this.loadError.set(false);
+    this.notFound.set(false);
 
     if (id === 'nuevo') {
       this.detail.set(null);
@@ -184,7 +190,7 @@ export class ProblemPanel {
         this.populateSignature(d.signature);
         this.bus.dirty.set(false);
       },
-      error: () => this.loadError.set(true),
+      error: (err) => (err?.status === 404 ? this.notFound.set(true) : this.loadError.set(true)),
     });
   }
 

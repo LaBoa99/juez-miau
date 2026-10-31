@@ -1,4 +1,9 @@
-@if (loadError()) {
+@if (notFound()) {
+  <oj-alert tone="error">
+    Este problema no existe o fue eliminado.
+    <a [routerLink]="['/ediciones', editionId, 'problemas']">Volver a la lista</a>
+  </oj-alert>
+} @else if (loadError()) {
   <oj-alert tone="error">No se pudo cargar el problema.</oj-alert>
 } @else {
   <header class="pp__header">
@@ -13,7 +18,13 @@
     </div>
   </header>
 
-  @if (view() === 'editar') {
+  @if (noCategories()) {
+    <oj-empty-state message="Crea al menos una categoría antes de agregar problemas.">
+      <a ojButton variant="secondary" size="sm" [routerLink]="['/ediciones', editionId, 'configuracion']">
+        Ir a Configuración
+      </a>
+    </oj-empty-state>
+  } @else if (view() === 'editar') {
     <form class="pp__box pp__form" [formGroup]="form" (ngSubmit)="save()">
       <div class="pp__row">
         <oj-form-field label="Categoría" for="pp-category">
@@ -182,6 +193,7 @@
     <oj-alert tone="error">{{ actionError() }}</oj-alert>
   }
 
+  @if (!noCategories()) {
   <div class="pp__actions">
     <div class="pp__actions-left">
       @if (isDraft()) {
@@ -199,6 +211,7 @@
       }
     </div>
   </div>
+  }
 
   <oj-confirm-dialog
     title="Eliminar problema"
