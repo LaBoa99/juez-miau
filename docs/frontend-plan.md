@@ -81,6 +81,16 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - Navegación (header y barra de la edición): los enlaces nunca se subrayan (ni hover/visited/focus); el activo se marca
   solo con fondo (header) o borde inferior (barra). Se conserva el `outline` de `:focus-visible`.
 
+### Staff (usuarios)
+- `/staff` es superadmin-only en el backend. Página: tabla (Nombre, Correo mono, Alta mono AAAA-MM-DD, Estado badge) +
+  formulario inline "Agregar usuario" (nombre, correo, contraseña ≥8). Filtros: "Solo activos" (default activado) y
+  búsqueda con debounce 300 ms (nombre o correo). GET `/staff` NO pagina: se cargan todos.
+- Editar en `oj-modal` (nombre, correo, contraseña opcional: vacía = no cambiarla; el PATCH acepta `Partial<{name,email,password}>`).
+- **Desactivar es irreversible**: el backend solo expone `POST /staff/:id/deactivate` y el PATCH no acepta `active`.
+  No hay "Reactivar" — por eso no se ofrece en la UI. "Desactivar" solo aparece en usuarios activos, con confirmación.
+- La pestaña Staff de Configuración ya usaba este catálogo (`GET /staff`) con fallback silencioso; no tenía ningún aviso
+  de "lista no disponible" que quitar.
+
 ### Concurso en vivo y público
 - Socket.io en `/ws`. Staff: `edition:join` (con token). Público: `public:join { editionId }` sin token.
 - Eventos: `clock:update`, `standings:update` (público y staff), `submission:update`, `submission:progress`,
@@ -134,7 +144,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 10 – 10.1 | Equipos y plantilla CSV | hecho |
 | 11 | Problemas (+ firma de la función) | hecho |
 | 12 | Casos de prueba | hecho (sin "Activar": no hay endpoint; el vigente cambia al construir — ver decisiones) |
-| 13 | Staff | pendiente |
+| 13 | Staff | hecho (sin "Reactivar": el backend no lo permite — ver decisiones) |
 | 14 | Lenguajes | pendiente |
 | 15 | Tiempo real | pendiente |
 | 16 | Control del concurso | pendiente |

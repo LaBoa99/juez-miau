@@ -1,0 +1,75 @@
+:host {
+  display: block;
+}
+
+.staff__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--oj-space-md);
+  margin: var(--oj-space-md) 0;
+}
+
+.staff__check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oj-space-xs);
+  font-size: 13px;
+}
+
+.staff__search {
+  width: 260px;
+  max-width: 100%;
+}
+
+/* Tabla a la izquierda, formulario "Agregar usuario" a la derecha. */
+.staff__cols {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.staff__main {
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
+.staff__aside {
+  flex: 0 0 360px;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+}
+
+.staff__aside-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.staff__name {
+  font-weight: 600;
+}
+
+.staff__note {
+  margin: var(--oj-space-sm) 0 0;
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+
+.staff__loading {
+  margin: 0;
+  color: var(--oj-text-muted);
+  font-size: 13px;
+}
+
+.staff__modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

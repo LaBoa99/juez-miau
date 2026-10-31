@@ -1,0 +1,130 @@
+<oj-page-header
+  title="Usuarios de staff"
+  subtitle="Administradores, jueces y observadores. El rol se asigna en cada edición."
+/>
+
+<div class="staff__filters">
+  <label class="staff__check">
+    <input type="checkbox" [formControl]="activeOnlyCtrl" />
+    Solo activos
+  </label>
+  <input
+    class="staff__search"
+    type="text"
+    [formControl]="searchCtrl"
+    placeholder="Buscar por nombre o correo"
+    aria-label="Buscar por nombre o correo"
+  />
+</div>
+
+@if (actionError()) {
+  <oj-alert tone="error">{{ actionError() }}</oj-alert>
+}
+
+<div class="staff__cols">
+  <div class="staff__main">
+    @if (loading()) {
+      <p class="staff__loading">Cargando…</p>
+    } @else if (error()) {
+      <oj-alert tone="error">No se pudo cargar la lista de usuarios.</oj-alert>
+    } @else if (rows().length === 0) {
+      <oj-empty-state message="No hay usuarios que coincidan." />
+    } @else {
+      <div class="oj-table-wrap">
+        <table class="oj-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Correo</th>
+              <th>Alta</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (u of rows(); track u.id) {
+              <tr>
+                <td class="staff__name">{{ u.name }}</td>
+                <td class="oj-mono">{{ u.email }}</td>
+                <td class="oj-mono">{{ u.createdAt | date: 'yyyy-MM-dd' }}</td>
+                <td>
+                  @if (u.active) {
+                    <oj-badge tone="success">Activo</oj-badge>
+                  } @else {
+                    <oj-badge tone="neutral">Inactivo</oj-badge>
+                  }
+                </td>
+                <td>
+                  <div class="oj-actions oj-actions--end">
+                    <button ojButton variant="secondary" size="sm" type="button" (click)="openEdit(u)">Editar</button>
+                    @if (u.active) {
+                      <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDeactivate(u)">
+                        Desactivar
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    <p class="staff__note">Desactivar no borra al usuario: conserva su historial.</p>
+  </div>
+
+  <form class="staff__aside" [formGroup]="form" (ngSubmit)="submit()">
+    <h3 class="staff__aside-title">Agregar usuario</h3>
+
+    @if (formError()) {
+      <oj-alert tone="error">{{ formError() }}</oj-alert>
+    }
+
+    <oj-form-field label="Nombre" for="staff-name">
+      <input id="staff-name" type="text" formControlName="name" />
+    </oj-form-field>
+    <oj-form-field label="Correo" for="staff-email">
+      <input id="staff-email" class="oj-mono" type="email" formControlName="email" />
+    </oj-form-field>
+    <oj-form-field label="Contraseña" for="staff-password" hint="Mínimo 8 caracteres.">
+      <input id="staff-password" type="password" formControlName="password" autocomplete="new-password" />
+    </oj-form-field>
+
+    <div class="oj-actions oj-actions--end">
+      <button ojButton variant="primary" type="submit" [disabled]="saving()">
+        {{ saving() ? 'Guardando…' : 'Agregar' }}
+      </button>
+    </div>
+  </form>
+</div>
+
+<oj-modal title="Editar usuario" size="sm">
+  <form id="staff-edit-form" [formGroup]="editForm" (ngSubmit)="submitEdit()" class="staff__modal-form">
+    @if (editError()) {
+      <oj-alert tone="error">{{ editError() }}</oj-alert>
+    }
+    <oj-form-field label="Nombre" for="staff-edit-name">
+      <input id="staff-edit-name" type="text" formControlName="name" />
+    </oj-form-field>
+    <oj-form-field label="Correo" for="staff-edit-email">
+      <input id="staff-edit-email" class="oj-mono" type="email" formControlName="email" />
+    </oj-form-field>
+    <oj-form-field label="Contraseña" for="staff-edit-password" hint="Déjala vacía para no cambiarla.">
+      <input id="staff-edit-password" type="password" formControlName="password" autocomplete="new-password" />
+    </oj-form-field>
+  </form>
+  <div footer>
+    <button ojButton variant="secondary" type="button" (click)="closeEdit()">Cancelar</button>
+    <button ojButton variant="primary" type="submit" form="staff-edit-form" [disabled]="editSaving()">
+      {{ editSaving() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </div>
+</oj-modal>
+
+<oj-confirm-dialog
+  title="Desactivar usuario"
+  [message]="'¿Desactivar a ' + (pendingDeactivate()?.name ?? '') + '? Ya no podrá iniciar sesión.'"
+  confirmLabel="Desactivar"
+  [danger]="true"
+  (confirmed)="deactivate()"
+/>
