@@ -279,7 +279,10 @@ export class RoomsTab {
   revokeToken(): void {
     const room = this.tokenRoom();
     if (!room) return;
-    this.service.revokeToken(room.id).subscribe({ next: () => this.tokenModal().close() });
+    this.service.revokeToken(room.id).subscribe({
+      next: () => this.tokenModal().close(),
+      error: (err) => this.obsWarning.set(message(err, 'No se pudo revocar el token.')),
+    });
   }
 }
 

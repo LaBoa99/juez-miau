@@ -31,14 +31,15 @@ export class ProblemWorkspace {
   private readonly editionId = findEditionId(this.route);
   protected readonly code = computed(() => this.ctx.edition()?.name ?? '');
 
-  // Segmento seleccionado (:problemId o 'nuevo'), leído de la ruta hija.
+  // Segmento seleccionado (:problemId o 'nuevo'), leído de la URL —nunca de firstChild/snapshot,
+  // que al activarse la ruta pueden no existir todavía (el snapshot del hijo llega undefined).
   protected readonly selected = toSignal(
     this.router.events.pipe(
       filter((e) => e instanceof NavigationEnd),
       startWith(null),
-      map(() => this.route.firstChild?.snapshot.paramMap.get('problemId') ?? this.childPath()),
+      map(() => this.selectedSegment()),
     ),
-    { initialValue: null as string | null },
+    { initialValue: this.selectedSegment() },
   );
 
   protected readonly groups = computed<Group[]>(() => {
@@ -95,9 +96,10 @@ export class ProblemWorkspace {
     this.router.navigate([path], { relativeTo: this.route });
   }
 
-  // 'nuevo' no es :problemId; lo detectamos por la URL.
-  private childPath(): string | null {
-    return this.router.url.endsWith('/problemas/nuevo') ? 'nuevo' : null;
+  // Último segmento bajo 'problemas' en la URL actual: ':problemId' o 'nuevo'; null en la lista.
+  private selectedSegment(): string | null {
+    const match = /\/problemas\/([^/?#]+)/.exec(this.router.url);
+    return match ? match[1] : null;
   }
 }
 

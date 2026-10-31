@@ -81,6 +81,19 @@ Cada paso debe revisar esta lista y reportar el resultado (qué se revisó y qu�
 - Crear con formulario inline; editar, programar, ver detalles y confirmar con `oj-modal`; pie de modal con gap 8px.
 - Estados vacíos con `oj-empty-state`; errores con `oj-alert`.
 - Comparar con la pantalla correspondiente del diseño y anotar las diferencias.
+- Al terminar un paso, revisar la consola del navegador: sin errores en rojo.
+
+## Reglas de datos y navegación
+- Los datos que se muestran viven en signals; nada de propiedades normales con `OnPush`.
+- Los parámetros de ruta se leen como signals de la ruta propia del componente (`toSignal` de `paramMap`/`url`) o con
+  `withComponentInputBinding`; **nunca** con `snapshot`, `firstChild` ni `parent` (el snapshot del hijo puede llegar
+  `undefined` al activarse la ruta). Si el componente es hijo de la página, lee el id en el hijo, no en el padre.
+- Las cargas que dependen de la edición esperan a que exista su id (signal/servicio de la edición actual); nunca se pide
+  con `undefined`/`null`.
+- Las suscripciones se limpian solas (`toSignal` o `takeUntilDestroyed`) y manejan errores (callback `error:`).
+- Toda página tiene estados de cargando, vacío y error; nunca queda en blanco (muestra al menos el título y "Cargando…").
+- Navegar entre rutas hijas de la misma página recarga sus datos sin recargar el navegador (reacciona al cambio de ruta).
+- Después de crear, editar o eliminar, la vista se actualiza sin recargar (volver a pedir la lista o actualizar el signal).
 
 ## Antes de terminar una tarea
 - ng build sin errores ni warnings nuevos.

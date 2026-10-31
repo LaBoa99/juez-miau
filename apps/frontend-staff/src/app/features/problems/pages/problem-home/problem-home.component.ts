@@ -31,6 +31,7 @@ export class ProblemHome {
   protected readonly bus = inject(ProblemsBus);
 
   nuevo(): void {
-    this.router.navigate(['nuevo'], { relativeTo: this.route.parent });
+    // Relativo a la ruta propia (índice vacío de 'problemas') → 'problemas/nuevo'. Sin usar parent.
+    this.router.navigate(['nuevo'], { relativeTo: this.route });
   }
 }

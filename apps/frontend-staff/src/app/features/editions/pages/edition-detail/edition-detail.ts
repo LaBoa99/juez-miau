@@ -73,6 +73,7 @@ export class EditionDetail {
   private readonly editModal = viewChild.required<Modal>('editModal');
   protected readonly editSaving = signal(false);
   protected readonly editError = signal<string | null>(null);
+  protected readonly deleteError = signal<string | null>(null);
   protected readonly editForm = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(255)]],
     durationMin: [0, [Validators.required, Validators.min(1)]],
@@ -213,8 +214,10 @@ export class EditionDetail {
   }
 
   remove(): void {
+    this.deleteError.set(null);
     this.service.remove(this.id).subscribe({
       next: () => this.router.navigateByUrl('/ediciones'),
+      error: (err) => this.deleteError.set(this.message(err, 'No se pudo eliminar la edición.')),
     });
   }
 

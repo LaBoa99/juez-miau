@@ -37,6 +37,9 @@
   @if (scheduledAt()) {
     <oj-alert tone="success">Edición programada para el {{ scheduledAt() | date: 'yyyy-MM-dd HH:mm' }}.</oj-alert>
   }
+  @if (deleteError()) {
+    <oj-alert tone="error">{{ deleteError() }}</oj-alert>
+  }
 
   <oj-modal #editModal title="Editar datos" size="md">
     <form id="cfg-edit-form" class="cfg__form" [formGroup]="editForm" (ngSubmit)="submitEdit()">
@@ -158,4 +161,6 @@
   />
 } @else if (ctx.loading()) {
   <p class="cfg__hint">Cargando…</p>
+} @else if (ctx.error()) {
+  <oj-alert tone="error">No se pudo cargar la edición.</oj-alert>
 }

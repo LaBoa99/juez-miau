@@ -64,6 +64,7 @@ export class ProblemPanel {
 
   protected readonly saving = signal(false);
   protected readonly publishing = signal(false);
+  protected readonly loading = signal(false);
   protected readonly loadError = signal(false);
   protected readonly notFound = signal(false);
   protected readonly publishErrors = signal<string[]>([]);
@@ -153,6 +154,7 @@ export class ProblemPanel {
     this.actionError.set(null);
     this.loadError.set(false);
     this.notFound.set(false);
+    this.loading.set(false);
 
     if (id === 'nuevo') {
       this.detail.set(null);
@@ -172,8 +174,10 @@ export class ProblemPanel {
     }
 
     const numId = Number(id);
+    this.loading.set(true);
     this.service.get(numId).subscribe({
       next: (d) => {
+        this.loading.set(false);
         this.detail.set(d);
         this.form.reset({
           categoryId: d.categoryId,
@@ -190,7 +194,10 @@ export class ProblemPanel {
         this.populateSignature(d.signature);
         this.bus.dirty.set(false);
       },
-      error: (err) => (err?.status === 404 ? this.notFound.set(true) : this.loadError.set(true)),
+      error: (err) => {
+        this.loading.set(false);
+        err?.status === 404 ? this.notFound.set(true) : this.loadError.set(true);
+      },
     });
   }
 

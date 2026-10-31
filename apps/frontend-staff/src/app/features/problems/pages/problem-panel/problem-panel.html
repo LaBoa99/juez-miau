@@ -16,7 +16,9 @@
     </div>
   </header>
 
-  @if (noCategories()) {
+  @if (loading()) {
+    <p class="pp__muted">Cargando…</p>
+  } @else if (noCategories()) {
     <oj-empty-state message="Crea al menos una categoría antes de agregar problemas.">
       <a ojButton variant="secondary" size="sm" [routerLink]="['/ediciones', editionId, 'configuracion']">
         Ir a Configuración
@@ -196,8 +198,8 @@
     <oj-alert tone="error">{{ actionError() }}</oj-alert>
   }
 
-  @if (noCategories()) {
-    <!-- sin acciones: primero hay que crear una categoría -->
+  @if (loading() || noCategories()) {
+    <!-- cargando o sin categorías: todavía no hay acciones -->
   } @else if (isNew()) {
     <div class="oj-actions oj-actions--end">
       <button ojButton variant="secondary" type="button" (click)="cancel()">Cancelar</button>
