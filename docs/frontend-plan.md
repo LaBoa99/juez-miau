@@ -147,7 +147,20 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
   catálogo de lenguajes. Documentado el tope de 100 equipos.
 - Tiempo real: `submission:update` hace upsert (las nuevas arriba con resaltado ~2 s que se desvanece, anulado con
   `prefers-reduced-motion`); `submission:progress` llena "caso 4/20" (mapa aparte, el envío no tiene ese campo).
-- Ruta `envios` con hijos: `''` (lista) y `:submissionId` (placeholder del 17B).
+- Ruta `envios` con hijos: `''` (lista) y `:submissionId` (detalle).
+
+### Envíos (detalle, 17B)
+- `oj-code-block` (`shared/ui`): números de línea gris, mono 13px, line-height 20px, fondo muted, scroll horizontal.
+- `SubmissionsService` extendido: `getForStaff(id)` (detalle con `source` y casos), `rejudge(id, reason)`, `history(id)`.
+  "Descargar código" se arma en el cliente con un blob del `source` (no hay endpoint de descarga); extensión según el
+  catálogo de lenguajes. `TeamsService.get(id)` nuevo para el nombre del equipo (`GET /teams/:id`).
+- Re-evaluar: `oj-modal` con motivo (≤500). Se muestra **solo** si el rol en la edición es ADMIN/JUDGE o superadmin
+  (`AuthService.roleInEdition`); el backend lo valida igual.
+- **Limitaciones del backend asumidas**: `ISubmissionCase` trae solo `message` (no "esperado/obtenido" por separado) →
+  la caja roja muestra el `message` del primer caso con error (y el log de compilación en `oj-code-block` si es CE). El
+  detalle no expone hash del código → se muestra solo el tamaño. El historial trae `rejudgedBy` como id (no nombre) →
+  "Re-evaluación manual · #id".
+- Tiempo real: `submission:update` fusiona el envío conservando el `source`; `submission:progress` llena "caso x/y".
 
 ### Concurso en vivo y público
 - Socket.io en `/ws`. Staff: `edition:join` (con token). Público: `public:join { editionId }` sin token.
@@ -206,7 +219,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 14 | Lenguajes | hecho (sin edición de campos: el backend solo alterna `active` — ver decisiones) |
 | 15 | Tiempo real | hecho (sin mock de eventos; sin evento de build — ver decisiones) |
 | 16 | Control del concurso | hecho |
-| 17 | Envíos y detalle | en curso (17A lista hecha; 17B detalle pendiente) |
+| 17 | Envíos y detalle | hecho |
 | 18 | Marcador de staff | pendiente |
 | 19 | Proyector | pendiente |
 | 20 | Revisión manual | pendiente |

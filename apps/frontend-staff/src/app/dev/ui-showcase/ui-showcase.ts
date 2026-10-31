@@ -12,13 +12,14 @@ import { TabNav } from '../../shared/ui/tab-nav.component';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog.component';
 import { FileDrop } from '../../shared/ui/file-drop.component';
 import { Modal } from '../../shared/ui/modal.component';
+import { CodeBlock } from '../../shared/ui/code-block.component';
 
 @Component({
   selector: 'oj-ui-showcase',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ButtonDirective, Badge, Alert, FormField, Segmented, PageHeader, Breadcrumb, EmptyState,
-    SidePanel, TabNav, ConfirmDialog, FileDrop, Modal,
+    SidePanel, TabNav, ConfirmDialog, FileDrop, Modal, CodeBlock,
   ],
   templateUrl: './ui-showcase.html',
   styleUrl: './ui-showcase.css',
@@ -40,6 +41,7 @@ export class UiShowcase {
     { label: 'Dev', link: '/dev/ui' },
     { label: 'UI Showcase' },
   ];
+  protected readonly sampleCode = `#include <bits/stdc++.h>\nusing namespace std;\n\nint suma(int a, int b) {\n  return a + b;\n}`;
 
   protected readonly panelOpen = signal(true);
   protected readonly tabs = [
