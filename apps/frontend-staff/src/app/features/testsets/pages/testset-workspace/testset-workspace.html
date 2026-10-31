@@ -1,279 +1,337 @@
 @if (loadError()) {
   <oj-alert tone="error">No se pudo cargar el testset.</oj-alert>
-} @else if (problem() && !signature()) {
-  <oj-empty-state message="Define la firma de la función antes de crear casos.">
-    <a ojButton variant="secondary" size="sm" [routerLink]="['/ediciones', editionId, 'problemas', problemId]">Ir a Problemas</a>
-  </oj-empty-state>
+} @else if (!problem()) {
+  <h1 class="tw__title">Casos de prueba</h1>
+  <p class="tw__muted">Cargando…</p>
 } @else if (problem(); as p) {
-  <div class="tw__steps">
-    @for (s of steps(); track s.label) {
-      <span class="tw__step" [class]="'tw__step--' + s.state">{{ s.label }}</span>
-    }
-  </div>
-  <div class="tw">
-    <!-- Columna izquierda: versiones -->
-    <aside class="tw__list">
-      <header class="tw__list-head">
-        <div class="tw__list-title">Versiones del testset</div>
-        <div class="tw__list-sub">{{ p.letter }} · {{ p.title }}</div>
-      </header>
-      <div class="tw__list-body">
-        @for (v of versions(); track v.id) {
-          <button
-            type="button"
-            class="tw__item"
-            [class.tw__item--active]="v.id === selectedId()"
-            [attr.aria-current]="v.id === selectedId() ? 'true' : null"
-            (click)="selectVersion(v.id)"
-          >
-            <span class="tw__v oj-mono">v{{ v.version }}</span>
-            <span class="tw__note">{{ v.id === currentId() ? 'vigente' : v.reason || '—' }}</span>
-            <oj-badge [tone]="(v.status | testsetStatus).tone">{{ (v.status | testsetStatus).label }}</oj-badge>
-          </button>
-        }
-      </div>
-      @if (currentVersion()?.status === TestsetStatus.READY) {
-        <div class="tw__list-foot">
-          <button ojButton variant="secondary" type="button" (click)="openNewVersion()">
-            + Nueva versión desde v{{ currentVersion()!.version }}
-          </button>
+  <header class="tw__header">
+    <div class="tw__header-left">
+      <h1 class="tw__title">{{ p.letter }} · {{ p.title }}</h1>
+      @if (testset(); as t) {
+        <div class="tw__sub">
+          <span class="oj-mono">Versión {{ t.version }}</span>
+          <oj-badge [tone]="(t.status | testsetStatus).tone">{{ (t.status | testsetStatus).label }}</oj-badge>
+          @if (isCurrent()) {
+            <span class="tw__current">Vigente para el concurso</span>
+          }
         </div>
       }
-    </aside>
+    </div>
+    @if (testset()?.status === TestsetStatus.READY) {
+      <button ojButton variant="secondary" type="button" (click)="openNewVersion()">+ Nueva versión</button>
+    }
+  </header>
 
-    <!-- Panel derecho -->
-    <section class="tw__panel">
-      @if (testset(); as t) {
-        <header class="tw__header">
-          <div class="tw__header-left">
-            <h1 class="tw__title">Versión {{ t.version }}</h1>
-            <oj-badge [tone]="(t.status | testsetStatus).tone">{{ (t.status | testsetStatus).label }}</oj-badge>
-            @if (isCurrent()) {
-              <span class="tw__current">Vigente para el concurso</span>
-            }
-          </div>
-          @if (editable()) {
-            <button ojButton variant="primary" type="button" (click)="askBuild()">Construir testset</button>
-          }
-        </header>
+  @if (testset(); as t) {
+    <div class="tw__progress">
+      <div class="tw__progress-label">{{ progressDone() }} de 5 pasos completos</div>
+      <div class="tw__progress-bar" role="progressbar" [attr.aria-valuenow]="progressDone()" aria-valuemin="0" aria-valuemax="5">
+        <div class="tw__progress-fill" [style.width.%]="progressDone() / 5 * 100"></div>
+      </div>
+    </div>
 
-        <div class="tw__sig-row">
-          <span class="tw__sig oj-mono">{{ signatureText() }}</span>
-          <a ojButton variant="secondary" size="sm" [routerLink]="['/ediciones', editionId, 'problemas', problemId]">Editar firma</a>
-        </div>
-        @if (!hasParams()) {
-          <oj-alert tone="warning">
-            La firma no tiene parámetros. Agrégalos para poder crear casos.
-            <a [routerLink]="['/ediciones', editionId, 'problemas', problemId]">Editar firma</a>
-          </oj-alert>
-        }
+    @if (nextStep(); as ns) {
+      <oj-alert tone="warning"><strong>Siguiente:</strong> {{ ns.hint }}</oj-alert>
+    }
 
-        @if (actionError()) {
-          <oj-alert tone="error">{{ actionError() }}</oj-alert>
-        }
+    @if (actionError()) {
+      <oj-alert tone="error">{{ actionError() }}</oj-alert>
+    }
 
-        @if (t.status === TestsetStatus.READY) {
-          <oj-alert tone="info">
-            Esta versión está lista y ya no se puede modificar. Para cambiar casos o límites, crea una nueva versión.
-          </oj-alert>
-        } @else if (t.status === TestsetStatus.BUILDING) {
-          <div class="tw__building">
-            <strong>Construyendo…</strong>
-            <span class="tw__muted">Se ejecuta la solución oficial sobre cada caso. Esto puede tardar.</span>
-          </div>
-        } @else if (t.status === TestsetStatus.FAILED && t.buildLog) {
-          <oj-alert tone="error"><pre class="tw__log">{{ t.buildLog }}</pre></oj-alert>
-        }
-
-        <div class="tw__grid">
-          <!-- Evaluación -->
-          <div class="tw__box">
-            <h3 class="tw__box-title">Evaluación</h3>
-            <oj-segmented
-              [options]="compareModes"
-              [value]="compareMode()"
-              (valueChange)="onCompareMode($event!)"
-            />
-            @if (compareMode() === CompareMode.CHECKER) {
-              <div class="tw__src-row">
-                <span class="tw__muted">
-                  Checker: {{ t.checkerId !== null ? 'definido' : 'sin definir' }}
-                </span>
-                @if (editable()) {
-                  <button ojButton variant="secondary" size="sm" type="button" (click)="openSource('checker')">Reemplazar</button>
-                }
-              </div>
-            }
-            <div [formGroup]="evalForm">
-              @if (compareMode() === CompareMode.TOLERANCE) {
-                <oj-form-field label="Tolerancia" for="tw-tol">
-                  <input id="tw-tol" class="oj-mono" type="number" step="any" formControlName="floatTolerance" />
-                </oj-form-field>
+    <div class="tw__steps">
+      @for (step of steps(); track step.key) {
+        <div
+          class="tw__step"
+          [class.tw__step--done]="step.state === 'done'"
+          [class.tw__step--next]="step.state === 'next'"
+          [class.tw__step--pending]="step.state === 'pending'"
+        >
+          <div class="tw__step-head">
+            <span class="tw__step-num" aria-hidden="true">{{ step.n }}</span>
+            <h3 class="tw__step-title">{{ step.title }}</h3>
+            <span class="tw__step-state">
+              @switch (step.state) {
+                @case ('done') { <span class="tw__step-done">Completo ✓</span> }
+                @case ('next') { <span class="tw__step-next">Siguiente</span> }
+                @default { <span class="tw__step-pending">Pendiente</span> }
               }
-              <div class="tw__row">
-                <oj-form-field label="Tiempo límite (ms)" for="tw-time">
-                  <input id="tw-time" class="oj-mono" type="number" formControlName="timeLimitMs" />
-                </oj-form-field>
-                <oj-form-field label="Memoria (MB)" for="tw-mem">
-                  <input id="tw-mem" class="oj-mono" type="number" formControlName="memoryLimitMb" />
-                </oj-form-field>
-              </div>
-            </div>
-            @if (editable()) {
-              <div class="tw__box-actions">
-                <button ojButton variant="primary" type="button" [disabled]="evalSaving()" (click)="saveEval()">
-                  {{ evalSaving() ? 'Guardando…' : 'Guardar evaluación' }}
-                </button>
-              </div>
-            }
+            </span>
+            <button ojButton variant="primary" size="sm" type="button" [disabled]="!stepEnabled(step.state)" (click)="stepAction(step.key)">
+              {{ step.actionLabel }}
+            </button>
           </div>
 
-          <!-- Solución oficial y generador -->
-          <div class="tw__box">
-            <h3 class="tw__box-title">Solución oficial y generador</h3>
-
-            <div class="tw__src">
-              <div class="tw__src-info">
-                <span class="tw__src-name">Solución oficial</span>
-                <span class="tw__muted oj-mono">
+          <div class="tw__step-body">
+            @switch (step.key) {
+              @case ('firma') {
+                @if (signatureText(); as sig) {
+                  <p class="tw__sig oj-mono">{{ sig }}</p>
+                  @if (!hasParams()) {
+                    <p class="tw__muted">La firma no tiene parámetros. Agrega al menos uno para poder crear casos.</p>
+                  }
+                } @else {
+                  <p class="tw__muted">Aún no has definido la firma de la función.</p>
+                }
+              }
+              @case ('solucion') {
+                <p class="tw__muted oj-mono">
                   @if (t.refSolutionId === null) {
-                    sin definir
+                    Sin definir
                   } @else if (isCurrent() && p.refSolution) {
                     {{ languageCode(p.refSolution.languageId) }} · {{ p.refSolution.sourceSha.slice(0, 8) }}
                   } @else {
-                    definida
+                    Definida
                   }
-                </span>
-                <span class="tw__muted">(produce las salidas esperadas)</span>
-              </div>
-              @if (editable()) {
-                <button ojButton variant="secondary" size="sm" type="button" (click)="openSource('ref')">Reemplazar</button>
+                </p>
+                <p class="tw__muted">Produce las salidas esperadas al construir.</p>
               }
-            </div>
-
-            <div class="tw__src">
-              <div class="tw__src-info">
-                <span class="tw__src-name">Generador</span>
-                @if (t.generatorId === null) {
-                  <span class="tw__muted oj-mono">sin definir</span>
+              @case ('evaluacion') {
+                <p class="tw__muted">{{ evalSummary() }}</p>
+              }
+              @case ('casos') {
+                <span class="tw__muted oj-mono">{{ caseSummaryLine() }}</span>
+                @if (t.cases.length === 0) {
+                  <p class="tw__muted">Aún no hay casos.</p>
                 } @else {
-                  <span class="tw__muted oj-mono">
-                    grupos: {{ (t.generatorGroups ?? []).length }}
-                    @if (isCurrent() && p.generator) {
-                      · {{ languageCode(p.generator.languageId) }}
-                    }
-                  </span>
+                  <div class="oj-table-wrap">
+                    <table class="oj-table">
+                      <thead>
+                        <tr>
+                          <th>Entradas</th>
+                          <th>Origen</th>
+                          <th>Visibilidad</th>
+                          <th>Salida esperada</th>
+                          <th class="tw__num">Tiempo ref.</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (c of t.cases; track c.id) {
+                          <tr>
+                            <td class="tw__summary oj-mono" [title]="caseSummary(c)">{{ caseSummary(c) }}</td>
+                            <td>{{ originLabel(c.origin) }}</td>
+                            <td>
+                              <span class="tw__vis" [class.tw__vis--pub]="c.visibility === TestCaseVisibility.PUBLIC">
+                                {{ c.visibility === TestCaseVisibility.PUBLIC ? 'Público' : 'Oculto' }}
+                              </span>
+                            </td>
+                            <td>
+                              @if (c.outputSha !== null) {
+                                <span class="tw__built">Calculada</span>
+                              } @else {
+                                <span class="tw__muted">Pendiente de construir</span>
+                              }
+                            </td>
+                            <td class="tw__num">
+                              @if (c.refTimeMs !== null) {
+                                <span class="oj-mono">{{ c.refTimeMs }} ms</span>
+                              } @else {
+                                <span class="tw__muted">Pendiente de construir</span>
+                              }
+                            </td>
+                            <td>
+                              <div class="tw__row-actions">
+                                <button ojButton variant="secondary" size="sm" type="button" (click)="openView(c)">Ver</button>
+                                @if (editable() && c.origin === TestCaseOrigin.MANUAL) {
+                                  <button ojButton variant="secondary" size="sm" type="button" (click)="openEditCase(c)">Editar</button>
+                                  <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDeleteCase(c)">Eliminar</button>
+                                }
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
                 }
-              </div>
-              @if (editable()) {
-                <div class="tw__src-actions">
-                  <button ojButton variant="secondary" size="sm" type="button" (click)="openSource('generator')">Reemplazar</button>
-                  @if (t.generatorId !== null) {
-                    <button ojButton variant="danger-outline" size="sm" type="button" (click)="removeGenerator()">Quitar</button>
+                <p class="tw__muted">La salida esperada se calcula sola al construir, ejecutando la solución oficial.</p>
+
+                <!-- Generador (acción secundaria del paso) -->
+                <div class="tw__src">
+                  <div class="tw__src-info">
+                    <span class="tw__src-name">Generador (opcional)</span>
+                    @if (t.generatorId === null) {
+                      <span class="tw__muted oj-mono">sin definir</span>
+                    } @else {
+                      <span class="tw__muted oj-mono">
+                        grupos: {{ (t.generatorGroups ?? []).length }}
+                        @if (isCurrent() && p.generator) {
+                          · {{ languageCode(p.generator.languageId) }}
+                        }
+                      </span>
+                    }
+                  </div>
+                  @if (editable()) {
+                    <div class="tw__src-actions">
+                      <button ojButton variant="secondary" size="sm" type="button" [disabled]="!hasParams()" (click)="openSource('generator')">
+                        {{ t.generatorId === null ? 'Subir' : 'Reemplazar' }}
+                      </button>
+                      @if (t.generatorId !== null) {
+                        <button ojButton variant="danger-outline" size="sm" type="button" (click)="removeGenerator()">Quitar</button>
+                      }
+                    </div>
                   }
                 </div>
               }
-            </div>
-          </div>
-        </div>
-
-        <!-- Casos -->
-        <div class="tw__box">
-          <div class="tw__cases-head">
-            <h3 class="tw__box-title">Casos</h3>
-            <span class="tw__muted oj-mono">{{ caseSummaryLine() }}</span>
-            @if (editable()) {
-              <button ojButton variant="secondary" size="sm" type="button" [disabled]="!hasParams()" (click)="openAddCase()">
-                + Agregar caso
-              </button>
+              @case ('construir') {
+                @if (t.status === TestsetStatus.BUILDING) {
+                  <div class="tw__building">
+                    <strong>Construyendo…</strong>
+                    <span class="tw__muted">Se ejecuta la solución oficial sobre cada caso. Esto puede tardar.</span>
+                  </div>
+                } @else if (t.status === TestsetStatus.FAILED && t.buildLog) {
+                  <oj-alert tone="error"><pre class="tw__log">{{ t.buildLog }}</pre></oj-alert>
+                } @else if (t.status === TestsetStatus.READY) {
+                  <p class="tw__muted">Esta versión está lista. Para cambiar casos o límites, crea una nueva versión.</p>
+                } @else {
+                  <p class="tw__muted">Se habilita cuando los 4 pasos anteriores están completos; calculará las salidas esperadas.</p>
+                }
+              }
             }
           </div>
-
-          @if (t.cases.length === 0) {
-            <p class="tw__muted">Aún no hay casos.</p>
-          } @else {
-            <div class="oj-table-wrap">
-              <table class="oj-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Origen</th>
-                    <th>Grupo</th>
-                    <th>Visibilidad</th>
-                    <th>Parámetros</th>
-                    <th class="tw__num">Tiempo ref.</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (c of t.cases; track c.id) {
-                    <tr>
-                      <td class="oj-mono">{{ c.ordinal }}</td>
-                      <td>{{ originLabel(c.origin) }}</td>
-                      <td class="oj-mono">{{ c.group ?? '—' }}</td>
-                      <td>
-                        <span class="tw__vis" [class.tw__vis--pub]="c.visibility === TestCaseVisibility.PUBLIC">
-                          {{ c.visibility === TestCaseVisibility.PUBLIC ? 'Público' : 'Oculto' }}
-                        </span>
-                      </td>
-                      <td class="tw__summary oj-mono" [title]="caseSummary(c)">{{ caseSummary(c) }}</td>
-                      <td class="oj-mono tw__num">{{ c.refTimeMs !== null ? c.refTimeMs + ' ms' : '—' }}</td>
-                      <td>
-                        <div class="tw__row-actions">
-                          <button ojButton variant="secondary" size="sm" type="button" (click)="openView(c)">Ver</button>
-                          @if (editable() && c.origin === TestCaseOrigin.MANUAL) {
-                            <button ojButton variant="secondary" size="sm" type="button" (click)="openEditCase(c)">Editar</button>
-                            <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDeleteCase(c)">Eliminar</button>
-                          }
-                        </div>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          }
-
-          <p class="tw__muted">
-            Las salidas esperadas se generan al construir, ejecutando la solución oficial con los parámetros de cada caso.
-          </p>
         </div>
-      } @else {
-        <p class="tw__muted">Cargando…</p>
       }
-    </section>
-  </div>
+    </div>
+  } @else {
+    <p class="tw__muted">Cargando…</p>
+  }
 
-  <!-- Nueva versión -->
-  <oj-modal #newVersionModal title="Nueva versión" size="sm">
-    <oj-form-field label="Motivo" for="tw-reason" hint="Queda en el historial de versiones.">
-      <input id="tw-reason" type="text" [formControl]="reasonCtrl" />
-    </oj-form-field>
+  <!-- Firma -->
+  <oj-modal #signatureModal title="Firma de la función" size="md">
+    @if (signatureError()) {
+      <oj-alert tone="error">{{ signatureError() }}</oj-alert>
+    }
+    <div class="tw__sig-form" [formGroup]="signatureForm">
+      <oj-form-field label="Nombre de la función" for="sig-fn">
+        <input id="sig-fn" class="oj-mono" type="text" formControlName="functionName" />
+      </oj-form-field>
+
+      <div class="tw__sig-params" formArrayName="params">
+        <span class="tw__sig-label">Parámetros</span>
+        @for (pg of sigParams.controls; track $index) {
+          <div class="tw__sig-row" [formGroupName]="$index">
+            <input class="oj-mono" type="text" placeholder="nombre" formControlName="name" aria-label="Nombre del parámetro" />
+            <select formControlName="base" aria-label="Tipo">
+              @for (ty of scalarTypes; track ty) {
+                <option [value]="ty">{{ ty }}</option>
+              }
+            </select>
+            <select formControlName="depth" aria-label="Arreglo">
+              @for (d of depths; track d) {
+                <option [ngValue]="d">{{ d === 0 ? 'escalar' : '[]'.repeat(d) }}</option>
+              }
+            </select>
+            <button ojButton variant="danger-outline" size="sm" type="button" (click)="removeParam($index)">Quitar</button>
+          </div>
+        }
+        <button ojButton variant="secondary" size="sm" type="button" (click)="addParam()">+ Agregar parámetro</button>
+      </div>
+
+      <oj-form-field label="Tipo de retorno" for="sig-ret">
+        <div class="tw__sig-return">
+          <select id="sig-ret" formControlName="returnBase" aria-label="Tipo de retorno">
+            @for (ty of scalarTypes; track ty) {
+              <option [value]="ty">{{ ty }}</option>
+            }
+          </select>
+          <select formControlName="returnDepth" aria-label="Arreglo del retorno">
+            @for (d of depths; track d) {
+              <option [ngValue]="d">{{ d === 0 ? 'escalar' : '[]'.repeat(d) }}</option>
+            }
+          </select>
+        </div>
+      </oj-form-field>
+    </div>
     <div footer>
-      <button ojButton variant="secondary" type="button" (click)="closeModal('newVersion')">Cancelar</button>
-      <button ojButton variant="primary" type="button" [disabled]="newVersionSaving()" (click)="createVersion()">
-        {{ newVersionSaving() ? 'Creando…' : 'Crear versión' }}
+      <button ojButton variant="secondary" type="button" (click)="closeModal('signature')">Cancelar</button>
+      <button ojButton variant="primary" type="button" [disabled]="signatureSaving()" (click)="saveSignature()">
+        {{ signatureSaving() ? 'Guardando…' : 'Guardar firma' }}
       </button>
     </div>
   </oj-modal>
 
-  <!-- Fuente: solución / generador / checker -->
-  <oj-modal
-    #sourceModal
-    [title]="sourceKind() === 'ref' ? 'Solución oficial' : sourceKind() === 'checker' ? 'Checker' : 'Generador'"
-    size="md"
-  >
+  <!-- Evaluación -->
+  <oj-modal #evalModal title="Evaluación de las salidas" size="md">
+    @if (evalError()) {
+      <oj-alert tone="error">{{ evalError() }}</oj-alert>
+    }
+    <div class="tw__eval-cards">
+      @for (card of evalCards; track card.mode) {
+        <button
+          type="button"
+          class="tw__eval-card"
+          [class.tw__eval-card--active]="evalMode() === card.mode"
+          [attr.aria-pressed]="evalMode() === card.mode"
+          (click)="setEvalMode(card.mode)"
+        >
+          <span class="tw__eval-card-title">{{ card.title }}</span>
+          <span class="tw__eval-card-when">{{ card.when }}</span>
+        </button>
+      }
+    </div>
+
+    <div class="tw__eval-fields" [formGroup]="evalForm">
+      @if (evalMode() === CompareMode.TOLERANCE) {
+        <oj-form-field label="Tolerancia (entre 0 y 1)" for="tw-tol">
+          <input id="tw-tol" class="oj-mono" type="number" step="any" min="0" max="1" formControlName="floatTolerance" />
+        </oj-form-field>
+      }
+      @if (evalMode() === CompareMode.CHECKER) {
+        <div class="tw__field">
+          <span class="tw__field-label">
+            Checker
+            <span class="tw__muted">{{ testset()?.checkerId != null ? 'cargado' : 'sin definir' }}</span>
+          </span>
+          @if (enabledLanguages().length === 0) {
+            <p class="tw__muted">No hay lenguajes. Agrégalo en <a [routerLink]="['/lenguajes']">Lenguajes</a>.</p>
+          } @else {
+            <select [formControl]="checkerLang" aria-label="Lenguaje del checker">
+              <option [ngValue]="null" disabled>Selecciona un lenguaje</option>
+              @for (l of enabledLanguages(); track l.id) {
+                <option [ngValue]="l.id">{{ l.code }}</option>
+              }
+            </select>
+          }
+          <oj-file-drop (fileSelected)="onCheckerFile($event)" />
+          @if (checkerFileName()) {
+            <p class="tw__muted oj-mono">{{ checkerFileName() }}</p>
+          }
+        </div>
+      }
+      <div class="tw__row">
+        <oj-form-field label="Tiempo límite (ms)" for="tw-time">
+          <input id="tw-time" class="oj-mono" type="number" formControlName="timeLimitMs" />
+        </oj-form-field>
+        <oj-form-field label="Memoria (MB)" for="tw-mem">
+          <input id="tw-mem" class="oj-mono" type="number" formControlName="memoryLimitMb" />
+        </oj-form-field>
+      </div>
+    </div>
+    <div footer>
+      <button ojButton variant="secondary" type="button" (click)="closeModal('eval')">Cancelar</button>
+      <button ojButton variant="primary" type="button" [disabled]="evalSaving()" (click)="saveEval()">
+        {{ evalSaving() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </div>
+  </oj-modal>
+
+  <!-- Solución oficial / generador -->
+  <oj-modal #sourceModal [title]="sourceKind() === 'ref' ? 'Solución oficial' : 'Generador'" size="md">
     @if (sourceError()) {
       <oj-alert tone="error">{{ sourceError() }}</oj-alert>
     }
-    <oj-form-field label="Lenguaje" for="tw-lang">
-      <select id="tw-lang" [formControl]="sourceLang">
-        <option [ngValue]="null" disabled>Selecciona un lenguaje</option>
-        @for (l of enabledLanguages(); track l.id) {
-          <option [ngValue]="l.id">{{ l.code }}</option>
-        }
-      </select>
-    </oj-form-field>
+    @if (enabledLanguages().length === 0) {
+      <p class="tw__muted">No hay lenguajes. Agrégalo en <a [routerLink]="['/lenguajes']">Lenguajes</a>.</p>
+    } @else {
+      <oj-form-field label="Lenguaje" for="tw-lang">
+        <select id="tw-lang" [formControl]="sourceLang">
+          <option [ngValue]="null" disabled>Selecciona un lenguaje</option>
+          @for (l of enabledLanguages(); track l.id) {
+            <option [ngValue]="l.id">{{ l.code }}</option>
+          }
+        </select>
+      </oj-form-field>
+    }
     <oj-file-drop (fileSelected)="onSourceFile($event)" />
     @if (sourceFileName()) {
       <p class="tw__muted oj-mono">{{ sourceFileName() }}</p>
@@ -324,11 +382,11 @@
               }
               @case ('json') {
                 <textarea [id]="'tw-case-' + cp.param.name" class="tw__json" rows="3" [formControlName]="cp.param.name"
-                  placeholder="JSON, p. ej. [1, 2, 3]" (blur)="validateCaseField(cp.param)"></textarea>
+                  [placeholder]="placeholder(cp.param)" (blur)="validateCaseField(cp.param)"></textarea>
               }
               @default {
                 <input [id]="'tw-case-' + cp.param.name" class="oj-mono" type="text" [formControlName]="cp.param.name"
-                  (blur)="validateCaseField(cp.param)" />
+                  [placeholder]="placeholder(cp.param)" (blur)="validateCaseField(cp.param)" />
               }
             }
             @if (fieldError(cp.param.name); as fe) {
@@ -349,7 +407,7 @@
       </select>
     </div>
 
-    <p class="tw__muted">La salida esperada se calcula al construir con la solución oficial.</p>
+    <p class="tw__muted">La salida esperada se calcula sola al construir.</p>
 
     <div footer>
       <button ojButton variant="secondary" type="button" (click)="closeModal('case')">Cancelar</button>
@@ -365,10 +423,10 @@
       <p class="tw__muted">Cargando…</p>
     } @else {
       <div class="tw__case-fields">
-        @for (p of viewParams(); track p.name) {
+        @for (vp of viewParams(); track vp.name) {
           <div class="tw__field">
-            <span class="tw__field-label"><span class="oj-mono">{{ p.name }}</span></span>
-            <pre class="tw__sample-block oj-mono">{{ p.value }}</pre>
+            <span class="tw__field-label"><span class="oj-mono">{{ vp.name }}</span></span>
+            <pre class="tw__sample-block oj-mono">{{ vp.value }}</pre>
           </div>
         } @empty {
           <p class="tw__muted">Sin parámetros.</p>
@@ -385,6 +443,19 @@
     }
     <div footer>
       <button ojButton variant="secondary" type="button" (click)="closeModal('view')">Cerrar</button>
+    </div>
+  </oj-modal>
+
+  <!-- Nueva versión -->
+  <oj-modal #newVersionModal title="Nueva versión" size="sm">
+    <oj-form-field label="Motivo" for="tw-reason" hint="Queda en el historial de versiones.">
+      <input id="tw-reason" type="text" [formControl]="reasonCtrl" />
+    </oj-form-field>
+    <div footer>
+      <button ojButton variant="secondary" type="button" (click)="closeModal('newVersion')">Cancelar</button>
+      <button ojButton variant="primary" type="button" [disabled]="newVersionSaving()" (click)="createVersion()">
+        {{ newVersionSaving() ? 'Creando…' : 'Crear versión' }}
+      </button>
     </div>
   </oj-modal>
 

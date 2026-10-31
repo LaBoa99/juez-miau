@@ -12,7 +12,6 @@ import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } fr
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   CompareMode,
-  IEditionLanguage,
   ILanguage,
   IProblemDetail,
   IProblemSignature,
@@ -29,21 +28,43 @@ import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Badge } from '../../../../shared/ui/badge.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { FormField } from '../../../../shared/ui/form-field.component';
-import { Segmented } from '../../../../shared/ui/segmented.component';
 import { Modal } from '../../../../shared/ui/modal.component';
 import { FileDrop } from '../../../../shared/ui/file-drop.component';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
-import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { TestsetStatusPipe } from '../../../../shared/pipes/testset-status.pipe';
-import { scalarBase, signatureToString, typeToString } from '../../../../shared/type-ref';
+import {
+  MAX_ARRAY_DEPTH,
+  SCALAR_TYPES,
+  scalarBase,
+  signatureToString,
+  typeToString,
+  typeToUi,
+  uiToType,
+} from '../../../../shared/type-ref';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
 import { ProblemsService } from '../../../problems/data/problems.service';
 import { EditionLanguagesService } from '../../../editions/edition-languages/data/edition-languages.service';
 import { TestsetsService } from '../../data/testsets.service';
 
+// Identificador válido (igual que el backend): letras, dígitos y _, hasta 64, sin empezar por dígito.
+const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+
 interface EnabledLanguage {
   id: string;
   code: string;
+}
+
+type StepKey = 'firma' | 'solucion' | 'evaluacion' | 'casos' | 'construir';
+type StepState = 'done' | 'next' | 'pending';
+
+interface Step {
+  key: StepKey;
+  n: number;
+  title: string;
+  actionLabel: string;
+  done: boolean;
+  state: StepState;
+  hint: string;
 }
 
 @Component({
@@ -56,11 +77,9 @@ interface EnabledLanguage {
     Badge,
     Alert,
     FormField,
-    Segmented,
     Modal,
     FileDrop,
     ConfirmDialog,
-    EmptyState,
     TestsetStatusPipe,
   ],
   templateUrl: './testset-workspace.html',
@@ -91,15 +110,15 @@ export class TestsetWorkspace {
     const s = this.signature();
     return s ? signatureToString(s) : null;
   });
-  protected readonly versions = computed(() => this.problem()?.testsets ?? []);
   protected readonly currentId = computed(() => this.problem()?.currentTestsetId ?? null);
-  protected readonly currentVersion = computed(() => this.versions().find((v) => v.id === this.currentId()) ?? null);
   protected readonly isCurrent = computed(() => this.testset()?.id === this.currentId());
   protected readonly published = computed(() => this.problem()?.status === ProblemStatus.PUBLISHED);
   protected readonly editable = computed(() => {
     const s = this.testset()?.status;
     return s === TestsetStatus.DRAFT || s === TestsetStatus.FAILED;
   });
+  // La firma solo cambia con el problema sin publicar y su testset editable (DRAFT/FAILED).
+  protected readonly signatureEditable = computed(() => !this.published() && this.editable());
 
   protected readonly caseStats = computed(() => {
     const cases = this.testset()?.cases ?? [];
@@ -119,74 +138,260 @@ export class TestsetWorkspace {
   // La firma debe tener parámetros para poder armar un caso.
   protected readonly hasParams = computed(() => (this.signature()?.params.length ?? 0) > 0);
 
-  // Barra de pasos (como el importador de CSV). El actual es el primero no hecho.
-  protected readonly steps = computed(() => {
+  // ─── Modo de evaluación vigente (del testset), para los pasos y el resumen ───
+  protected readonly compareMode = signal<CompareMode>(CompareMode.EXACT);
+
+  // ─── Completado de cada paso (lo mismo que valida el backend al construir) ───
+  private readonly firmaDone = computed(() => this.hasParams());
+  private readonly solucionDone = computed(() => this.testset()?.refSolutionId != null);
+  private readonly evalDone = computed(() => {
     const t = this.testset();
-    const done = [
-      !!this.signature(),
-      (t?.cases.length ?? 0) > 0,
-      t?.refSolutionId != null,
-      t?.status === TestsetStatus.READY,
-      this.isCurrent() && t?.status === TestsetStatus.READY,
+    if (this.compareMode() === CompareMode.CHECKER) return t?.checkerId != null;
+    if (this.compareMode() === CompareMode.TOLERANCE) {
+      const tol = t?.floatTolerance ?? null;
+      return tol != null && tol > 0 && tol <= 1;
+    }
+    return true; // exacta siempre está configurada (es el valor por defecto)
+  });
+  private readonly casosDone = computed(() => {
+    const cases = this.testset()?.cases ?? [];
+    return cases.length > 0 && cases.some((c) => c.visibility === TestCaseVisibility.PUBLIC);
+  });
+  private readonly construirDone = computed(() => this.testset()?.status === TestsetStatus.READY);
+
+  // Los 5 pasos en orden; el primer pendiente es el "siguiente", el resto quedan en gris.
+  protected readonly steps = computed<Step[]>(() => {
+    const t = this.testset();
+    const done = [this.firmaDone(), this.solucionDone(), this.evalDone(), this.casosDone(), this.construirDone()];
+    const firstPending = done.findIndex((d) => !d);
+    const defs: Omit<Step, 'n' | 'done' | 'state'>[] = [
+      { key: 'firma', title: 'Firma', actionLabel: 'Editar', hint: 'Define la firma de la función (con al menos un parámetro).' },
+      { key: 'solucion', title: 'Solución oficial', actionLabel: t?.refSolutionId != null ? 'Reemplazar' : 'Subir', hint: 'Sube la solución oficial que calculará las salidas.' },
+      { key: 'evaluacion', title: 'Evaluación', actionLabel: 'Cambiar', hint: 'Elige cómo se comparan las salidas.' },
+      { key: 'casos', title: 'Casos de prueba', actionLabel: '+ Agregar caso', hint: 'Agrega al menos un caso, con uno público.' },
+      { key: 'construir', title: 'Construir', actionLabel: 'Construir', hint: 'Construye el testset para calcular las salidas esperadas.' },
     ];
-    const labels = ['1 Firma', '2 Casos', '3 Solución oficial', '4 Construir', '5 Activar'];
-    const current = done.findIndex((d) => !d);
-    return labels.map((label, i) => ({
-      label,
-      state: done[i] ? 'hecho' : i === current ? 'actual' : 'pendiente',
+    return defs.map((d, i) => ({
+      ...d,
+      n: i + 1,
+      done: done[i],
+      state: done[i] ? 'done' : i === firstPending ? 'next' : 'pending',
     }));
   });
+  protected readonly progressDone = computed(() => this.steps().filter((s) => s.done).length);
+  protected readonly nextStep = computed(() => this.steps().find((s) => s.state === 'next') ?? null);
+  // Construir exige los 4 pasos previos completos.
+  protected readonly canBuild = computed(
+    () => this.firmaDone() && this.solucionDone() && this.evalDone() && this.casosDone(),
+  );
 
-  // ─── Evaluación ───
-  protected readonly compareModes = [
-    { value: CompareMode.EXACT, label: 'Exacta' },
-    { value: CompareMode.TOLERANCE, label: 'Con tolerancia' },
-    { value: CompareMode.CHECKER, label: 'Checker' },
+  // Un paso (de los 4 primeros) se puede accionar si el testset es editable y ya es el actual o uno hecho.
+  stepEnabled(state: StepState): boolean {
+    return this.editable() && state !== 'pending';
+  }
+
+  // ─── Firma (modal) ───
+  protected readonly scalarTypes = SCALAR_TYPES;
+  protected readonly depths = Array.from({ length: MAX_ARRAY_DEPTH + 1 }, (_, i) => i);
+  private readonly signatureModal = viewChild.required<Modal>('signatureModal');
+  protected readonly signatureSaving = signal(false);
+  protected readonly signatureError = signal<string | null>(null);
+  protected readonly signatureForm = this.fb.group({
+    functionName: ['', [Validators.required, Validators.pattern(IDENTIFIER)]],
+    params: this.fb.array<FormGroup>([]),
+    returnBase: ['int' as ScalarType],
+    returnDepth: [0],
+  });
+
+  get sigParams(): FormArray<FormGroup> {
+    return this.signatureForm.get('params') as FormArray<FormGroup>;
+  }
+
+  private paramGroup(name = '', base: ScalarType = 'int', depth = 0): FormGroup {
+    return this.fb.group({ name: [name, [Validators.required, Validators.pattern(IDENTIFIER)]], base: [base], depth: [depth] });
+  }
+
+  openSignature(): void {
+    this.signatureError.set(null);
+    const sig = this.signature();
+    this.sigParams.clear();
+    if (sig) {
+      const ret = typeToUi(sig.returns);
+      this.signatureForm.patchValue({ functionName: sig.functionName, returnBase: ret.base, returnDepth: ret.depth });
+      for (const p of sig.params) {
+        const ui = typeToUi(p.type);
+        this.sigParams.push(this.paramGroup(p.name, ui.base, ui.depth));
+      }
+    } else {
+      this.signatureForm.patchValue({ functionName: '', returnBase: 'int', returnDepth: 0 });
+    }
+    this.signatureModal().open();
+  }
+
+  addParam(): void {
+    this.sigParams.push(this.paramGroup());
+  }
+
+  removeParam(i: number): void {
+    this.sigParams.removeAt(i);
+  }
+
+  saveSignature(): void {
+    if (this.signatureForm.invalid) {
+      this.signatureForm.markAllAsTouched();
+      this.signatureError.set(
+        'Revisa la firma: el nombre de la función y de cada parámetro son obligatorios y deben ser identificadores válidos (letras, dígitos y _).',
+      );
+      return;
+    }
+    const raw = this.signatureForm.getRawValue();
+    const paramRows = raw.params as { name: string; base: ScalarType; depth: number }[];
+
+    // Sin parámetros no se pueden armar casos de prueba: no guardamos.
+    if (paramRows.length === 0) {
+      this.signatureError.set('Agrega al menos un parámetro para poder crear casos de prueba.');
+      return;
+    }
+
+    // Nombres de parámetro únicos (el backend también lo valida, pero avisamos antes de enviar).
+    const names = paramRows.map((p) => p.name);
+    const dup = names.find((n, i) => names.indexOf(n) !== i);
+    if (dup) {
+      this.signatureError.set(`El parámetro "${dup}" está repetido. Usa nombres únicos.`);
+      return;
+    }
+
+    const sig: IProblemSignature = {
+      functionName: raw.functionName!,
+      params: paramRows.map((p) => ({ name: p.name, type: uiToType(p.base, p.depth) })),
+      returns: uiToType(raw.returnBase as ScalarType, raw.returnDepth as number),
+    };
+    this.signatureSaving.set(true);
+    this.signatureError.set(null);
+    this.problemsService.updateSignature(this.problemId, sig).subscribe({
+      next: () => {
+        this.signatureSaving.set(false);
+        this.signatureModal().close();
+        this.loadProblem();
+      },
+      error: (err) => {
+        this.signatureSaving.set(false);
+        this.signatureError.set(message(err, 'No se pudo guardar la firma.'));
+      },
+    });
+  }
+
+  // ─── Evaluación (modal) ───
+  // Tarjetas con título y "cuándo usarla"; la seleccionada muestra sus campos.
+  protected readonly evalCards = [
+    { mode: CompareMode.EXACT, title: 'Exacta', when: 'La salida debe coincidir carácter por carácter.' },
+    { mode: CompareMode.TOLERANCE, title: 'Con tolerancia', when: 'Para resultados con decimales; acepta una diferencia pequeña.' },
+    { mode: CompareMode.CHECKER, title: 'Checker', when: 'Cuando hay varias respuestas válidas; un programa decide.' },
   ];
-  protected readonly compareMode = signal<CompareMode>(CompareMode.EXACT);
+  private readonly evalModal = viewChild.required<Modal>('evalModal');
+  protected readonly evalMode = signal<CompareMode>(CompareMode.EXACT);
   protected readonly evalSaving = signal(false);
+  protected readonly evalError = signal<string | null>(null);
   protected readonly evalForm = this.fb.group({
     timeLimitMs: [1000, [Validators.required]],
     memoryLimitMb: [256, [Validators.required]],
     floatTolerance: [null as number | null],
   });
+  // Checker: se sube dentro del modal de evaluación (solo con la tarjeta "Checker").
+  protected readonly checkerLang = this.fb.control<string | null>(null);
+  protected readonly checkerText = signal('');
+  protected readonly checkerFileName = signal('');
 
-  // ─── Modales ───
-  private readonly newVersionModal = viewChild.required<Modal>('newVersionModal');
-  private readonly sourceModal = viewChild.required<Modal>('sourceModal');
-  private readonly caseModal = viewChild.required<Modal>('caseModal');
-  private readonly buildDialog = viewChild.required<ConfirmDialog>('buildDlg');
-  private readonly deleteCaseDialog = viewChild.required<ConfirmDialog>('deleteCaseDlg');
+  openEval(): void {
+    const t = this.testset();
+    if (!t) return;
+    this.evalError.set(null);
+    this.evalMode.set(t.compareMode);
+    this.evalForm.reset({ timeLimitMs: t.timeLimitMs, memoryLimitMb: t.memoryLimitMb, floatTolerance: t.floatTolerance });
+    this.checkerLang.reset(null);
+    this.checkerText.set('');
+    this.checkerFileName.set('');
+    this.evalModal().open();
+  }
 
-  protected readonly reasonCtrl = this.fb.control('', [Validators.required]);
-  protected readonly newVersionSaving = signal(false);
+  setEvalMode(mode: CompareMode): void {
+    this.evalMode.set(mode);
+    this.evalError.set(null);
+  }
 
-  // Modal de fuente (solución / generador / checker)
-  protected readonly sourceKind = signal<'ref' | 'generator' | 'checker'>('ref');
-  protected readonly sourceLang = this.fb.control<string | null>(null, [Validators.required]);
-  protected readonly sourceText = signal('');
-  protected readonly sourceFileName = signal('');
-  protected readonly sourceGroups = signal<{ name: string; seeds: string }[]>([]);
-  protected readonly sourceSaving = signal(false);
-  protected readonly sourceError = signal<string | null>(null);
+  onCheckerFile(file: File): void {
+    this.checkerFileName.set(file.name);
+    file.text().then((text) => this.checkerText.set(text));
+  }
 
-  // Modal de caso
-  protected readonly caseEditing = signal<ITestCase | null>(null);
-  protected readonly caseVisibility = signal<TestCaseVisibility>(TestCaseVisibility.HIDDEN);
-  protected readonly caseParams = signal<{ param: ISignatureParam; isArray: boolean }[]>([]);
-  protected readonly caseForm = signal<FormGroup>(this.fb.group({}));
-  protected readonly caseSaving = signal(false);
-  protected readonly caseError = signal<string | null>(null);
-  // Error por campo (JSON inválido, número inválido), debajo del campo correspondiente.
-  protected readonly caseFieldErrors = signal<Record<string, string>>({});
-  private pendingDeleteCase: ITestCase | null = null;
+  saveEval(): void {
+    const t = this.testset();
+    if (!t) return;
+    const raw = this.evalForm.getRawValue();
+    const mode = this.evalMode();
+    this.evalError.set(null);
 
-  // Modal "Ver" (solo lectura)
-  private readonly viewModal = viewChild.required<Modal>('viewModal');
-  protected readonly viewCase = signal<ITestCase | null>(null);
-  protected readonly viewParams = signal<{ name: string; value: string }[]>([]);
-  protected readonly viewOutput = signal<string | null>(null);
-  protected readonly viewLoading = signal(false);
+    // La tolerancia debe quedar en (0, 1] (lo exige el backend); validamos antes de enviar.
+    const tolerance = mode === CompareMode.TOLERANCE ? raw.floatTolerance : null;
+    if (mode === CompareMode.TOLERANCE && (tolerance == null || tolerance <= 0 || tolerance > 1)) {
+      this.evalError.set('La tolerancia debe ser mayor que 0 y como máximo 1.');
+      return;
+    }
+
+    // Checker: hace falta uno (el ya guardado o el que se sube ahora).
+    const uploadingChecker = mode === CompareMode.CHECKER && !!this.checkerText();
+    if (mode === CompareMode.CHECKER && t.checkerId == null && !uploadingChecker) {
+      this.evalError.set('Sube el programa checker (elige el lenguaje y el archivo).');
+      return;
+    }
+    if (uploadingChecker && this.checkerLang.invalid) {
+      this.evalError.set('Elige el lenguaje del checker.');
+      return;
+    }
+
+    this.evalSaving.set(true);
+    const patch = () =>
+      this.service
+        .update(t.id, { compareMode: mode, timeLimitMs: raw.timeLimitMs!, memoryLimitMb: raw.memoryLimitMb!, floatTolerance: tolerance })
+        .subscribe({
+          next: () => {
+            this.evalSaving.set(false);
+            this.compareMode.set(mode);
+            this.evalModal().close();
+            this.loadTestset(t.id);
+          },
+          error: (err) => {
+            this.evalSaving.set(false);
+            this.evalError.set(message(err, 'No se pudo guardar la evaluación.'));
+          },
+        });
+
+    // Si se sube checker, va primero; luego se aplica el modo.
+    if (uploadingChecker) {
+      this.service.setChecker(t.id, { languageId: this.checkerLang.value!, source: this.checkerText() }).subscribe({
+        next: () => patch(),
+        error: (err) => {
+          this.evalSaving.set(false);
+          this.evalError.set(message(err, 'No se pudo guardar el checker.'));
+        },
+      });
+    } else {
+      patch();
+    }
+  }
+
+  evalSummary(): string {
+    const t = this.testset();
+    const label = this.compareLabel(this.compareMode());
+    if (!t) return label;
+    if (this.compareMode() === CompareMode.TOLERANCE) return `${label} (${t.floatTolerance ?? '—'})`;
+    if (this.compareMode() === CompareMode.CHECKER) return `${label} · ${t.checkerId != null ? 'checker cargado' : 'sin checker'}`;
+    return `${label} · ${t.timeLimitMs} ms · ${t.memoryLimitMb} MB`;
+  }
+
+  compareLabel(mode: CompareMode): string {
+    return { exact: 'Exacta', tolerance: 'Con tolerancia', checker: 'Checker' }[mode] ?? mode;
+  }
 
   constructor() {
     this.loadLanguages();
@@ -198,23 +403,21 @@ export class TestsetWorkspace {
       if (id) this.loadTestset(id);
     });
 
+    // La firma se habilita/deshabilita según el estado del problema/testset.
+    effect(() => {
+      if (this.signatureEditable()) this.signatureForm.enable({ emitEvent: false });
+      else this.signatureForm.disable({ emitEvent: false });
+    });
+
     this.destroyRef.onDestroy(() => this.stopPoll());
   }
 
   private loadLanguages(): void {
-    // languageId (UUID) solo viene del catálogo; se cruza con los habilitados de la edición por code.
+    // La solución oficial / generador / checker los escribe el juez: se eligen del catálogo
+    // global (languageId = UUID del catálogo), no de los lenguajes habilitados para los equipos.
     this.languagesService.catalog().subscribe({
-      next: (catalog: ILanguage[]) => {
-        this.languagesService.ofEdition(this.editionId).subscribe({
-          next: (edition: IEditionLanguage[]) => {
-            const codes = new Set(edition.map((l) => l.code));
-            this.languages.set(
-              catalog.filter((l) => l.active && codes.has(l.code)).map((l) => ({ id: l.id, code: l.code })),
-            );
-          },
-          error: () => {},
-        });
-      },
+      next: (catalog: ILanguage[]) =>
+        this.languages.set(catalog.filter((l) => l.active).map((l) => ({ id: l.id, code: l.code }))),
       error: () => {},
     });
   }
@@ -245,20 +448,11 @@ export class TestsetWorkspace {
       next: (t) => {
         this.testset.set(t);
         this.compareMode.set(t.compareMode);
-        this.evalForm.reset({
-          timeLimitMs: t.timeLimitMs,
-          memoryLimitMb: t.memoryLimitMb,
-          floatTolerance: t.floatTolerance,
-        });
         if (t.status === TestsetStatus.BUILDING) this.startPoll(id);
         else this.stopPoll();
       },
       error: () => this.loadError.set(true),
     });
-  }
-
-  selectVersion(id: number): void {
-    if (id !== this.selectedId()) this.selectedId.set(id);
   }
 
   statusTone(status: TestsetStatus): 'success' | 'warning' | 'danger' | 'neutral' {
@@ -302,37 +496,20 @@ export class TestsetWorkspace {
     }
   }
 
-  // ─── Evaluación ───
-  onCompareMode(value: string): void {
-    this.compareMode.set(value as CompareMode);
-  }
-
-  saveEval(): void {
-    const t = this.testset();
-    if (!t) return;
-    const raw = this.evalForm.getRawValue();
-    this.evalSaving.set(true);
-    this.actionError.set(null);
-    this.service
-      .update(t.id, {
-        compareMode: this.compareMode(),
-        timeLimitMs: raw.timeLimitMs!,
-        memoryLimitMb: raw.memoryLimitMb!,
-        floatTolerance: this.compareMode() === CompareMode.TOLERANCE ? raw.floatTolerance : null,
-      })
-      .subscribe({
-        next: () => {
-          this.evalSaving.set(false);
-          this.loadTestset(t.id);
-        },
-        error: (err) => {
-          this.evalSaving.set(false);
-          this.actionError.set(message(err, 'No se pudo guardar la evaluación.'));
-        },
-      });
+  // ─── Acción del paso ───
+  stepAction(key: StepKey): void {
+    if (key === 'firma') this.openSignature();
+    else if (key === 'solucion') this.openSource('ref');
+    else if (key === 'evaluacion') this.openEval();
+    else if (key === 'casos') this.openAddCase();
+    else if (key === 'construir') this.askBuild();
   }
 
   // ─── Nueva versión ───
+  private readonly newVersionModal = viewChild.required<Modal>('newVersionModal');
+  protected readonly reasonCtrl = this.fb.control('', [Validators.required]);
+  protected readonly newVersionSaving = signal(false);
+
   openNewVersion(): void {
     this.reasonCtrl.reset('');
     this.newVersionModal().open();
@@ -359,13 +536,12 @@ export class TestsetWorkspace {
   }
 
   // ─── Construir ───
+  private readonly buildDialog = viewChild.required<ConfirmDialog>('buildDlg');
+
   askBuild(): void {
     // Construir una versión distinta de la vigente en un problema publicado re-evalúa los envíos.
-    if (this.published() && !this.isCurrent()) {
-      this.buildDialog().open();
-    } else {
-      this.build();
-    }
+    if (this.published() && !this.isCurrent()) this.buildDialog().open();
+    else this.build();
   }
 
   build(): void {
@@ -374,12 +550,21 @@ export class TestsetWorkspace {
     this.actionError.set(null);
     this.service.build(t.id).subscribe({
       next: () => this.loadTestset(t.id),
-      error: (err) => this.actionError.set(messageOrErrors(err, 'No se pudo construir.')),
+      error: (err) => this.actionError.set(message(err, 'No se pudo construir.')),
     });
   }
 
-  // ─── Fuente: solución / generador / checker ───
-  openSource(kind: 'ref' | 'generator' | 'checker'): void {
+  // ─── Fuente: solución oficial / generador ───
+  private readonly sourceModal = viewChild.required<Modal>('sourceModal');
+  protected readonly sourceKind = signal<'ref' | 'generator'>('ref');
+  protected readonly sourceLang = this.fb.control<string | null>(null, [Validators.required]);
+  protected readonly sourceText = signal('');
+  protected readonly sourceFileName = signal('');
+  protected readonly sourceGroups = signal<{ name: string; seeds: string }[]>([]);
+  protected readonly sourceSaving = signal(false);
+  protected readonly sourceError = signal<string | null>(null);
+
+  openSource(kind: 'ref' | 'generator'): void {
     this.sourceKind.set(kind);
     this.sourceLang.reset(null);
     this.sourceText.set('');
@@ -425,14 +610,12 @@ export class TestsetWorkspace {
       },
       error: (err: unknown) => {
         this.sourceSaving.set(false);
-        this.sourceError.set(messageOrErrors(err, 'No se pudo guardar.'));
+        this.sourceError.set(message(err, 'No se pudo guardar.'));
       },
     };
 
     if (this.sourceKind() === 'ref') {
       this.service.setRefSolution(t.id, { languageId, source }).subscribe(done);
-    } else if (this.sourceKind() === 'checker') {
-      this.service.setChecker(t.id, { languageId, source }).subscribe(done);
     } else {
       const groups = this.sourceGroups()
         .filter((g) => g.name.trim())
@@ -452,11 +635,23 @@ export class TestsetWorkspace {
     if (!t) return;
     this.service.removeGenerator(t.id).subscribe({
       next: () => this.loadTestset(t.id),
-      error: (err) => this.actionError.set(messageOrErrors(err, 'No se pudo quitar el generador.')),
+      error: (err) => this.actionError.set(message(err, 'No se pudo quitar el generador.')),
     });
   }
 
   // ─── Casos ───
+  private readonly caseModal = viewChild.required<Modal>('caseModal');
+  protected readonly caseEditing = signal<ITestCase | null>(null);
+  protected readonly caseVisibility = signal<TestCaseVisibility>(TestCaseVisibility.HIDDEN);
+  protected readonly caseParams = signal<{ param: ISignatureParam; isArray: boolean }[]>([]);
+  protected readonly caseForm = signal<FormGroup>(this.fb.group({}));
+  protected readonly caseSaving = signal(false);
+  protected readonly caseError = signal<string | null>(null);
+  // Error por campo (JSON inválido, número inválido), debajo del campo correspondiente.
+  protected readonly caseFieldErrors = signal<Record<string, string>>({});
+  private readonly deleteCaseDialog = viewChild.required<ConfirmDialog>('deleteCaseDlg');
+  private pendingDeleteCase: ITestCase | null = null;
+
   private buildCaseControls(): void {
     const sig = this.signature();
     const params = (sig?.params ?? []).map((param) => ({ param, isArray: param.type.type === 'array' }));
@@ -519,6 +714,14 @@ export class TestsetWorkspace {
 
   typeLabel(param: ISignatureParam): string {
     return typeToString(param.type);
+  }
+
+  // Placeholder de ejemplo según el tipo del parámetro.
+  placeholder(param: ISignatureParam): string {
+    const kind = this.controlType(param);
+    if (kind === 'json') return 'Ej. ' + this.jsonExample(param);
+    if (kind === 'string') return 'Ej. texto';
+    return 'Ej. 5';
   }
 
   saveCase(): void {
@@ -607,6 +810,12 @@ export class TestsetWorkspace {
   }
 
   // ─── Ver caso (solo lectura) ───
+  private readonly viewModal = viewChild.required<Modal>('viewModal');
+  protected readonly viewCase = signal<ITestCase | null>(null);
+  protected readonly viewParams = signal<{ name: string; value: string }[]>([]);
+  protected readonly viewOutput = signal<string | null>(null);
+  protected readonly viewLoading = signal(false);
+
   openView(c: ITestCase): void {
     const t = this.testset();
     if (!t) return;
@@ -642,7 +851,7 @@ export class TestsetWorkspace {
 
   private caseFailed(err: unknown): void {
     this.caseSaving.set(false);
-    this.caseError.set(messageOrErrors(err, 'No se pudo guardar el caso.'));
+    this.caseError.set(message(err, 'No se pudo guardar el caso.'));
   }
 
   askDeleteCase(c: ITestCase): void {
@@ -656,14 +865,16 @@ export class TestsetWorkspace {
     if (!t || !c) return;
     this.service.removeCase(t.id, c.id).subscribe({
       next: () => this.loadTestset(t.id),
-      error: (err) => this.actionError.set(messageOrErrors(err, 'No se pudo eliminar el caso.')),
+      error: (err) => this.actionError.set(message(err, 'No se pudo eliminar el caso.')),
     });
   }
 
-  closeModal(m: 'newVersion' | 'source' | 'case' | 'view'): void {
+  closeModal(m: 'newVersion' | 'source' | 'case' | 'view' | 'signature' | 'eval'): void {
     if (m === 'newVersion') this.newVersionModal().close();
     else if (m === 'source') this.sourceModal().close();
     else if (m === 'view') this.viewModal().close();
+    else if (m === 'signature') this.signatureModal().close();
+    else if (m === 'eval') this.evalModal().close();
     else this.caseModal().close();
   }
 
@@ -690,10 +901,5 @@ function findParam(route: ActivatedRoute, name: string): string | null {
 }
 
 function message(err: unknown, fallback: string): string {
-  return backendMessage(err, fallback);
-}
-
-// Alias histórico: los 422 de testsets vienen como { errors: string[] }, ya los maneja el traductor.
-function messageOrErrors(err: unknown, fallback: string): string {
   return backendMessage(err, fallback);
 }

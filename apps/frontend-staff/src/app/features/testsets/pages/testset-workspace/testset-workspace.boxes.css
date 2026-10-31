@@ -1,6 +1,3 @@
-.tw__box { display: flex; flex-direction: column; gap: var(--oj-space-md); padding: 16px; border: 1px solid var(--oj-border); border-radius: var(--oj-radius); }
-.tw__box-title { margin: 0; font-size: 15px; font-weight: 600; }
-.tw__box-actions { display: flex; justify-content: flex-end; }
 .tw__row { display: flex; flex-wrap: wrap; gap: var(--oj-space-md); }
 .tw__row > oj-form-field { flex: 1 1 120px; }
 .tw__src, .tw__src-row {
@@ -10,8 +7,6 @@
 .tw__src-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tw__src-name { font-size: 13px; font-weight: 600; }
 .tw__src-actions { display: flex; gap: var(--oj-space-xs); }
-.tw__cases-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oj-space-sm); }
-.tw__cases-head .tw__box-title { margin-right: auto; }
 .tw__num { text-align: right; }
 .tw__vis { display: inline-block; padding: 1px 6px; font-size: 12px; border: 1px solid var(--oj-border); border-radius: var(--oj-radius); color: var(--oj-text-muted); }
 .tw__vis--pub { border-color: var(--oj-text); color: var(--oj-text); }
@@ -22,3 +17,20 @@
 .tw__group-row input { flex: 1; min-width: 0; }
 .tw__json { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--oj-font-mono); }
 .tw__groups > [ojButton] { align-self: flex-start; }
+
+/* Tarjetas de modo de evaluación */
+.tw__eval-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--oj-space-sm); }
+@media (max-width: 480px) { .tw__eval-cards { grid-template-columns: 1fr; } }
+.tw__eval-card {
+  display: flex; flex-direction: column; gap: var(--oj-space-2xs); text-align: left; cursor: pointer;
+  padding: var(--oj-space-sm) var(--oj-space-md); border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius); background: var(--oj-bg); font-family: var(--oj-font-sans); color: var(--oj-text);
+}
+.tw__eval-card:hover:not(:disabled) { background: var(--oj-bg-muted); }
+.tw__eval-card--active { border-color: var(--oj-text); background: var(--oj-neutral-bg); }
+.tw__eval-card:disabled { cursor: default; opacity: 0.6; }
+.tw__eval-card-title { font-size: 13px; font-weight: 600; }
+.tw__eval-card-when { font-size: 12px; color: var(--oj-text-muted); }
+
+/* Salida esperada ya calculada */
+.tw__built { font-size: 13px; color: var(--oj-success); }

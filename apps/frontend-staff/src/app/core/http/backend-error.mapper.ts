@@ -77,7 +77,9 @@ export function translatedMessages(err: unknown): string[] {
       untranslated.push(raw);
     }
   }
-  if (untranslated.length) console.warn('[backend] mensajes sin traducir:', untranslated, err);
+  // Nunca se registra el texto crudo del backend (ni en pantalla ni en consola); solo cuántos
+  // mensajes quedaron sin traducir, para avisar que falta agregarles un patrón.
+  if (untranslated.length) console.warn(`[backend] ${untranslated.length} mensaje(s) de error sin traducir`);
   return out;
 }
 

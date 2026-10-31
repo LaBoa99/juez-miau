@@ -1,22 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import {
-  CompareMode,
-  IProblemDetail,
-  IProblemPreview,
-  IProblemSignature,
-  IProblemTestset,
-  ProblemStatus,
-  ScalarType,
-  TestsetStatus,
-} from '@concurso/shared-types';
-import { MAX_ARRAY_DEPTH, SCALAR_TYPES, signatureToString, typeToUi, uiToType } from '../../../../shared/type-ref';
+import { IProblemDetail, IProblemPreview, ProblemStatus, TestsetStatus } from '@concurso/shared-types';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Badge } from '../../../../shared/ui/badge.component';
 import { Alert } from '../../../../shared/ui/alert.component';
@@ -28,10 +18,7 @@ import { TestsetStatusPipe } from '../../../../shared/pipes/testset-status.pipe'
 import { ProblemsService } from '../../data/problems.service';
 import { ProblemsBus } from '../../data/problems-bus';
 import { EditionContext } from '../../../editions/pages/edition-layout/edition-context';
-import { backendMessage, translateBackendError } from '../../../../core/http/backend-error.mapper';
-
-// Identificador válido (igual que el backend): letras, dígitos y _, hasta 64, sin empezar por dígito.
-const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+import { backendMessage } from '../../../../core/http/backend-error.mapper';
 
 @Component({
   selector: 'oj-problem-panel',
@@ -68,11 +55,9 @@ export class ProblemPanel {
   ];
 
   protected readonly saving = signal(false);
-  protected readonly publishing = signal(false);
   protected readonly loading = signal(false);
   protected readonly loadError = signal(false);
   protected readonly notFound = signal(false);
-  protected readonly publishErrors = signal<string[]>([]);
   protected readonly actionError = signal<string | null>(null);
 
   protected readonly preview = signal<IProblemPreview | null>(null);
@@ -88,31 +73,6 @@ export class ProblemPanel {
     points: [1, [Validators.required, Validators.min(0), Validators.max(100000)]],
   });
 
-  // ─── Firma de la función ───
-  protected readonly scalarTypes = SCALAR_TYPES;
-  protected readonly depths = Array.from({ length: MAX_ARRAY_DEPTH + 1 }, (_, i) => i);
-  protected readonly signatureSaving = signal(false);
-  protected readonly signatureError = signal<string | null>(null);
-  protected readonly signatureForm = this.fb.group({
-    functionName: ['', [Validators.required, Validators.pattern(IDENTIFIER)]],
-    params: this.fb.array<FormGroup>([]),
-    returnBase: ['int' as ScalarType],
-    returnDepth: [0],
-  });
-  // La firma solo cambia con el problema en DRAFT y su testset vigente editable (DRAFT/FAILED).
-  protected readonly signatureEditable = computed(() => {
-    const d = this.detail();
-    if (!d || d.status !== ProblemStatus.DRAFT) return false;
-    const t = this.currentTestset();
-    return !t || t.status === TestsetStatus.DRAFT || t.status === TestsetStatus.FAILED;
-  });
-  protected readonly signaturePreview = computed(() => {
-    const s = this.detail()?.signature;
-    return s ? signatureToString(s) : null;
-  });
-
-  private readonly deleteDialog = viewChild.required(ConfirmDialog);
-
   protected readonly title = computed(() => {
     if (this.isNew()) return 'Nuevo problema';
     const d = this.detail();
@@ -122,26 +82,18 @@ export class ProblemPanel {
   protected readonly published = computed(() => this.detail()?.status === ProblemStatus.PUBLISHED);
   protected readonly isDraft = computed(() => this.detail()?.status === ProblemStatus.DRAFT);
 
-  // Testset vigente (para la caja "Casos de prueba").
-  protected readonly currentTestset = computed<IProblemTestset | null>(() => {
+  // Testset vigente del problema (el que apunta currentTestsetId) y si ya está construido (READY).
+  protected readonly currentTestset = computed(() => {
     const d = this.detail();
-    if (!d || d.currentTestsetId === null) return null;
-    return d.testsets.find((t) => t.id === d.currentTestsetId) ?? null;
+    const id = d?.currentTestsetId ?? null;
+    return id != null ? (d!.testsets.find((t) => t.id === id) ?? null) : null;
   });
+  protected readonly hasCases = computed(() => this.currentTestset()?.status === TestsetStatus.READY);
 
-  // Requisitos para publicar (los mismos que valida el backend, derivables del detalle del problema).
-  // Un testset READY implica que ya tiene casos, casos públicos y salidas; por eso ese paso los engloba.
-  protected readonly publishChecklist = computed(() => {
-    const d = this.detail();
-    const t = this.currentTestset();
-    const casos = ['/ediciones', this.editionId, 'problemas', d?.id, 'casos'];
-    return [
-      { ok: !!d?.signature, label: 'Firma de la función definida', actionLabel: 'Editar firma', link: null as unknown[] | null },
-      { ok: t?.refSolutionId != null, label: 'Solución oficial cargada', actionLabel: 'Subir solución', link: casos },
-      { ok: t?.status === TestsetStatus.READY, label: 'Casos de prueba construidos (versión vigente lista)', actionLabel: 'Construir', link: casos },
-    ];
-  });
-  protected readonly canPublish = computed(() => this.publishChecklist().every((i) => i.ok));
+  // Se intentó publicar sin casos construidos: muestra el aviso ámbar.
+  protected readonly publishBlocked = signal(false);
+
+  private readonly deleteDialog = viewChild.required(ConfirmDialog);
 
   // Markdown saneado (marked -> DOMPurify) listo para [innerHTML].
   renderMd(md: string | null | undefined): SafeHtml {
@@ -158,19 +110,13 @@ export class ProblemPanel {
     });
 
     this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.bus.dirty.set(this.form.dirty));
-
-    // Habilita/deshabilita la firma según el estado del problema/testset.
-    effect(() => {
-      if (this.signatureEditable()) this.signatureForm.enable({ emitEvent: false });
-      else this.signatureForm.disable({ emitEvent: false });
-    });
   }
 
   private resetFor(id: string | null): void {
     this.view.set('editar');
     this.preview.set(null);
-    this.publishErrors.set([]);
     this.actionError.set(null);
+    this.publishBlocked.set(false);
     this.loadError.set(false);
     this.notFound.set(false);
     this.loading.set(false);
@@ -210,84 +156,11 @@ export class ProblemPanel {
         // El backend no permite cambiar categoría ni puntos al editar.
         this.form.get('categoryId')?.disable();
         this.form.get('points')?.disable();
-        this.populateSignature(d.signature);
         this.bus.dirty.set(false);
       },
       error: (err) => {
         this.loading.set(false);
         err?.status === 404 ? this.notFound.set(true) : this.loadError.set(true);
-      },
-    });
-  }
-
-  // ─── Firma ───
-  get sigParams(): FormArray<FormGroup> {
-    return this.signatureForm.get('params') as FormArray<FormGroup>;
-  }
-
-  private paramGroup(name = '', base: ScalarType = 'int', depth = 0): FormGroup {
-    return this.fb.group({ name: [name, [Validators.required, Validators.pattern(IDENTIFIER)]], base: [base], depth: [depth] });
-  }
-
-  private populateSignature(sig: IProblemSignature | null): void {
-    this.signatureError.set(null);
-    this.sigParams.clear();
-    if (sig) {
-      const ret = typeToUi(sig.returns);
-      this.signatureForm.patchValue({ functionName: sig.functionName, returnBase: ret.base, returnDepth: ret.depth });
-      for (const p of sig.params) {
-        const ui = typeToUi(p.type);
-        this.sigParams.push(this.paramGroup(p.name, ui.base, ui.depth));
-      }
-    } else {
-      this.signatureForm.patchValue({ functionName: '', returnBase: 'int', returnDepth: 0 });
-    }
-  }
-
-  addParam(): void {
-    this.sigParams.push(this.paramGroup());
-  }
-
-  removeParam(i: number): void {
-    this.sigParams.removeAt(i);
-  }
-
-  saveSignature(): void {
-    if (this.signatureForm.invalid) {
-      this.signatureForm.markAllAsTouched();
-      this.signatureError.set(
-        'Revisa la firma: el nombre de la función y de cada parámetro son obligatorios y deben ser identificadores válidos (letras, dígitos y _).',
-      );
-      return;
-    }
-    const id = this.detail()?.id;
-    if (!id) return;
-    const raw = this.signatureForm.getRawValue();
-    const paramRows = raw.params as { name: string; base: ScalarType; depth: number }[];
-
-    // Nombres de parámetro únicos (el backend también lo valida, pero avisamos antes de enviar).
-    const names = paramRows.map((p) => p.name);
-    const dup = names.find((n, i) => names.indexOf(n) !== i);
-    if (dup) {
-      this.signatureError.set(`El parámetro "${dup}" está repetido. Usa nombres únicos.`);
-      return;
-    }
-
-    const sig: IProblemSignature = {
-      functionName: raw.functionName!,
-      params: paramRows.map((p) => ({ name: p.name, type: uiToType(p.base, p.depth) })),
-      returns: uiToType(raw.returnBase as ScalarType, raw.returnDepth as number),
-    };
-    this.signatureSaving.set(true);
-    this.signatureError.set(null);
-    this.service.updateSignature(id, sig).subscribe({
-      next: () => {
-        this.signatureSaving.set(false);
-        this.resetFor(String(id));
-      },
-      error: (err) => {
-        this.signatureSaving.set(false);
-        this.signatureError.set(message(err, 'No se pudo guardar la firma.'));
       },
     });
   }
@@ -348,6 +221,7 @@ export class ProblemPanel {
             this.saving.set(false);
             this.bus.dirty.set(false);
             this.bus.load();
+            // Guardado el problema nuevo, navegamos a su edición: ahí aparece "Crear casos de prueba".
             this.router.navigate(['..', res.id], { relativeTo: this.route });
           },
           error: (err) => {
@@ -383,23 +257,25 @@ export class ProblemPanel {
   }
 
   publish(): void {
+    if (!this.hasCases()) {
+      this.publishBlocked.set(true);
+      return;
+    }
     const id = this.detail()?.id;
     if (!id) return;
-    this.publishing.set(true);
-    this.publishErrors.set([]);
     this.actionError.set(null);
     this.service.publish(id).subscribe({
       next: () => {
-        this.publishing.set(false);
         this.bus.load();
         this.resetFor(String(id));
       },
-      error: (err) => {
-        this.publishing.set(false);
-        const t = translateBackendError(err, 'No se pudo publicar', 'No se pudo publicar el problema. Revisa los casos de prueba.');
-        this.publishErrors.set(t.messages);
-      },
+      error: (err) => this.actionError.set(message(err, 'No se pudo publicar.')),
     });
+  }
+
+  goToCases(): void {
+    const id = this.detail()?.id;
+    if (id) this.router.navigate(['/ediciones', this.editionId, 'problemas', id, 'casos']);
   }
 
   askDelete(): void {
@@ -417,23 +293,6 @@ export class ProblemPanel {
       },
       error: (err) => this.actionError.set(message(err, 'No se pudo eliminar.')),
     });
-  }
-
-  testsetTone(status: TestsetStatus): 'success' | 'warning' | 'danger' | 'neutral' {
-    switch (status) {
-      case TestsetStatus.READY:
-        return 'success';
-      case TestsetStatus.BUILDING:
-        return 'warning';
-      case TestsetStatus.FAILED:
-        return 'danger';
-      default:
-        return 'neutral';
-    }
-  }
-
-  compareLabel(mode: CompareMode): string {
-    return { exact: 'Exacto', tolerance: 'Tolerancia', checker: 'Checker' }[mode] ?? mode;
   }
 
   categoryName(id: number | null): string {

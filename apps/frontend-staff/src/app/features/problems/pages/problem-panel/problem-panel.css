@@ -135,125 +135,83 @@
   white-space: pre;
 }
 
-/* Casos de prueba */
-.pp__cases {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--oj-space-md);
-}
-
-.pp__cases-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  width: 100%;
-}
-
-.pp__cases-info {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--oj-space-sm);
-  font-size: 13px;
-  flex: 1;
-}
-
 .pp__muted {
   margin: 0;
   color: var(--oj-text-muted);
   font-size: 13px;
 }
 
-/* Lista "Para publicar" */
-.pp__check {
-  width: 100%;
-}
-.pp__check-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--oj-text-muted);
-  margin-bottom: var(--oj-space-xs);
-}
-.pp__check-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* Caja "Casos de prueba" */
+.pp__tc {
   display: flex;
-  flex-direction: column;
-  gap: var(--oj-space-xs);
-}
-.pp__check-item {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--oj-space-sm);
-  font-size: 13px;
-}
-.pp__check-icon {
-  color: var(--oj-success);
-  font-weight: 700;
-}
-.pp__check-item--fail .pp__check-icon {
-  color: var(--oj-danger);
-}
-.pp__check-item--fail .pp__check-text {
-  color: var(--oj-danger);
-}
-
-.pp__err-list {
-  margin: var(--oj-space-xs) 0 0;
-  padding-left: 1.1rem;
-}
-
-/* Firma de la función */
-.pp__sig {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.pp__sig-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-/* Vista previa de la firma en una línea mono. */
-.pp__sig-preview {
-  margin: 0;
-  padding: 6px 10px;
-  background: var(--oj-bg-muted);
+  justify-content: space-between;
+  gap: var(--oj-space-md);
+  padding: 20px;
   border: 1px solid var(--oj-border);
   border-radius: var(--oj-radius);
-  font-size: 13px;
-  overflow-x: auto;
-  white-space: pre;
+  background: var(--oj-bg-muted);
 }
 
-.pp__sig-params {
+.pp__tc-main {
   display: flex;
   flex-direction: column;
-  gap: var(--oj-space-sm);
-}
-
-.pp__sig-label {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.pp__sig-row {
-  display: flex;
-  align-items: center;
-  gap: var(--oj-space-sm);
-}
-
-.pp__sig-row input {
-  flex: 1;
+  gap: var(--oj-space-2xs);
   min-width: 0;
 }
 
-.pp__sig-return {
-  display: flex;
-  gap: var(--oj-space-sm);
+.pp__tc-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.pp__tc-desc {
+  margin: 0;
+  max-width: 60ch;
+  font-size: 13px;
+}
+
+.pp__tc-state {
+  margin: 0;
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+
+.pp__tc-ready {
+  color: var(--oj-success);
+  font-weight: 600;
+}
+
+/* CTA grande hacia Casos de prueba. Es <button> (no <a>) con color propio para que
+   la regla global de enlaces no sobrescriba el texto blanco. */
+.pp__cta {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 4px;
+  background: #111827;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pp__cta:hover {
+  background: #1f2937;
+}
+
+/* Publicar bloqueado: se ve deshabilitado pero sigue clicable para explicar por qué */
+.pp__locked.oj-btn {
+  background: var(--oj-neutral-bg);
+  border-color: var(--oj-border);
+  color: var(--oj-text-muted);
+  cursor: not-allowed;
 }
 
