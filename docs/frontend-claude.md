@@ -65,6 +65,23 @@ Pendientes de seguridad/permisos que hoy están preparados pero NO activados:
   si el usuario no es superadmin (igual que "Staff"). Hoy la ruta está abierta mientras los guards siguen diferidos.
 - **Probar el acceso** con: (a) un superadmin, (b) un staff sin ese rol, (c) sin sesión → cada uno debe ver/redirigir como corresponde.
 
+## Revisión visual antes de terminar un paso
+Cada paso debe revisar esta lista y reportar el resultado (qué se revisó y qué se corrigió):
+- Los controles (input, select, textarea) usan los estilos globales de `styles.css`; no se ponen tamaños (font-size,
+  height, padding) ni colores propios en ellos. El select se ve igual de alto que un input.
+- Botones con `ojButton` (primary / secondary / success / danger-outline; `sm` en tablas). Ningún `<button>`/`<a>` de
+  acción con estilo propio (nada de "link" subrayado ni "×" sueltos salvo la × interna de un chip o del modal).
+- Botones agrupados con `.oj-actions` (gap 8px; 6px en filas de tablas) o con `gap` en su propio flex; nunca pegados ni
+  separados con `margin` o espacios en el HTML.
+- `oj-segmented` en tamaño `sm` (el `lg` es solo para el proyector).
+- Solo colores de `tokens.css` (nada de hex/rgb/nombres en `.css` ni en `style=""`).
+- Cada página muestra su título en todos sus estados (cargando, vacío, nuevo, edición, error).
+- Navegación sin subrayado (ni hover/visited/focus); los enlaces de acción van como `ojButton`. Se conserva el
+  `outline` de `:focus-visible`.
+- Crear con formulario inline; editar, programar, ver detalles y confirmar con `oj-modal`; pie de modal con gap 8px.
+- Estados vacíos con `oj-empty-state`; errores con `oj-alert`.
+- Comparar con la pantalla correspondiente del diseño y anotar las diferencias.
+
 ## Antes de terminar una tarea
 - ng build sin errores ni warnings nuevos.
 - No tocar archivos fuera de lo que pide la tarea.

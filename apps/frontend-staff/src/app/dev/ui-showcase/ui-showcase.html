@@ -68,9 +68,43 @@
 </section>
 
 <section>
+  <h2>Controles de formulario</h2>
+  <p>Input, select y textarea deben verse del mismo alto (32px) y tamaño de letra (13px).</p>
+  <div class="col">
+    <oj-form-field label="Texto" for="sc-ctl-input">
+      <input id="sc-ctl-input" type="text" placeholder="texto" />
+    </oj-form-field>
+    <oj-form-field label="Selección" for="sc-ctl-select">
+      <select id="sc-ctl-select">
+        <option>Opción A</option>
+        <option>Opción B</option>
+      </select>
+    </oj-form-field>
+    <oj-form-field label="Deshabilitado" for="sc-ctl-disabled">
+      <input id="sc-ctl-disabled" type="text" value="no editable" disabled />
+    </oj-form-field>
+    <oj-form-field label="Área de texto" for="sc-ctl-textarea">
+      <textarea id="sc-ctl-textarea" rows="3" placeholder="varias líneas"></textarea>
+    </oj-form-field>
+  </div>
+</section>
+
+<section>
   <h2>Segmented</h2>
   <oj-segmented [options]="langOptions" [(value)]="lang" />
   <p class="oj-mono">value: {{ lang() }}</p>
+  <h3>con una opción deshabilitada</h3>
+  <oj-segmented [options]="viewOptions" [(value)]="view" />
+</section>
+
+<section>
+  <h2>Acciones agrupadas (.oj-actions)</h2>
+  <p>Tres botones con gap de 8px, sin margin ni espacios en el HTML.</p>
+  <div class="oj-actions">
+    <button ojButton variant="danger-outline">Eliminar</button>
+    <button ojButton variant="secondary">Guardar</button>
+    <button ojButton variant="success">Publicar</button>
+  </div>
 </section>
 
 <section>

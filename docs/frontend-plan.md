@@ -5,8 +5,10 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 
 ## Cómo trabajar un paso
 
-1. Revisar primero el backend de ese dominio (controladores, DTOs, entidades, guards), incluidos cambios sin commit.
-   El backend es la fuente de verdad: NO modificarlo. Si algo no coincide con este plan, avisar y esperar.
+1. Lee la sección del dominio en docs/backend-api.md. Antes de confiar en ella, ejecuta
+   git diff --stat <hash del documento> -- apps/backend (más los cambios sin commit). Si no cambió nada de ese dominio,
+   usa el documento. Si cambió, revisa solo esos archivos, actualiza la sección y el hash, y avisa qué cambió.
+   El backend sigue siendo la fuente de verdad: NO modificarlo.
 2. Implementar solo lo del paso. Si falta algo en el backend, no inventarlo: dejarlo fuera o deshabilitado y avisar.
 3. Tipos nuevos en @concurso/shared-types copiados del backend. Mocks del paso en src/app/dev/mocks/.
 4. Terminar con `ng build` sin errores y la lista de archivos creados o cambiados.
@@ -53,6 +55,17 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - Generación: solo generador en código (`generate(seed, group, index)`) por ahora; el esquema declarativo queda fuera.
 - Testset: DRAFT → BUILDING → READY / FAILED. READY es inmutable (se crea otra versión). compare_mode: exacto,
   tolerancia, checker.
+- Modo "nuevo" de Problemas: la ruta `problemas/nuevo` NO lleva `:problemId`; el panel detecta el modo por el último
+  segmento de su propia ruta (`route.url`), no por `paramMap`, para no disparar `GET /problems/0` y mostrar un error falso.
+- La letra del problema se fuerza a mayúscula en el cliente (el backend valida `/^[A-Z]{1,2}$/`, hasta 2 letras).
+  Puntos: solo se envían al crear; en edición el campo se muestra deshabilitado (el PATCH del backend omite `points`).
+- "Activar una versión READY no vigente" (que el plan de §12 menciona) NO se implementa: el backend no expone endpoint
+  para cambiar el testset vigente sin reconstruir. El vigente solo cambia al construir (`POST /testsets/:id/build`) una
+  versión editable (DRAFT/FAILED). Por eso el panel de testsets solo ofrece "Construir", con confirmación de re-evaluación
+  si el problema ya está publicado.
+- `oj-segmented` acepta ahora un input `disabled` (se usa para deshabilitar "Vista previa" en el modo nuevo de Problemas).
+- Navegación (header y barra de la edición): los enlaces nunca se subrayan (ni hover/visited/focus); el activo se marca
+  solo con fondo (header) o borde inferior (barra). Se conserva el `outline` de `:focus-visible`.
 
 ### Concurso en vivo y público
 - Socket.io en `/ws`. Staff: `edition:join` (con token). Público: `public:join { editionId }` sin token.
@@ -105,8 +118,8 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 8 | Lista de ediciones | hecho |
 | 9 – 9.3.2 | Configuración, programar, modales, observadores | hecho |
 | 10 – 10.1 | Equipos y plantilla CSV | hecho |
-| 11 | Problemas (+ firma de la función) | en curso |
-| 12 | Casos de prueba | pendiente |
+| 11 | Problemas (+ firma de la función) | hecho |
+| 12 | Casos de prueba | hecho (sin "Activar": el backend no lo soporta — ver decisiones) |
 | 13 | Staff | pendiente |
 | 14 | Lenguajes | pendiente |
 | 15 | Tiempo real | pendiente |

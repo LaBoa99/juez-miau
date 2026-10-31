@@ -189,7 +189,7 @@
                     <th>Origen</th>
                     <th>Grupo</th>
                     <th>Visibilidad</th>
-                    <th>Entrada</th>
+                    <th>Parámetros</th>
                     <th class="tw__num">Tiempo ref.</th>
                     <th></th>
                   </tr>
@@ -275,10 +275,10 @@
           <div class="tw__group-row">
             <input class="oj-mono" type="text" placeholder="nombre" [value]="g.name" (input)="updateGroup($index, 'name', $any($event.target).value)" />
             <input class="oj-mono" type="text" placeholder="semillas (1, 2, 3)" [value]="g.seeds" (input)="updateGroup($index, 'seeds', $any($event.target).value)" />
-            <button type="button" class="tw__x" aria-label="Quitar grupo" (click)="removeGroup($index)">×</button>
+            <button ojButton variant="danger-outline" size="sm" type="button" (click)="removeGroup($index)">Quitar</button>
           </div>
         }
-        <button type="button" class="tw__link" (click)="addGroup()">+ Agregar grupo</button>
+        <button ojButton variant="secondary" size="sm" type="button" (click)="addGroup()">+ Agregar grupo</button>
       </div>
     }
     <div footer>

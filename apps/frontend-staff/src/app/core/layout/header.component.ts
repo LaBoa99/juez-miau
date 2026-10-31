@@ -55,6 +55,11 @@ import { ButtonDirective } from '../../shared/ui/button.directive';
       border-radius: var(--oj-radius);
       font-size: 13px;
       color: var(--oj-neutral);
+    }
+    .oj-hd__link,
+    .oj-hd__link:hover,
+    .oj-hd__link:visited,
+    .oj-hd__link:focus {
       text-decoration: none;
     }
     .oj-hd__link--active {

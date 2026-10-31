@@ -261,6 +261,19 @@ export class ProblemPanel {
     if (value === 'vista' && !this.isNew()) this.loadPreview();
   }
 
+  // La letra se guarda en mayúscula (el backend valida /^[A-Z]{1,2}$/).
+  upperLetter(e: Event): void {
+    const el = e.target as HTMLInputElement;
+    const up = el.value.toUpperCase();
+    if (up !== el.value) this.form.get('letter')!.setValue(up);
+  }
+
+  // "Cancelar" en modo nuevo: vuelve a la lista sin crear nada.
+  cancel(): void {
+    this.bus.dirty.set(false);
+    this.router.navigate(['..'], { relativeTo: this.route });
+  }
+
   private loadPreview(): void {
     const id = this.detail()?.id;
     if (!id) return;

@@ -33,6 +33,11 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
       font-size: 13px;
       font-weight: 500;
       color: var(--oj-neutral);
+    }
+    .oj-tab,
+    .oj-tab:hover,
+    .oj-tab:visited,
+    .oj-tab:focus {
       text-decoration: none;
     }
     .oj-tab--active {

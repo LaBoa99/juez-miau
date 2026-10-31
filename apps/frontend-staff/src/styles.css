@@ -17,12 +17,13 @@ textarea {
   border: 1px solid var(--oj-border);
   border-radius: var(--oj-radius);
   padding: 0 10px;
-  font-family: inherit;
-  font-size: inherit;
+  font: inherit;
+  font-size: 13px;
   color: var(--oj-text);
   background: var(--oj-bg);
 }
 
+/* El select debe verse del mismo alto y tamaño de letra que un input. */
 input,
 select {
   height: 32px;
@@ -38,6 +39,14 @@ select:focus,
 textarea:focus {
   outline: 1px solid var(--oj-text);
   box-shadow: none;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--oj-bg-muted);
+  color: var(--oj-text-muted);
+  cursor: not-allowed;
 }
 
 input[type='checkbox'],
@@ -66,6 +75,25 @@ a:focus-visible {
 .oj-mono {
   font-family: var(--oj-font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+/* Agrupa dos o más botones seguidos (encabezados, pies, filas, filtros, modales).
+   Nunca separar botones con margin ni con espacios en el HTML: usar esta clase o gap. */
+.oj-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.oj-actions--end {
+  justify-content: flex-end;
+}
+.oj-actions--between {
+  justify-content: space-between;
+}
+/* En filas de tablas los botones van más juntos. */
+.oj-table .oj-actions {
+  gap: 6px;
 }
 
 .oj-table-wrap {

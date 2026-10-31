@@ -23,6 +23,12 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--oj-neutral);
+}
+
+.edition-bar__link,
+.edition-bar__link:hover,
+.edition-bar__link:visited,
+.edition-bar__link:focus {
   text-decoration: none;
 }
 

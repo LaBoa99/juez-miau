@@ -30,6 +30,11 @@ export class UiShowcase {
     { value: 'py', label: 'Python 3.11' },
     { value: 'java', label: 'OpenJDK 21' },
   ];
+  protected readonly view = signal('editar');
+  protected readonly viewOptions = [
+    { value: 'editar', label: 'Editar' },
+    { value: 'vista', label: 'Vista previa', disabled: true },
+  ];
   protected readonly crumbs = [
     { label: 'Home', link: '/' },
     { label: 'Dev', link: '/dev/ui' },

@@ -20,7 +20,5 @@
 .tw__groups, .tw__case-fields { display: flex; flex-direction: column; gap: var(--oj-space-sm); }
 .tw__group-row { display: flex; align-items: center; gap: var(--oj-space-sm); }
 .tw__group-row input { flex: 1; min-width: 0; }
-.tw__json { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--oj-font-mono); font-size: 13px; }
-.tw__x, .tw__link { border: 0; background: transparent; padding: 0; cursor: pointer; font-family: var(--oj-font-sans); }
-.tw__x { color: var(--oj-text-muted); font-size: 16px; line-height: 1; }
-.tw__link { align-self: flex-start; font-size: 13px; color: var(--oj-text); text-decoration: underline; }
+.tw__json { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--oj-font-mono); }
+.tw__groups > [ojButton] { align-self: flex-start; }

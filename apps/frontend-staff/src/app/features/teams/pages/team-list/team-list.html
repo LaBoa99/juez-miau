@@ -111,12 +111,12 @@
             <input type="text" placeholder="Nombre" formControlName="name" aria-label="Nombre del integrante" />
             <input type="text" placeholder="Carrera" formControlName="career" aria-label="Carrera del integrante" />
             @if (!m.get('id')?.value) {
-              <button type="button" class="teams__member-x" aria-label="Quitar integrante" (click)="removeNewMember($index)">×</button>
+              <button ojButton variant="danger-outline" size="sm" type="button" (click)="removeNewMember($index)">Quitar</button>
             }
           </div>
         }
         @if (members().length < 3) {
-          <button type="button" class="teams__link" (click)="addMember()">+ Agregar integrante</button>
+          <button ojButton variant="secondary" size="sm" type="button" (click)="addMember()">+ Agregar integrante</button>
         }
       </div>
 

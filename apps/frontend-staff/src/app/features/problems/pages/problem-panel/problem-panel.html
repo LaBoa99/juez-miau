@@ -12,9 +12,7 @@
       @if (published()) {
         <oj-badge tone="success">Publicado</oj-badge>
       }
-      @if (!isNew()) {
-        <oj-segmented [options]="viewOptions" [value]="view()" (valueChange)="onView($event!)" />
-      }
+      <oj-segmented [options]="viewOptions" [value]="view()" [disabled]="isNew()" (valueChange)="onView($event!)" />
     </div>
   </header>
 
@@ -34,15 +32,15 @@
             }
           </select>
         </oj-form-field>
-        <oj-form-field label="Letra" for="pp-letter">
-          <input id="pp-letter" class="oj-mono" type="text" formControlName="letter" maxlength="2" />
+        <oj-form-field label="Letra" for="pp-letter" class="pp__letter">
+          <input id="pp-letter" class="oj-mono pp__letter-input" type="text" formControlName="letter" maxlength="2" (input)="upperLetter($event)" />
         </oj-form-field>
         <oj-form-field label="Título" for="pp-title" class="pp__row-grow">
           <input id="pp-title" type="text" formControlName="title" />
         </oj-form-field>
       </div>
 
-      <oj-form-field label="Enunciado (markdown)" for="pp-statement">
+      <oj-form-field label="Enunciado" for="pp-statement">
         <textarea id="pp-statement" class="pp__code" rows="10" formControlName="statement"></textarea>
       </oj-form-field>
 
@@ -55,14 +53,17 @@
         </oj-form-field>
       </div>
 
-      <oj-form-field label="Puntos" for="pp-points" hint="Solo se define al crear el problema.">
-        <input id="pp-points" class="oj-mono" type="number" min="0" max="100000" formControlName="points" />
+      <oj-form-field label="Puntos" for="pp-points" hint="Solo se define al crear el problema." class="pp__points">
+        <input id="pp-points" class="oj-mono pp__points-input" type="number" min="0" max="100000" formControlName="points" />
       </oj-form-field>
     </form>
 
     @if (!isNew()) {
       <div class="pp__box pp__sig" [formGroup]="signatureForm">
         <h3 class="pp__sig-title">Firma de la función</h3>
+        @if (signaturePreview()) {
+          <p class="pp__sig-preview oj-mono">{{ signaturePreview() }}</p>
+        }
         @if (!signatureEditable()) {
           <p class="pp__muted">La firma no se puede cambiar una vez publicado el problema o con un testset ya construido.</p>
         }
@@ -90,12 +91,12 @@
                 }
               </select>
               @if (signatureEditable()) {
-                <button type="button" class="pp__sig-x" aria-label="Quitar parámetro" (click)="removeParam($index)">×</button>
+                <button ojButton variant="danger-outline" size="sm" type="button" (click)="removeParam($index)">Quitar</button>
               }
             </div>
           }
           @if (signatureEditable()) {
-            <button type="button" class="pp__link" (click)="addParam()">+ Agregar parámetro</button>
+            <button ojButton variant="secondary" size="sm" type="button" (click)="addParam()">+ Agregar parámetro</button>
           }
         </div>
 
@@ -115,7 +116,7 @@
         </oj-form-field>
 
         @if (signatureEditable()) {
-          <div class="pp__actions-right">
+          <div class="oj-actions oj-actions--end">
             <button ojButton variant="primary" type="button" [disabled]="signatureSaving()" (click)="saveSignature()">
               {{ signatureSaving() ? 'Guardando…' : 'Guardar firma' }}
             </button>
@@ -161,7 +162,9 @@
   @if (!isNew() && detail(); as d) {
     <div class="pp__box pp__cases">
       <h3 class="pp__cases-title">Casos de prueba</h3>
-      @if (currentTestset(); as t) {
+      @if (!d.signature) {
+        <p class="pp__muted">Define la firma de la función para poder crear casos de prueba.</p>
+      } @else if (currentTestset(); as t) {
         <div class="pp__cases-info">
           <span class="oj-mono">v{{ t.version }}</span>
           <oj-badge [tone]="testsetTone(t.status)">{{ t.status }}</oj-badge>
@@ -193,24 +196,33 @@
     <oj-alert tone="error">{{ actionError() }}</oj-alert>
   }
 
-  @if (!noCategories()) {
-  <div class="pp__actions">
-    <div class="pp__actions-left">
-      @if (isDraft()) {
-        <button ojButton variant="danger-outline" type="button" (click)="askDelete()">Eliminar</button>
-      }
-    </div>
-    <div class="pp__actions-right">
-      <button ojButton variant="secondary" type="button" [disabled]="saving()" (click)="save()">
-        {{ saving() ? 'Guardando…' : 'Guardar' }}
+  @if (noCategories()) {
+    <!-- sin acciones: primero hay que crear una categoría -->
+  } @else if (isNew()) {
+    <div class="oj-actions oj-actions--end">
+      <button ojButton variant="secondary" type="button" (click)="cancel()">Cancelar</button>
+      <button ojButton variant="primary" type="button" [disabled]="saving()" (click)="save()">
+        {{ saving() ? 'Creando…' : 'Crear problema' }}
       </button>
-      @if (!isNew() && !published()) {
-        <button ojButton variant="success" type="button" [disabled]="publishing()" (click)="publish()">
-          {{ publishing() ? 'Publicando…' : 'Publicar' }}
-        </button>
-      }
     </div>
-  </div>
+  } @else {
+    <div class="oj-actions oj-actions--between">
+      <div class="oj-actions">
+        @if (isDraft()) {
+          <button ojButton variant="danger-outline" type="button" (click)="askDelete()">Eliminar borrador</button>
+        }
+      </div>
+      <div class="oj-actions">
+        <button ojButton variant="secondary" type="button" [disabled]="saving()" (click)="save()">
+          {{ saving() ? 'Guardando…' : 'Guardar' }}
+        </button>
+        @if (!published()) {
+          <button ojButton variant="success" type="button" [disabled]="publishing()" (click)="publish()">
+            {{ publishing() ? 'Publicando…' : 'Publicar' }}
+          </button>
+        }
+      </div>
+    </div>
   }
 
   <oj-confirm-dialog
