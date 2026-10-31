@@ -1,0 +1,140 @@
+/* Proyector (pantalla 17, 1920×1080). Tamaños en px por diseño; colores solo de tokens.
+   No se usan transiciones, así que se respeta prefers-reduced-motion por construcción; además
+   la rotación automática de categorías se detiene con prefers-reduced-motion (ver projector.ts). */
+:host {
+  display: block;
+  position: relative;
+  min-height: 100vh;
+  background: var(--oj-bg);
+  color: var(--oj-text);
+}
+
+/* Botón discreto de pantalla completa, en la esquina (se oculta en pantalla completa). */
+.pj__fs {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+}
+
+.pj__center {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pj__center p {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--oj-text-muted);
+}
+
+/* ─── Encabezado ─── */
+.pj__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 40px 56px;
+  border-bottom: 1px solid var(--oj-border);
+}
+.pj__title {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  min-width: 0;
+}
+.pj__oj {
+  font-size: 20px;
+  font-weight: 700;
+}
+.pj__name {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pj__clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+}
+.pj__time {
+  font-size: 72px;
+  font-weight: 700;
+  line-height: 1;
+}
+.pj__time-label {
+  margin-top: 4px;
+  font-size: 18px;
+  color: var(--oj-text-muted);
+}
+.pj__final {
+  font-size: 44px;
+  font-weight: 700;
+}
+
+/* ─── Banda de congelamiento ─── */
+.pj__frozen {
+  padding: 12px 56px;
+  background: var(--oj-warning-bg);
+  border-bottom: 1px solid var(--oj-warning);
+  color: var(--oj-warning);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+/* ─── Cuerpo ─── */
+.pj__body {
+  padding: 24px 56px 56px;
+}
+.pj__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.pj__rotate {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.pj__hint {
+  font-size: 18px;
+  color: var(--oj-text-muted);
+}
+
+/* ─── Tabla grande ─── */
+.pj__table th {
+  font-size: 16px;
+}
+.pj__rank {
+  font-size: 32px;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+.pj__team {
+  font-size: 28px;
+  font-weight: 600;
+}
+.pj__prob {
+  text-align: center;
+  white-space: nowrap;
+}
+.pj__num {
+  text-align: right;
+  white-space: nowrap;
+}
+.pj__solved {
+  font-size: 32px;
+  font-weight: 700;
+}
+.pj__penalty {
+  font-size: 24px;
+}

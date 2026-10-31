@@ -1,0 +1,83 @@
+@if (!isFullscreen()) {
+  <button ojButton variant="secondary" type="button" class="pj__fs" (click)="toggleFullscreen()">
+    Pantalla completa
+  </button>
+}
+
+@if (unavailable()) {
+  <div class="pj__center"><p>Este concurso todavía no está disponible.</p></div>
+} @else if (!loaded()) {
+  <div class="pj__center"><p>Cargando…</p></div>
+} @else {
+  <header class="pj__head">
+    <div class="pj__title">
+      <span class="pj__oj oj-mono">[OJ]</span>
+      <h1 class="pj__name">{{ clock()?.editionName }}</h1>
+    </div>
+    <div class="pj__clock">
+      @if (finished()) {
+        <span class="pj__final">Resultados finales</span>
+      } @else {
+        <span class="pj__time oj-mono">{{ timeText() }}</span>
+        <span class="pj__time-label">tiempo restante</span>
+      }
+    </div>
+  </header>
+
+  @if (frozen()) {
+    <div class="pj__frozen">
+      Marcador congelado · Posiciones al minuto {{ standings()?.freezeMinute }}. Los resultados finales se
+      muestran al terminar.
+    </div>
+  }
+
+  <section class="pj__body">
+    @if (categoryOptions().length > 1) {
+      <div class="pj__controls">
+        <oj-segmented
+          size="lg"
+          [options]="categoryOptions()"
+          [value]="categorySeg()"
+          (valueChange)="categorySeg.set($event ?? '')"
+        />
+        <div class="pj__rotate">
+          <span class="pj__hint">Cambia de categoría cada 20 s</span>
+          <button ojButton variant="secondary" type="button" (click)="paused.set(!paused())">
+            {{ paused() ? 'Reanudar rotación' : 'Pausar rotación' }}
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (current(); as cat) {
+      <div class="oj-table-wrap">
+        <table class="oj-table pj__table">
+          <thead>
+            <tr>
+              <th class="pj__rank">#</th>
+              <th>Equipo</th>
+              @for (p of cat.problems; track p.id) {
+                <th class="pj__prob" [title]="p.title">{{ p.letter }}</th>
+              }
+              <th class="pj__num">Resueltos</th>
+              <th class="pj__num">Penalización</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of cat.rows; track row.teamId) {
+              <tr>
+                <td class="pj__rank oj-mono">{{ row.rank }}</td>
+                <td class="pj__team">{{ row.teamName }}</td>
+                @for (p of cat.problems; track p.id; let i = $index) {
+                  <td class="pj__prob"><oj-standings-cell size="grande" [cell]="row.cells[i]" /></td>
+                }
+                <td class="pj__num pj__solved oj-mono">{{ row.solved }}</td>
+                <td class="pj__num pj__penalty oj-mono">{{ row.penalty }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}

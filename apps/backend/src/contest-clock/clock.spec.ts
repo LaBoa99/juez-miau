@@ -5,6 +5,7 @@ const at = (minute: number) => new Date(Date.UTC(2026, 9, 27, 10, minute))
 
 const edition = (fields: Partial<ClockFields>): ClockFields => ({
     id: 1,
+    name: 'Edición de prueba',
     status: EditionStatus.RUNNING,
     duration_ms: 120 * 60_000,
     freeze_duration_ms: 30 * 60_000,

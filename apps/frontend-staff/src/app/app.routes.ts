@@ -11,6 +11,11 @@ export const routes: Routes = [
   { path: 'login', component: LoginStaff },
   { path: 'dev/ui', component: UiShowcase },
   { path: 'dev/realtime', component: RealtimeDev },
+  // Proyector público: fuera del shell y sin guards (sin sesión ni token).
+  {
+    path: 'proyector/:editionId',
+    loadComponent: () => import('./features/projector/pages/projector/projector').then((m) => m.Projector),
+  },
   {
     path: '',
     component: Shell,

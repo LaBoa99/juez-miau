@@ -185,6 +185,19 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
   Staff siempre completo; público congelado en los últimos minutos.
 - Proyector: ruta pública `/proyector/:editionId` (por id, sin token). No hay marcador por categoría en el backend:
   la rotación por categoría se hace en el cliente.
+- Proyector (18/19): ruta FUERA del shell y sin guards. El `authInterceptor` no adjunta token ni renueva sesión en
+  `/api/public/...` (predicado `skipAuth`). Datos del `ProjectorService` (`/public/editions/:id/clock` y
+  `/public/editions/:id/standings`); socket `joinPublic` con `clock:update`/`standings:update`; respaldo por HTTP cada
+  30 s solo mientras el socket NO está conectado.
+- El reloj del proyector reusa la sincronización del 16 (ancla local + tick de 1 s) pero muestra el TIEMPO RESTANTE
+  (`durationMs − elapsed`). FINISHED → "Resultados finales" en lugar del reloj. DRAFT o 404 (inexistente) → pantalla
+  centrada "Este concurso todavía no está disponible."
+- **Cambio de backend autorizado por la usuaria (2026-10-31):** `IContestClock` ahora incluye `editionName`
+  (`clock.ts` → `toClockDto`, `ClockFields` añade `name`). Los endpoints públicos no exponían el nombre y el proyector
+  solo conoce el `editionId`; así el header (44px) lo obtiene por HTTP y por `clock:update` sin endpoint nuevo.
+- Rotación de categorías cada 20 s con botón Pausar/Reanudar; con `prefers-reduced-motion` la rotación automática no
+  corre (el segmentado `lg` sigue siendo manual). No hay transiciones CSS. Botón "Pantalla completa" (Fullscreen API),
+  oculto en pantalla completa.
 - Alertas: `GET /editions/:id/flags` filtra solo por `open` y `teamId`. El filtro por salón se arma en el cliente
   (equipo → salón). No existe lectura de heartbeats; la pérdida se ve como alerta HEARTBEAT_LOST.
 - NO existen en el backend: listado público de ediciones, resultados públicos agregados, vista por salón.
@@ -236,7 +249,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 16 | Control del concurso | hecho |
 | 17 | Envíos y detalle | hecho |
 | 18 | Marcador de staff | hecho (congelamiento del público leído del reloj; ver decisiones) |
-| 19 | Proyector | pendiente |
+| 19 | Proyector | hecho (nombre de la edición añadido al reloj público; ver decisiones) |
 | 20 | Revisión manual | pendiente |
 | 21 | Alertas | pendiente |
 | 22 | Auditoría | pendiente |

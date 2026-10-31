@@ -14,6 +14,8 @@ export enum SubmissionStatus {
 
 export interface IContestClock {
     editionId: number
+    // Nombre de la edición (para el proyector, que solo conoce el editionId)
+    editionName: string
     status: EditionStatus
     // Tiempo de concurso transcurrido (sin contar pausas) al momento de `serverTime`
     elapsedMs: number

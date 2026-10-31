@@ -1,7 +1,7 @@
 import { EditionStatus, type IContestClock } from '@concurso/shared-types'
 import type { Edition } from '../editions/entities/edition.entity.js'
 
-export type ClockFields = Pick<Edition, 'id' | 'status' | 'duration_ms' | 'freeze_duration_ms' | 'started_at' | 'paused_at' | 'finished_at' | 'paused_total_ms'>
+export type ClockFields = Pick<Edition, 'id' | 'name' | 'status' | 'duration_ms' | 'freeze_duration_ms' | 'started_at' | 'paused_at' | 'finished_at' | 'paused_total_ms'>
 
 // Tiempo de concurso transcurrido: desde el inicio, sin las pausas, hasta ahora (o hasta la pausa
 // en curso o el final). Nunca pasa de la duración
@@ -37,6 +37,7 @@ export function acceptsSubmissions(edition: ClockFields, now = new Date()): bool
 export function toClockDto(edition: ClockFields, now = new Date()): IContestClock {
     return {
         editionId: edition.id,
+        editionName: edition.name,
         status: edition.status,
         elapsedMs: elapsedMs(edition, now),
         durationMs: edition.duration_ms,
