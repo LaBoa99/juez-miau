@@ -5,6 +5,9 @@
 
 <div class="lang__cols">
   <div class="lang__main">
+    @if (toggleError()) {
+      <oj-alert tone="error">{{ toggleError() }}</oj-alert>
+    }
     @if (loading()) {
       <p class="lang__loading">Cargando…</p>
     } @else if (error()) {
@@ -38,7 +41,15 @@
                 <td class="lang__num oj-mono">×{{ l.time_multiplier }}</td>
                 <td>
                   <div class="oj-actions oj-actions--end">
-                    <button ojButton variant="secondary" size="sm" type="button" (click)="openEdit(l)">Editar</button>
+                    @if (l.active) {
+                      <button ojButton variant="danger-outline" size="sm" type="button" [disabled]="togglingId() === l.id" (click)="toggleActive(l)">
+                        {{ togglingId() === l.id ? 'Guardando…' : 'Desactivar' }}
+                      </button>
+                    } @else {
+                      <button ojButton variant="success" size="sm" type="button" [disabled]="togglingId() === l.id" (click)="toggleActive(l)">
+                        {{ togglingId() === l.id ? 'Guardando…' : 'Activar' }}
+                      </button>
+                    }
                   </div>
                 </td>
               </tr>
@@ -60,30 +71,33 @@
     }
 
     <div class="lang__row">
-      <oj-form-field label="Nombre" for="lang-code" class="lang__grow">
-        <input id="lang-code" type="text" formControlName="code" />
+      <oj-form-field label="Nombre" for="lang-code" class="lang__grow" [error]="fieldError('code')">
+        <input id="lang-code" type="text" formControlName="code" placeholder="Ej. Java" />
       </oj-form-field>
-      <oj-form-field label="Extensión" for="lang-ext" hint="minúsculas/números" class="lang__ext-field">
-        <input id="lang-ext" class="oj-mono" type="text" formControlName="file_ext" maxlength="4" />
+      <oj-form-field label="Extensión" for="lang-ext" class="lang__ext-field" [error]="fieldError('file_ext')">
+        <input id="lang-ext" class="oj-mono" type="text" formControlName="file_ext" maxlength="4" placeholder="java" />
       </oj-form-field>
     </div>
 
-    <oj-form-field label="Versión del compilador" for="lang-ver">
-      <input id="lang-ver" class="oj-mono" type="text" formControlName="compiler_version" />
+    <div class="lang__row">
+      <oj-form-field label="Versión del compilador" for="lang-ver" class="lang__ver-field" [error]="fieldError('compiler_version')">
+        <input id="lang-ver" class="oj-mono" type="text" formControlName="compiler_version" placeholder="Ej. 21" />
+      </oj-form-field>
+      <oj-form-field label="Imagen Docker" for="lang-img" class="lang__grow" [error]="fieldError('image_ref')">
+        <input id="lang-img" class="oj-mono" type="text" formControlName="image_ref" placeholder="Ej. eclipse-temurin:21-jdk" />
+      </oj-form-field>
+    </div>
+
+    <oj-form-field label="Comando de compilación" for="lang-compile" [error]="fieldError('compile_cmd')">
+      <input id="lang-compile" class="oj-mono" type="text" formControlName="compile_cmd" placeholder="Ej. javac Main.java" />
     </oj-form-field>
-    <oj-form-field label="Imagen Docker" for="lang-img">
-      <input id="lang-img" class="oj-mono" type="text" formControlName="image_ref" />
+    <oj-form-field label="Comando de ejecución" for="lang-run" [error]="fieldError('run_cmd')">
+      <input id="lang-run" class="oj-mono" type="text" formControlName="run_cmd" placeholder="Ej. java Main" />
     </oj-form-field>
-    <oj-form-field label="Compilar" for="lang-compile">
-      <input id="lang-compile" class="oj-mono" type="text" formControlName="compile_cmd" />
+    <oj-form-field label="Flags" for="lang-flags" [optional]="true">
+      <input id="lang-flags" class="oj-mono" type="text" formControlName="flags" placeholder="Ej. -Xmx256m" />
     </oj-form-field>
-    <oj-form-field label="Ejecutar" for="lang-run">
-      <input id="lang-run" class="oj-mono" type="text" formControlName="run_cmd" />
-    </oj-form-field>
-    <oj-form-field label="Flags (opcional)" for="lang-flags">
-      <input id="lang-flags" class="oj-mono" type="text" formControlName="flags" />
-    </oj-form-field>
-    <oj-form-field label="Multiplicador de tiempo" for="lang-mult" hint="×2.0 = el doble de tiempo">
+    <oj-form-field label="Multiplicador de tiempo" for="lang-mult" class="lang__mult-field" [error]="fieldError('time_multiplier')">
       <input id="lang-mult" class="oj-mono" type="number" step="0.01" min="0.01" max="99.99" formControlName="time_multiplier" />
     </oj-form-field>
 
@@ -93,51 +107,10 @@
     </label>
 
     <div class="oj-actions oj-actions--end">
+      <button ojButton variant="secondary" type="button" (click)="resetForm()">Cancelar</button>
       <button ojButton variant="primary" type="submit" [disabled]="saving()">
-        {{ saving() ? 'Guardando…' : 'Agregar' }}
+        {{ saving() ? 'Guardando…' : 'Agregar lenguaje' }}
       </button>
     </div>
   </form>
 </div>
-
-<oj-modal [title]="'Lenguaje ' + (selected()?.code ?? '')" size="md">
-  @if (selected(); as l) {
-    @if (toggleError()) {
-      <oj-alert tone="error">{{ toggleError() }}</oj-alert>
-    }
-    <dl class="lang__details">
-      <div><dt>Extensión</dt><dd class="oj-mono">.{{ l.file_ext }}</dd></div>
-      <div><dt>Versión</dt><dd class="oj-mono">{{ l.compiler_version }}</dd></div>
-      <div><dt>Imagen Docker</dt><dd class="oj-mono">{{ l.image_ref }}</dd></div>
-      <div><dt>Compilar</dt><dd class="oj-mono">{{ l.compile_cmd || '—' }}</dd></div>
-      <div><dt>Ejecutar</dt><dd class="oj-mono">{{ l.run_cmd }}</dd></div>
-      <div><dt>Flags</dt><dd class="oj-mono">{{ l.flags || '—' }}</dd></div>
-      <div><dt>Multiplicador</dt><dd class="oj-mono">×{{ l.time_multiplier }}</dd></div>
-      <div>
-        <dt>Estado</dt>
-        <dd>
-          @if (l.active) {
-            <oj-badge tone="success">Activo</oj-badge>
-          } @else {
-            <oj-badge tone="neutral">Inactivo</oj-badge>
-          }
-        </dd>
-      </div>
-    </dl>
-    <p class="lang__muted">Los comandos de un lenguaje no se pueden editar; si cambian, crea uno nuevo.</p>
-  }
-  <div footer>
-    <button ojButton variant="secondary" type="button" (click)="closeEdit()">Cerrar</button>
-    @if (selected(); as l) {
-      @if (l.active) {
-        <button ojButton variant="danger-outline" type="button" [disabled]="toggleSaving()" (click)="toggleActive()">
-          {{ toggleSaving() ? 'Guardando…' : 'Desactivar' }}
-        </button>
-      } @else {
-        <button ojButton variant="primary" type="button" [disabled]="toggleSaving()" (click)="toggleActive()">
-          {{ toggleSaving() ? 'Guardando…' : 'Activar' }}
-        </button>
-      }
-    }
-  </div>
-</oj-modal>

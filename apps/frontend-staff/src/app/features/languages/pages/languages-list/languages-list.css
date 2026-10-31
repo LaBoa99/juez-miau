@@ -46,6 +46,12 @@
 .lang__ext-field {
   flex: 0 0 110px;
 }
+.lang__ver-field {
+  flex: 0 0 120px;
+}
+.lang__mult-field {
+  max-width: 140px;
+}
 
 .lang__check {
   display: inline-flex;

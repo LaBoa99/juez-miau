@@ -4,7 +4,9 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
   selector: 'oj-form-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <label class="oj-ff__label" [for]="for()">{{ label() }}</label>
+    <label class="oj-ff__label" [for]="for()"
+      >{{ label() }}@if (optional()) {<span class="oj-ff__optional"> (opcional)</span>}</label
+    >
     <ng-content />
     @if (error()) {
       <p class="oj-ff__msg oj-ff__msg--error" [id]="messageId()">{{ error() }}</p>
@@ -23,6 +25,10 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
       font-weight: 600;
       color: var(--oj-text);
     }
+    .oj-ff__optional {
+      font-weight: 400;
+      color: var(--oj-text-muted);
+    }
     .oj-ff__msg {
       margin: 0;
       font-size: var(--oj-text-small);
@@ -40,6 +46,7 @@ export class FormField {
   readonly for = input<string>();
   readonly hint = input<string>();
   readonly error = input<string>();
+  readonly optional = input(false);
 
   protected readonly messageId = computed(() => `${this.for()}-msg`);
 }

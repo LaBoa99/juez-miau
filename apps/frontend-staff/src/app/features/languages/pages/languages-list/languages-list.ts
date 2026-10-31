@@ -1,20 +1,18 @@
-import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ICreateLanguage, ILanguage } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
-import { Badge } from '../../../../shared/ui/badge.component';
 import { FormField } from '../../../../shared/ui/form-field.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { EmptyState } from '../../../../shared/ui/empty-state.component';
-import { Modal } from '../../../../shared/ui/modal.component';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
 import { EditionLanguagesService } from '../../../editions/edition-languages/data/edition-languages.service';
 
 @Component({
   selector: 'oj-languages-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, PageHeader, ButtonDirective, Badge, FormField, Alert, EmptyState, Modal],
+  imports: [ReactiveFormsModule, PageHeader, ButtonDirective, FormField, Alert, EmptyState],
   templateUrl: './languages-list.html',
   styleUrl: './languages-list.css',
 })
@@ -41,10 +39,8 @@ export class LanguagesList {
     active: [true],
   });
 
-  // "Editar" (modal): el backend solo alterna `active`; los comandos no se editan.
-  private readonly editModal = viewChild.required(Modal);
-  protected readonly selected = signal<ILanguage | null>(null);
-  protected readonly toggleSaving = signal(false);
+  // Activar/Desactivar desde la fila: el backend solo alterna `active`.
+  protected readonly togglingId = signal<string | null>(null);
   protected readonly toggleError = signal<string | null>(null);
 
   constructor() {
@@ -88,7 +84,7 @@ export class LanguagesList {
     this.service.create(dto).subscribe({
       next: () => {
         this.saving.set(false);
-        this.form.reset({ time_multiplier: 1, active: true, code: '', file_ext: '', compiler_version: '', image_ref: '', compile_cmd: '', run_cmd: '', flags: '' });
+        this.resetForm();
         this.load();
       },
       error: (err) => {
@@ -98,29 +94,32 @@ export class LanguagesList {
     });
   }
 
-  openEdit(lang: ILanguage): void {
-    this.selected.set(lang);
-    this.toggleError.set(null);
-    this.editModal().open();
+  resetForm(): void {
+    this.form.reset({ time_multiplier: 1, active: true, code: '', file_ext: '', compiler_version: '', image_ref: '', compile_cmd: '', run_cmd: '', flags: '' });
+    this.formError.set(null);
   }
 
-  closeEdit(): void {
-    this.editModal().close();
+  // Mensaje de error por campo, solo cuando el control es inválido y ya fue tocado.
+  protected fieldError(name: keyof typeof this.form.controls): string | undefined {
+    const c = this.form.controls[name];
+    if (!c.touched || c.valid) return undefined;
+    if (c.hasError('required')) return 'Este campo es obligatorio.';
+    if (c.hasError('maxlength')) return 'Máximo 100 caracteres.';
+    if (c.hasError('pattern')) return 'Solo minúsculas y números (1 a 4 caracteres).';
+    if (c.hasError('min') || c.hasError('max')) return 'Debe ser un número entre 0.01 y 99.99.';
+    return 'Valor inválido.';
   }
 
-  toggleActive(): void {
-    const lang = this.selected();
-    if (!lang) return;
-    this.toggleSaving.set(true);
+  toggleActive(lang: ILanguage): void {
+    this.togglingId.set(lang.id);
     this.toggleError.set(null);
     this.service.toggleActive(lang.id).subscribe({
       next: () => {
-        this.toggleSaving.set(false);
-        this.editModal().close();
+        this.togglingId.set(null);
         this.load();
       },
       error: (err) => {
-        this.toggleSaving.set(false);
+        this.togglingId.set(null);
         this.toggleError.set(backendMessage(err, 'No se pudo cambiar el estado del lenguaje.'));
       },
     });
