@@ -1,0 +1,144 @@
+@if (notFound()) {
+  <oj-alert tone="error">
+    Este envío no existe.
+    <a [routerLink]="['/ediciones', editionId, 'envios']">Volver a la lista</a>
+  </oj-alert>
+} @else if (loadError()) {
+  <oj-alert tone="error">No se pudo cargar el envío.</oj-alert>
+} @else if (loading()) {
+  <p class="sd__muted">Cargando…</p>
+} @else if (detail(); as d) {
+  @let v = d.verdict | verdict: d.status;
+
+  <header class="sd__header">
+    <div class="sd__header-left">
+      <h1 class="sd__title">Envío <span class="oj-mono">#{{ d.id }}</span></h1>
+      <oj-badge [tone]="v.tone" [dashed]="v.dashed">{{ v.label }}</oj-badge>
+      @if (d.status === SubmissionStatus.JUDGING && progress(); as p) {
+        <span class="sd__progress oj-mono">caso {{ p.judged }}/{{ p.total }}</span>
+      }
+    </div>
+    <div class="oj-actions">
+      <button ojButton variant="secondary" type="button" (click)="downloadCode()">Descargar código</button>
+      @if (canRejudge()) {
+        <button ojButton variant="success" type="button" (click)="openRejudge()">Re-evaluar</button>
+      }
+    </div>
+  </header>
+
+  @if (rejudgeDone()) {
+    <oj-alert tone="success">El envío se mandó de nuevo a la cola.</oj-alert>
+  }
+  @if (actionError()) {
+    <oj-alert tone="error">{{ actionError() }}</oj-alert>
+  }
+
+  <!-- Fila de datos -->
+  <dl class="sd__facts">
+    <div><dt>Equipo</dt><dd>{{ teamName() || '—' }}</dd></div>
+    <div><dt>Problema</dt><dd><span class="oj-mono sd__letter">{{ letter() }}</span> {{ title() }}</dd></div>
+    <div><dt>Lenguaje</dt><dd class="oj-mono">{{ langCode() }}</dd></div>
+    <div><dt>Enviado</dt><dd class="oj-mono">min {{ minute() }}</dd></div>
+    <div><dt>Testset</dt><dd class="oj-mono">{{ testsetVersion() }}</dd></div>
+    <div><dt>Código</dt><dd class="oj-mono">{{ codeSize() }}</dd></div>
+  </dl>
+
+  <!-- Dos cajas -->
+  <div class="sd__panes">
+    <section class="sd__box">
+      <h3 class="sd__box-title">Resultado por caso</h3>
+
+      @if (d.verdict === Verdict.CE && d.compileLog) {
+        <p class="sd__muted">Error de compilación:</p>
+        <oj-code-block [code]="d.compileLog" />
+      } @else {
+        @if (d.cases.length) {
+          <div class="sd__cases">
+            @for (c of d.cases; track c.ordinal) {
+              <span
+                class="sd__case"
+                [class.sd__case--ac]="caseTone(c) === 'ac'"
+                [class.sd__case--bad]="caseTone(c) === 'bad'"
+                [title]="'Caso ' + c.ordinal + ' · ' + c.verdict"
+              >{{ c.ordinal }}</span>
+            }
+          </div>
+          <div class="sd__legend">
+            <span><span class="sd__dot sd__dot--ac"></span> Correcto</span>
+            <span><span class="sd__dot sd__dot--bad"></span> Con error</span>
+          </div>
+        } @else {
+          <p class="sd__muted">Aún no se han ejecutado casos.</p>
+        }
+
+        @if (firstFailed(); as f) {
+          <div class="sd__fail">
+            <div class="sd__fail-head">Primer caso con error — caso {{ f.ordinal }} · {{ f.verdict }}</div>
+            @if (f.message) {
+              <pre class="sd__mono-block">{{ f.message }}</pre>
+            } @else {
+              <p class="sd__muted">El juez no devolvió más detalle de este caso.</p>
+            }
+          </div>
+        }
+      }
+    </section>
+
+    <section class="sd__box">
+      <h3 class="sd__box-title">Código enviado</h3>
+      <oj-code-block [code]="d.source" />
+    </section>
+  </div>
+
+  <!-- Historial -->
+  <section class="sd__box">
+    <h3 class="sd__box-title">Historial de evaluaciones</h3>
+    @if (history().length === 0) {
+      <p class="sd__muted">Sin historial.</p>
+    } @else {
+      <div class="oj-table-wrap">
+        <table class="oj-table">
+          <thead>
+            <tr>
+              <th>Cuándo</th>
+              <th>Origen</th>
+              <th>Testset</th>
+              <th>Veredicto</th>
+              <th>Motivo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of history(); track e.judgeRound) {
+              @let ev = e.verdict | verdict: e.status;
+              <tr>
+                <td class="oj-mono">{{ e.createdAt | date: 'yyyy-MM-dd HH:mm' }}</td>
+                <td>{{ originLabel(e) }}</td>
+                <td class="oj-mono">#{{ e.testsetId }}</td>
+                <td><oj-badge [tone]="ev.tone" [dashed]="ev.dashed">{{ ev.label }}</oj-badge></td>
+                <td class="sd__reason">{{ e.reason || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <!-- Modal Re-evaluar -->
+  <oj-modal title="Re-evaluar envío" size="sm">
+    @if (rejudgeError()) {
+      <oj-alert tone="error">{{ rejudgeError() }}</oj-alert>
+    }
+    <form id="sd-rejudge-form" (ngSubmit)="submitRejudge()" class="sd__modal-form">
+      <oj-form-field label="Motivo de la re-evaluación" for="sd-reason" hint="Queda en el historial del envío.">
+        <input id="sd-reason" type="text" [formControl]="reasonCtrl" />
+      </oj-form-field>
+    </form>
+    <div footer>
+      <button ojButton variant="secondary" type="button" (click)="closeRejudge()">Cancelar</button>
+      <button ojButton variant="success" type="submit" form="sd-rejudge-form" [disabled]="rejudgeSaving()">
+        {{ rejudgeSaving() ? 'Enviando…' : 'Enviar a la cola' }}
+      </button>
+    </div>
+  </oj-modal>
+}

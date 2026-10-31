@@ -17,7 +17,7 @@ import { problemBreadcrumbResolver } from '../problems/data/problems-bus';
 import { TestsetWorkspace } from '../testsets/pages/testset-workspace/testset-workspace';
 import { ContestControl } from '../contest/pages/contest-control/contest-control';
 import { SubmissionList } from '../submissions/pages/submission-list/submission-list';
-import { SubmissionDetailPlaceholder } from '../submissions/pages/submission-detail/submission-detail-placeholder.component';
+import { SubmissionDetail } from '../submissions/pages/submission-detail/submission-detail';
 
 export const routes: Routes = [
   {
@@ -70,7 +70,7 @@ export const routes: Routes = [
             data: { breadcrumb: 'Envíos' },
             children: [
               { path: '', component: SubmissionList },
-              { path: ':submissionId', component: SubmissionDetailPlaceholder, data: { breadcrumb: 'Detalle' } },
+              { path: ':submissionId', component: SubmissionDetail, data: { breadcrumb: 'Detalle' } },
             ],
           },
           { path: 'marcador', component: EditionSectionPlaceholder, data: { breadcrumb: 'Marcador' } },

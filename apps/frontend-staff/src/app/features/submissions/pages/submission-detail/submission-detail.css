@@ -1,0 +1,172 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-lg);
+}
+
+.sd__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oj-space-md);
+}
+.sd__header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--oj-space-sm);
+}
+.sd__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+.sd__progress {
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+
+/* Fila de datos con divisores */
+.sd__facts {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+.sd__facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--oj-space-md);
+  border-left: 1px solid var(--oj-border);
+}
+.sd__facts > div:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+.sd__facts dt {
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+.sd__facts dd {
+  margin: 0;
+  font-size: 13px;
+}
+.sd__letter {
+  font-weight: 700;
+}
+
+/* Dos cajas lado a lado */
+.sd__panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--oj-space-lg);
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .sd__panes {
+    grid-template-columns: 1fr;
+  }
+}
+.sd__box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-md);
+  padding: 16px;
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+  min-width: 0;
+}
+.sd__box-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Cuadrícula de casos */
+.sd__cases {
+  display: grid;
+  grid-template-columns: repeat(10, 28px);
+  gap: 4px;
+}
+.sd__case {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--oj-radius);
+  font-family: var(--oj-font-mono);
+  font-size: 11px;
+  color: var(--oj-bg);
+}
+.sd__case--ac {
+  background: var(--oj-success);
+}
+.sd__case--bad {
+  background: var(--oj-danger);
+}
+.sd__legend {
+  display: flex;
+  gap: var(--oj-space-md);
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+.sd__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oj-space-xs);
+}
+.sd__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--oj-radius);
+}
+.sd__dot--ac {
+  background: var(--oj-success);
+}
+.sd__dot--bad {
+  background: var(--oj-danger);
+}
+
+/* Caja roja del primer caso con error */
+.sd__fail {
+  border: 1px solid var(--oj-danger);
+  background: var(--oj-danger-bg);
+  border-radius: var(--oj-radius);
+  padding: var(--oj-space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-sm);
+}
+.sd__fail-head {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--oj-danger);
+}
+.sd__mono-block {
+  margin: 0;
+  padding: var(--oj-space-sm);
+  background: var(--oj-bg);
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+  font-family: var(--oj-font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
+.sd__reason {
+  color: var(--oj-text-muted);
+}
+.sd__modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sd__muted {
+  margin: 0;
+  color: var(--oj-text-muted);
+  font-size: 13px;
+}

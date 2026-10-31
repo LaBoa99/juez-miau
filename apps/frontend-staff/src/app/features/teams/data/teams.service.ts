@@ -21,6 +21,11 @@ export interface TeamListFilters {
 export class TeamsService {
   private readonly http = inject(HttpClient);
 
+  // Nombre de un equipo (GET /teams/:id devuelve la entidad; solo usamos id y name).
+  get(teamId: number): Observable<{ id: number; name: string }> {
+    return this.http.get<{ id: number; name: string }>(`${API}/teams/${teamId}`);
+  }
+
   list(editionId: number, filters: TeamListFilters): Observable<ITeamsPage> {
     let params = new HttpParams().set('page', filters.page).set('pageSize', filters.pageSize);
     if (filters.categoryId) params = params.set('categoryId', filters.categoryId);
