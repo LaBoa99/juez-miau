@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ButtonDirective } from '../../shared/ui/button.directive';
+import { RealtimeService } from '../realtime/realtime.service';
 
 @Component({
   selector: 'oj-header',
@@ -19,6 +20,12 @@ import { ButtonDirective } from '../../shared/ui/button.directive';
       </div>
       <div class="oj-hd__right">
         <span class="oj-hd__user">{{ userName() }}</span>
+        @if (rt.active()) {
+          <span class="oj-hd__live" [class]="'oj-hd__live--' + live().tone" role="status">
+            <span class="oj-hd__dot" aria-hidden="true"></span>
+            {{ live().label }}
+          </span>
+        }
         <button ojButton variant="secondary" size="sm" (click)="logout.emit()">Cerrar sesión</button>
       </div>
     </header>
@@ -70,9 +77,42 @@ import { ButtonDirective } from '../../shared/ui/button.directive';
       font-size: 13px;
       color: var(--oj-text-muted);
     }
+    .oj-hd__live {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--oj-space-xs);
+      font-size: 12px;
+    }
+    .oj-hd__dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .oj-hd__live--live {
+      color: var(--oj-success);
+    }
+    .oj-hd__live--reconnecting {
+      color: var(--oj-warning);
+    }
+    .oj-hd__live--off {
+      color: var(--oj-text-muted);
+    }
   `,
 })
 export class Header {
+  protected readonly rt = inject(RealtimeService);
   readonly userName = input('Usuario');
   readonly logout = output<void>();
+
+  protected readonly live = computed(() => {
+    switch (this.rt.connectionState()) {
+      case 'connected':
+        return { tone: 'live', label: 'En vivo' };
+      case 'connecting':
+        return { tone: 'reconnecting', label: 'Reconectando…' };
+      default:
+        return { tone: 'off', label: 'Sin conexión' };
+    }
+  });
 }

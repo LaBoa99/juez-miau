@@ -108,6 +108,25 @@ Cada paso debe revisar esta lista y reportar el resultado (qué se revisó y qu�
 - Navegar entre rutas hijas de la misma página recarga sus datos sin recargar el navegador (reacciona al cambio de ruta).
 - Después de crear, editar o eliminar, la vista se actualiza sin recargar (volver a pedir la lista o actualizar el signal).
 
+## Tiempo real (RealtimeService)
+- Una sola conexión Socket.io por pestaña (`core/realtime/realtime.service.ts`, namespace `/ws`). Se crea al primer uso
+  (`joinEdition` / `joinPublic` / `onXxx`) y se cierra sola al cerrar sesión. El token sale de `AuthService` y se vuelve
+  a leer en cada reconexión; las salas se reponen al reconectar.
+- **Regla de oro**: cargar por HTTP al entrar, actualizar con los eventos, y dejar de escuchar al salir (desuscribir los
+  Observables con `takeUntilDestroyed` o `toSignal`). Los eventos no sustituyen la carga inicial.
+- Uso típico en una página de una edición:
+  ```ts
+  constructor() {
+    this.rt.joinEdition(this.editionId);                     // o joinPublic en el proyector
+    this.rt.onStandings().pipe(takeUntilDestroyed()).subscribe((s) => this.standings.set(s));
+    this.rt.onClock().pipe(takeUntilDestroyed()).subscribe((c) => this.clock.set(c));
+  }
+  ```
+  Métodos tipados: `onClock`, `onStandings`, `onSubmission`, `onSubmissionProgress`, `onFlag`. Estado de conexión:
+  `connectionState()` (`connecting|connected|disconnected`) y `active()` (hay una edición seguida). El indicador "En vivo"
+  del header ya los usa; no lo dupliques.
+- No existe evento de "testset construido": el progreso del build se sigue por HTTP (poll cada 2 s en Casos de prueba).
+
 ## Antes de terminar una tarea
 - ng build sin errores ni warnings nuevos.
 - No tocar archivos fuera de lo que pide la tarea.

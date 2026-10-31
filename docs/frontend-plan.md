@@ -103,6 +103,22 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - El backend **no expone** si un lenguaje está en uso, así que no se puede deshabilitar "Editar" por uso (lo pide el
   diseño 08, pero no hay dato). Los inactivos se muestran atenuados y con "· inactivo" junto al nombre.
 
+### Tiempo real (socket)
+- `socket.io-client` **4.8.4** (servidor `socket.io` 4.8.3: mismo protocolo v4 / Engine.IO v6).
+- `core/realtime/realtime.service.ts`: una conexión por pestaña al namespace `/ws`, creada al primer uso y cerrada al
+  cerrar sesión (un `effect` la cierra cuando `AuthService` deja de estar autenticado). `auth` como función → relee el
+  token en cada reconexión; al reconectar se repone a las salas (`joinEdition`/`joinPublic`). Métodos tipados:
+  `onClock`, `onStandings`, `onSubmission`, `onSubmissionProgress`, `onFlag` (Observables). Señales `connectionState`
+  (`connecting|connected|disconnected`) y `active`.
+- Indicador en `oj-header` a la derecha del nombre: punto 8px + texto 12px "En vivo" (verde) / "Reconectando…" (ámbar) /
+  "Sin conexión" (gris), solo cuando `rt.active()`.
+- Proxy de desarrollo: se agregó `/socket.io` con `ws: true` en `src/proxy.conf.json` (no toca la regla de `/api`).
+- `/dev/realtime` (fuera del shell, solo desarrollo): id de edición, "Unirse como staff/público" y los últimos 20 eventos.
+- **No se agregó mock de eventos** (el plan lo sugería): la tarea pidió no agregar mocks; se prueba con el backend real
+  vía `/dev/realtime`.
+- **El backend NO emite un evento al terminar de construir un testset** (solo `clock/standings/submission*/flag`). Por eso
+  el paso 12 mantiene el poll cada 2 s para el build; no hay evento que lo reemplace (paso 7 no aplica).
+
 ### Concurso en vivo y público
 - Socket.io en `/ws`. Staff: `edition:join` (con token). Público: `public:join { editionId }` sin token.
 - Eventos: `clock:update`, `standings:update` (público y staff), `submission:update`, `submission:progress`,
@@ -158,7 +174,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 12 | Casos de prueba | hecho (sin "Activar": no hay endpoint; el vigente cambia al construir — ver decisiones) |
 | 13 | Staff | hecho (sin "Reactivar": el backend no lo permite — ver decisiones) |
 | 14 | Lenguajes | hecho (sin edición de campos: el backend solo alterna `active` — ver decisiones) |
-| 15 | Tiempo real | pendiente |
+| 15 | Tiempo real | hecho (sin mock de eventos; sin evento de build — ver decisiones) |
 | 16 | Control del concurso | pendiente |
 | 17 | Envíos y detalle | pendiente |
 | 18 | Marcador de staff | pendiente |

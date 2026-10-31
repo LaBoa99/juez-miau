@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { LoginStaff } from './login-staff/login-staff';
 import { UiShowcase } from './dev/ui-showcase/ui-showcase';
+import { RealtimeDev } from './dev/realtime/realtime-dev.component';
 import { Shell } from './core/layout/shell.component';
 
 // shortcut: guards de auth diferidos para poder navegar el shell sin login durante el diseño.
@@ -9,6 +10,7 @@ import { Shell } from './core/layout/shell.component';
 export const routes: Routes = [
   { path: 'login', component: LoginStaff },
   { path: 'dev/ui', component: UiShowcase },
+  { path: 'dev/realtime', component: RealtimeDev },
   {
     path: '',
     component: Shell,
