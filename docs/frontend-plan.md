@@ -91,6 +91,18 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - La pestaña Staff de Configuración ya usaba este catálogo (`GET /staff`) con fallback silencioso; no tenía ningún aviso
   de "lista no disponible" que quitar.
 
+### Lenguajes (catálogo global)
+- `GET /languages` es para cualquier staff; `POST` y `PATCH` son superadmin-only. Se reutiliza `EditionLanguagesService`
+  (ya tenía `catalog()`), extendido con `create()` y `toggleActive()`.
+- Página: tabla (Lenguaje = `code` en 600 + `.ext` mono gris debajo; Imagen Docker mono; Compilar/Ejecutar en dos líneas
+  mono, ejecutar en gris, "—" si no compila; Tiempo `×{mult}` a la derecha) + formulario inline "Agregar lenguaje"
+  (nombre+extensión en la misma fila, campos técnicos mono, flags opcional, multiplicador, checkbox Activo).
+- **El backend NO edita los campos de un lenguaje**: `PATCH /languages/:id` solo **alterna `active`** (ignora el body).
+  Por eso "Editar" abre un `oj-modal` que muestra los campos en solo lectura y ofrece la única acción real:
+  **Activar / Desactivar**. Si cambian los comandos, se crea un lenguaje nuevo (nota en el modal).
+- El backend **no expone** si un lenguaje está en uso, así que no se puede deshabilitar "Editar" por uso (lo pide el
+  diseño 08, pero no hay dato). Los inactivos se muestran atenuados y con "· inactivo" junto al nombre.
+
 ### Concurso en vivo y público
 - Socket.io en `/ws`. Staff: `edition:join` (con token). Público: `public:join { editionId }` sin token.
 - Eventos: `clock:update`, `standings:update` (público y staff), `submission:update`, `submission:progress`,
@@ -145,7 +157,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 11 | Problemas (+ firma de la función) | hecho |
 | 12 | Casos de prueba | hecho (sin "Activar": no hay endpoint; el vigente cambia al construir — ver decisiones) |
 | 13 | Staff | hecho (sin "Reactivar": el backend no lo permite — ver decisiones) |
-| 14 | Lenguajes | pendiente |
+| 14 | Lenguajes | hecho (sin edición de campos: el backend solo alterna `active` — ver decisiones) |
 | 15 | Tiempo real | pendiente |
 | 16 | Control del concurso | pendiente |
 | 17 | Envíos y detalle | pendiente |

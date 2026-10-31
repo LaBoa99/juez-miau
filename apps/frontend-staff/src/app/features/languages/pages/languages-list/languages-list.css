@@ -1,0 +1,128 @@
+:host {
+  display: block;
+}
+
+/* Tabla a la izquierda, formulario "Agregar lenguaje" a la derecha. */
+.lang__cols {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+  margin-top: var(--oj-space-md);
+}
+
+.lang__main {
+  flex: 1 1 440px;
+  min-width: 0;
+}
+
+.lang__aside {
+  flex: 0 0 380px;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+}
+
+.lang__aside-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Nombre + extensión en la misma fila del formulario */
+.lang__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oj-space-md);
+}
+.lang__grow {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.lang__ext-field {
+  flex: 0 0 110px;
+}
+
+.lang__check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oj-space-xs);
+  font-size: 13px;
+}
+
+/* Columna "Lenguaje" */
+.lang__name {
+  font-weight: 600;
+}
+.lang__ext {
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+
+.lang__docker {
+  font-size: 12px;
+}
+
+/* Columna "Compilar / ejecutar": dos líneas mono 12px */
+.lang__cmds {
+  font-size: 12px;
+}
+.lang__compile {
+  color: var(--oj-text);
+}
+.lang__run {
+  color: var(--oj-text-muted);
+}
+
+.lang__num {
+  text-align: right;
+}
+
+.lang__row--off td {
+  opacity: 0.6;
+}
+
+.lang__note {
+  margin: var(--oj-space-sm) 0 0;
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+
+.lang__loading {
+  margin: 0;
+  color: var(--oj-text-muted);
+  font-size: 13px;
+}
+
+/* Modal de detalle */
+.lang__details {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-sm);
+}
+.lang__details > div {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: var(--oj-space-md);
+  align-items: baseline;
+}
+.lang__details dt {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--oj-text-muted);
+}
+.lang__details dd {
+  margin: 0;
+  font-size: 13px;
+  word-break: break-word;
+}
+.lang__muted {
+  margin: var(--oj-space-md) 0 0;
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}

@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
-import { LanguagesPlaceholder } from './pages/languages-placeholder.component';
+import { LanguagesList } from './pages/languages-list/languages-list';
 
 export const routes: Routes = [
-  { path: '', component: LanguagesPlaceholder, data: { breadcrumb: 'Lenguajes' } },
+  { path: '', component: LanguagesList, data: { breadcrumb: 'Lenguajes' } },
 ];
