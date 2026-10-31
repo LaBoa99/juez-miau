@@ -18,6 +18,7 @@ import { TestsetWorkspace } from '../testsets/pages/testset-workspace/testset-wo
 import { ContestControl } from '../contest/pages/contest-control/contest-control';
 import { SubmissionList } from '../submissions/pages/submission-list/submission-list';
 import { SubmissionDetail } from '../submissions/pages/submission-detail/submission-detail';
+import { StandingsPage } from '../standings/pages/standings-page/standings-page';
 
 export const routes: Routes = [
   {
@@ -73,7 +74,7 @@ export const routes: Routes = [
               { path: ':submissionId', component: SubmissionDetail, data: { breadcrumb: 'Detalle' } },
             ],
           },
-          { path: 'marcador', component: EditionSectionPlaceholder, data: { breadcrumb: 'Marcador' } },
+          { path: 'marcador', component: StandingsPage, data: { breadcrumb: 'Marcador' } },
           { path: 'revision', component: EditionSectionPlaceholder, data: { breadcrumb: 'Revisión' } },
           { path: 'alertas', component: EditionSectionPlaceholder, data: { breadcrumb: 'Alertas' } },
           { path: '', redirectTo: 'configuracion', pathMatch: 'full' },

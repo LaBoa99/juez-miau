@@ -1,0 +1,48 @@
+:host {
+  display: block;
+}
+
+oj-page-header,
+oj-alert,
+.st__cats {
+  margin-bottom: var(--oj-space-md);
+}
+
+.st__loading {
+  margin: 0;
+  color: var(--oj-text-muted);
+  font-size: 13px;
+}
+
+/* # (mono 15px 700) y Equipo (600) como en el diseño. */
+.st__rank {
+  font-family: var(--oj-font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+.st__team {
+  font-weight: 600;
+}
+
+.st__prob {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.st__num {
+  text-align: right;
+  white-space: nowrap;
+}
+/* Resueltos: mono 15px 700. */
+.st__solved {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.st__note {
+  margin: var(--oj-space-sm) 0 0;
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}

@@ -1,0 +1,79 @@
+<oj-page-header
+  title="Marcador"
+  subtitle="Vista de staff: siempre completa, también durante el congelamiento."
+>
+  <div actions class="oj-actions">
+    <button ojButton variant="secondary" type="button" (click)="openProjector()">Abrir proyector</button>
+    <button ojButton variant="primary" type="button" [disabled]="csvBusy()" (click)="downloadCsv()">
+      {{ csvBusy() ? 'Descargando…' : 'Descargar CSV' }}
+    </button>
+  </div>
+</oj-page-header>
+
+@if (actionError()) {
+  <oj-alert tone="error">{{ actionError() }}</oj-alert>
+}
+
+@if (frozen()) {
+  <oj-alert tone="warning">
+    @if (freezeAt(); as at) {
+      Congelado para el público desde las {{ at | date: 'HH:mm' }}.
+    } @else {
+      Congelado para el público.
+    }
+    El proyector y los equipos ven el marcador de ese momento; aquí ves los cambios posteriores.
+  </oj-alert>
+}
+
+@if (loading()) {
+  <p class="st__loading">Cargando…</p>
+} @else if (error()) {
+  <oj-alert tone="error">No se pudo cargar el marcador.</oj-alert>
+} @else if (!hasRows()) {
+  <oj-empty-state message="El marcador aparecerá cuando empiece el concurso." />
+} @else {
+  @if (categoryOptions().length > 1) {
+    <oj-segmented
+      class="st__cats"
+      size="sm"
+      [options]="categoryOptions()"
+      [value]="categorySeg()"
+      (valueChange)="categorySeg.set($event ?? '')"
+    />
+  }
+
+  @if (current(); as cat) {
+    <div class="oj-table-wrap">
+      <table class="oj-table st__table">
+        <thead>
+          <tr>
+            <th class="st__rank">#</th>
+            <th>Equipo</th>
+            @for (p of cat.problems; track p.id) {
+              <th class="st__prob" [title]="p.title">{{ p.letter }}</th>
+            }
+            <th class="st__num">Resueltos</th>
+            <th class="st__num">Penalización</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of cat.rows; track row.teamId) {
+            <tr>
+              <td class="st__rank oj-mono">{{ row.rank }}</td>
+              <td class="st__team">{{ row.teamName }}</td>
+              @for (p of cat.problems; track p.id; let i = $index) {
+                <td class="st__prob"><oj-standings-cell [cell]="row.cells[i]" /></td>
+              }
+              <td class="st__num st__solved oj-mono">{{ row.solved }}</td>
+              <td class="st__num oj-mono">{{ row.penalty }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <p class="st__note">
+    La penalización es el minuto de cada AC más 20 por cada rechazo previo; los errores de compilación no cuentan.
+  </p>
+}

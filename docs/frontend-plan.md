@@ -162,6 +162,21 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
   "Re-evaluación manual · #id".
 - Tiempo real: `submission:update` fusiona el envío conservando el `source`; `submission:progress` llena "caso x/y".
 
+### Marcador de staff (18)
+- `shared/ui/standings-cell` (`oj-standings-cell`): input `cell` (`IStandingsCell`) y `size` 'normal'|'grande'.
+  Resuelto `+(rechazos+1) · minuto` (verde, fondo `--oj-success-bg`); intentado sin resolver `−rechazos` (rojo);
+  pendiente `? (rechazos+pendientes)` (ámbar); sin intentos: vacío y sin borde. Mono 12px 600, min 64px, radio 4px.
+- `features/standings`: `StandingsService` (`getForStaff` → `/editions/:id/standings` vista completa; `downloadCsv` →
+  `/editions/:id/exports/standings.csv` como blob `marcador.csv`). Página en la ruta `marcador`.
+- **El staff recibe las dos vistas por socket** (está en las salas staff y pública): `standings:update` se filtra por
+  `view === 'staff'` para quedarse con la completa.
+- **`frozen` de la vista de staff siempre es `false`** (el backend solo congela la pública). El aviso "público
+  congelado" se deriva de `IContestClock.frozen` (reloj por HTTP al entrar + `clock:update`). La hora del aviso se
+  calcula como `started_at + freezeMinute` — shortcut: no descuenta pausas; si hiciera falta exactitud con concursos
+  pausados, usar el reloj del servidor.
+- Segmentado por categoría solo si el backend devuelve más de una; la categoría vigente se repone sola si desaparece.
+- "Abrir proyector" abre `/proyector/:editionId` en pestaña nueva; sin datos, `oj-empty-state`.
+
 ### Concurso en vivo y público
 - Socket.io en `/ws`. Staff: `edition:join` (con token). Público: `public:join { editionId }` sin token.
 - Eventos: `clock:update`, `standings:update` (público y staff), `submission:update`, `submission:progress`,
@@ -220,7 +235,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 15 | Tiempo real | hecho (sin mock de eventos; sin evento de build — ver decisiones) |
 | 16 | Control del concurso | hecho |
 | 17 | Envíos y detalle | hecho |
-| 18 | Marcador de staff | pendiente |
+| 18 | Marcador de staff | hecho (congelamiento del público leído del reloj; ver decisiones) |
 | 19 | Proyector | pendiente |
 | 20 | Revisión manual | pendiente |
 | 21 | Alertas | pendiente |
