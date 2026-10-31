@@ -1,0 +1,123 @@
+:host {
+  display: block;
+}
+
+.sub__head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--oj-space-md);
+}
+.sub__live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oj-space-xs);
+  font-size: 12px;
+  color: var(--oj-success);
+}
+.sub__live--off {
+  color: var(--oj-text-muted);
+}
+.sub__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Tarjetas de contadores */
+.sub__cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oj-space-md);
+  margin: var(--oj-space-md) 0;
+}
+.sub__card {
+  flex: 1 1 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--oj-space-md);
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+}
+.sub__card-label {
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+.sub__card-num {
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sub__card-num--ac {
+  color: var(--oj-success);
+}
+
+/* Filtros */
+.sub__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--oj-space-md);
+  margin-bottom: var(--oj-space-md);
+}
+.sub__filter {
+  flex: 0 0 200px;
+}
+.sub__filter--grow {
+  flex: 1 1 200px;
+}
+.sub__filters oj-segmented {
+  margin-left: auto;
+}
+
+/* Tabla */
+.sub__num {
+  text-align: right;
+}
+.sub__id {
+  color: var(--oj-text-muted);
+}
+.sub__team {
+  font-weight: 600;
+}
+.sub__team-cat {
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+.sub__letter {
+  font-weight: 700;
+}
+.sub__lang {
+  font-size: 12px;
+}
+.sub__progress {
+  margin-left: var(--oj-space-xs);
+  font-size: 11px;
+  color: var(--oj-text-muted);
+}
+
+/* Fila nueva: resaltada y se desvanece en 2 s (el resaltado inicial es instantáneo). */
+.sub__row {
+  transition: background-color 2s ease;
+}
+.sub__row--new {
+  background: var(--oj-warning-bg);
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sub__row {
+    transition: none;
+  }
+}
+
+.sub__more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--oj-space-md);
+}
+.sub__muted {
+  margin: 0;
+  color: var(--oj-text-muted);
+  font-size: 13px;
+}

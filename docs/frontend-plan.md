@@ -131,6 +131,24 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - "Abrir proyector" apunta a `/proyector/:editionId` (ruta pública del paso 19, aún no implementada; el enlace abrirá
   404 hasta entonces).
 
+### Envíos (lista, 17A)
+- `features/submissions`: `SubmissionsService` (`listForEdition` con `before`/`limit`; `downloadCsv` como blob).
+  Pipe `shared/pipes/verdict.pipe.ts` (`{{ s.verdict | verdict: s.status }}` → `{label, tone, dashed}`); `oj-badge`
+  ganó el input `dashed` (borde punteado) para PENDING_REVIEW ("REVISIÓN").
+- **Filtrado en el cliente sobre una ventana maestra**: el backend solo filtra por un valor único (`problemId`, `teamId`,
+  `verdict`, `status`) y no tiene categoría, búsqueda por nombre, grupos de veredicto ni endpoint de conteo. Por eso la
+  lista carga una ventana reciente (`limit` 50, "Cargar más" con `before`) y los filtros (categoría, problema, equipo,
+  segmento Todos/AC/WA·CE·RE/TLE·MLE/Pendientes) se aplican en el cliente. Los eventos del socket alimentan la misma
+  lista maestra, así el filtro y el tiempo real conviven sin recargar.
+- **Contadores** (En cola / Evaluando / Aceptados / Total) se calculan sobre la ventana cargada (no hay endpoint de
+  conteo global); con "Cargar más" se amplían.
+- `IStaffSubmission` trae ids (teamId/problemId/languageId), no nombres: se resuelven con
+  problemas (`/editions/:id/problems`), equipos (una página de 100 de `/editions/:id/teams`; si hay más, cae a "#id") y
+  catálogo de lenguajes. Documentado el tope de 100 equipos.
+- Tiempo real: `submission:update` hace upsert (las nuevas arriba con resaltado ~2 s que se desvanece, anulado con
+  `prefers-reduced-motion`); `submission:progress` llena "caso 4/20" (mapa aparte, el envío no tiene ese campo).
+- Ruta `envios` con hijos: `''` (lista) y `:submissionId` (placeholder del 17B).
+
 ### Concurso en vivo y público
 - Socket.io en `/ws`. Staff: `edition:join` (con token). Público: `public:join { editionId }` sin token.
 - Eventos: `clock:update`, `standings:update` (público y staff), `submission:update`, `submission:progress`,
@@ -188,7 +206,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 14 | Lenguajes | hecho (sin edición de campos: el backend solo alterna `active` — ver decisiones) |
 | 15 | Tiempo real | hecho (sin mock de eventos; sin evento de build — ver decisiones) |
 | 16 | Control del concurso | hecho |
-| 17 | Envíos y detalle | pendiente |
+| 17 | Envíos y detalle | en curso (17A lista hecha; 17B detalle pendiente) |
 | 18 | Marcador de staff | pendiente |
 | 19 | Proyector | pendiente |
 | 20 | Revisión manual | pendiente |

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 @Component({
   selector: 'oj-badge',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[class]': 'toneClass()' },
+  host: { '[class]': 'toneClass()', '[class.oj-badge--dashed]': 'dashed()' },
   template: `<ng-content />`,
   styles: `
     :host {
@@ -42,10 +42,15 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
       border-color: var(--oj-primary);
       background: var(--oj-primary);
     }
+    :host(.oj-badge--dashed) {
+      border-style: dashed;
+    }
   `,
 })
 export class Badge {
   readonly tone = input<'neutral' | 'success' | 'warning' | 'danger' | 'solid'>('neutral');
+  // Borde punteado (p. ej. PENDING_REVIEW).
+  readonly dashed = input(false);
 
   protected readonly toneClass = computed(() => `oj-badge--${this.tone()}`);
 }

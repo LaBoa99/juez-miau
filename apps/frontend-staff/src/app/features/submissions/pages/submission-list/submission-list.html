@@ -1,0 +1,123 @@
+<oj-page-header title="Envíos">
+  <div actions class="sub__head-actions">
+    <span class="sub__live" [class.sub__live--off]="rt.connectionState() !== 'connected'">
+      <span class="sub__dot" aria-hidden="true"></span>
+      {{ rt.connectionState() === 'connected' ? 'En vivo · se actualiza solo' : 'Sin conexión' }}
+    </span>
+    <button ojButton variant="secondary" type="button" [disabled]="csvBusy()" (click)="downloadCsv()">
+      {{ csvBusy() ? 'Descargando…' : 'Descargar CSV' }}
+    </button>
+  </div>
+</oj-page-header>
+
+<div class="sub__cards">
+  <div class="sub__card">
+    <span class="sub__card-label">En cola</span>
+    <span class="sub__card-num oj-mono">{{ counters().queued }}</span>
+  </div>
+  <div class="sub__card">
+    <span class="sub__card-label">Evaluando</span>
+    <span class="sub__card-num oj-mono">{{ counters().judging }}</span>
+  </div>
+  <div class="sub__card">
+    <span class="sub__card-label">Aceptados</span>
+    <span class="sub__card-num sub__card-num--ac oj-mono">{{ counters().accepted }}</span>
+  </div>
+  <div class="sub__card">
+    <span class="sub__card-label">Total</span>
+    <span class="sub__card-num oj-mono">{{ counters().total }}</span>
+  </div>
+</div>
+
+<div class="sub__filters">
+  <oj-form-field label="Categoría" for="sub-cat" class="sub__filter">
+    <select id="sub-cat" [formControl]="categoryCtrl" (change)="onCategory()">
+      <option [ngValue]="null">Todas</option>
+      @for (c of categories(); track c.id) {
+        <option [ngValue]="c.id">{{ c.name }}</option>
+      }
+    </select>
+  </oj-form-field>
+  <oj-form-field label="Problema" for="sub-prob" class="sub__filter">
+    <select id="sub-prob" [formControl]="problemCtrl">
+      <option [ngValue]="null">Todos</option>
+      @for (p of problems(); track p.id) {
+        @if (categoryCtrl.value == null || p.categoryId === categoryCtrl.value) {
+          <option [ngValue]="p.id">{{ p.letter }} · {{ p.title }}</option>
+        }
+      }
+    </select>
+  </oj-form-field>
+  <oj-form-field label="Equipo" for="sub-team" class="sub__filter sub__filter--grow">
+    <input id="sub-team" type="text" [formControl]="teamCtrl" placeholder="Buscar por equipo" />
+  </oj-form-field>
+  <oj-segmented [options]="verdictOptions" [value]="verdictSeg()" (valueChange)="onVerdictSeg($event!)" />
+</div>
+
+@if (actionError()) {
+  <oj-alert tone="error">{{ actionError() }}</oj-alert>
+}
+
+@if (loading()) {
+  <p class="sub__muted">Cargando…</p>
+} @else if (error()) {
+  <oj-alert tone="error">No se pudieron cargar los envíos.</oj-alert>
+} @else if (filtered().length === 0) {
+  <oj-empty-state message="No hay envíos con estos filtros." />
+} @else {
+  <div class="oj-table-wrap">
+    <table class="oj-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tiempo</th>
+          <th>Equipo</th>
+          <th>Problema</th>
+          <th>Lenguaje</th>
+          <th>Veredicto</th>
+          <th class="sub__num">Ejecución</th>
+          <th class="sub__num">Memoria</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of filtered(); track s.id) {
+          <tr class="sub__row" [class.sub__row--new]="isNew(s.id)">
+            <td class="oj-mono sub__id">{{ s.id }}</td>
+            <td class="oj-mono">{{ minute(s.contestMs) }}'</td>
+            <td>
+              <div class="sub__team">{{ teamName(s.teamId) }}</div>
+              @if (teamCategory(s.teamId)) {
+                <div class="sub__team-cat">{{ teamCategory(s.teamId) }}</div>
+              }
+            </td>
+            <td class="oj-mono sub__letter">{{ letter(s.problemId) }}</td>
+            <td class="oj-mono sub__lang">{{ languageCode(s.languageId) }}</td>
+            <td>
+              @let v = s.verdict | verdict: s.status;
+              <oj-badge [tone]="v.tone" [dashed]="v.dashed">{{ v.label }}</oj-badge>
+              @if (progressText(s); as pt) {
+                <span class="sub__progress oj-mono">{{ pt }}</span>
+              }
+            </td>
+            <td class="oj-mono sub__num">{{ s.maxTimeMs !== null ? s.maxTimeMs + ' ms' : '—' }}</td>
+            <td class="oj-mono sub__num">{{ s.maxMemoryKb !== null ? s.maxMemoryKb + ' KB' : '—' }}</td>
+            <td>
+              <div class="oj-actions oj-actions--end">
+                <a ojButton variant="secondary" size="sm" [routerLink]="['/ediciones', editionId, 'envios', s.id]">Ver</a>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (hasMore()) {
+    <div class="sub__more">
+      <button ojButton variant="secondary" type="button" [disabled]="loadingMore()" (click)="loadMore()">
+        {{ loadingMore() ? 'Cargando…' : 'Cargar más' }}
+      </button>
+    </div>
+  }
+}

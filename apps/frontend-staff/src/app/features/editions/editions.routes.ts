@@ -16,6 +16,8 @@ import { ProblemPanel } from '../problems/pages/problem-panel/problem-panel';
 import { problemBreadcrumbResolver } from '../problems/data/problems-bus';
 import { TestsetWorkspace } from '../testsets/pages/testset-workspace/testset-workspace';
 import { ContestControl } from '../contest/pages/contest-control/contest-control';
+import { SubmissionList } from '../submissions/pages/submission-list/submission-list';
+import { SubmissionDetailPlaceholder } from '../submissions/pages/submission-detail/submission-detail-placeholder.component';
 
 export const routes: Routes = [
   {
@@ -63,7 +65,14 @@ export const routes: Routes = [
             ],
           },
           { path: 'concurso', component: ContestControl, data: { breadcrumb: 'Concurso' } },
-          { path: 'envios', component: EditionSectionPlaceholder, data: { breadcrumb: 'Envíos' } },
+          {
+            path: 'envios',
+            data: { breadcrumb: 'Envíos' },
+            children: [
+              { path: '', component: SubmissionList },
+              { path: ':submissionId', component: SubmissionDetailPlaceholder, data: { breadcrumb: 'Detalle' } },
+            ],
+          },
           { path: 'marcador', component: EditionSectionPlaceholder, data: { breadcrumb: 'Marcador' } },
           { path: 'revision', component: EditionSectionPlaceholder, data: { breadcrumb: 'Revisión' } },
           { path: 'alertas', component: EditionSectionPlaceholder, data: { breadcrumb: 'Alertas' } },
