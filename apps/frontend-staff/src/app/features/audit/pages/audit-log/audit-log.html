@@ -1,0 +1,61 @@
+<oj-page-header
+  title="Auditoría"
+  subtitle="Registro de cada cambio que hace el staff."
+/>
+
+<div class="aud__filters">
+  <oj-form-field label="Persona" for="aud-person" class="aud__filter">
+    <select id="aud-person" [formControl]="personCtrl">
+      <option [ngValue]="null">Todas</option>
+      @for (s of staffOptions(); track s.id) {
+        <option [ngValue]="s.id">{{ s.name }}</option>
+      }
+    </select>
+  </oj-form-field>
+  <button ojButton variant="primary" type="button" (click)="filter()">Filtrar</button>
+</div>
+
+@if (error()) {
+  <oj-alert tone="error">No se pudo cargar la auditoría.</oj-alert>
+} @else if (loading()) {
+  <p class="aud__muted">Cargando…</p>
+} @else if (rows().length === 0) {
+  <oj-empty-state message="No hay registros con estos filtros." />
+} @else {
+  <div class="oj-table-wrap">
+    <table class="oj-table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Persona</th>
+          <th>Acción</th>
+          <th>Recurso</th>
+          <th>Resumen</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of rows(); track e.id) {
+          <tr>
+            <td class="oj-mono aud__date">{{ e.createdAt | date: 'yyyy-MM-dd HH:mm:ss' }}</td>
+            <td>{{ personName(e.staffUserId) }}</td>
+            <td><oj-badge class="aud__method" [tone]="actionTone(e.method)">{{ e.method }}</oj-badge></td>
+            <td class="oj-mono aud__resource">{{ resource(e) }}</td>
+            <td>{{ summary(e) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="aud__pager">
+    <span class="aud__range">Mostrando {{ rangeStart() }}–{{ rangeEnd() }}</span>
+    <div class="oj-actions">
+      <button ojButton variant="secondary" size="sm" type="button" [disabled]="!canPrev()" (click)="prev()">
+        Anterior
+      </button>
+      <button ojButton variant="secondary" size="sm" type="button" [disabled]="!hasMore()" (click)="next()">
+        Siguiente
+      </button>
+    </div>
+  </div>
+}

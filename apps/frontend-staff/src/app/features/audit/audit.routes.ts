@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
-import { AuditPlaceholder } from './pages/audit-placeholder.component';
+import { AuditLog } from './pages/audit-log/audit-log';
 
 export const routes: Routes = [
-  { path: '', component: AuditPlaceholder, data: { breadcrumb: 'Auditoría' } },
+  { path: '', component: AuditLog, data: { breadcrumb: 'Auditoría' } },
 ];
