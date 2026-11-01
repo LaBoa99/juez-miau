@@ -17,5 +17,6 @@ export * from "./interfaces/submission.interface.js"
 export * from "./interfaces/standings.interface.js"
 export * from "./interfaces/integrity.interface.js"
 export * from "./interfaces/health.interface.js"
+export * from "./interfaces/clarification.interface.js"
 
 export * from "./constants/team-instructions.js"

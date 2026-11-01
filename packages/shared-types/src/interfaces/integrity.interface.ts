@@ -9,6 +9,12 @@ export enum FlagType {
     HEARTBEAT_LOST = "HEARTBEAT_LOST",
     // Levantada a mano por el staff
     MANUAL = "MANUAL",
+    // Más monitores que Edition.max_monitors
+    EXTRA_MONITOR = "EXTRA_MONITOR",
+    // Unidad de almacenamiento removible conectada (Edition.watch_usb_storage)
+    USB_STORAGE = "USB_STORAGE",
+    // Interfaz de red que no estaba al iniciar sesión (Edition.watch_network)
+    NETWORK_CHANGE = "NETWORK_CHANGE",
 }
 
 export interface IFlag {
@@ -36,13 +42,17 @@ export interface IResolveFlag {
 export interface IHeartbeat {
     // Nombres de los procesos en ejecución (sin ruta)
     processes?: string[]
+    // Monitores conectados (se omite si el cliente no lo puede saber)
+    monitors?: number
+    // Unidades de almacenamiento removibles montadas
+    usbStorage?: string[]
+    // Interfaces de red activas (sin loopback)
+    networkInterfaces?: string[]
 }
 
+// Solo el intervalo: la lista de prohibidos y el bloqueo no se exponen al equipo
 export interface IHeartbeatResponse {
-    forbiddenProcesses: string[]
     nextHeartbeatMs: number
-    // true si hay una alerta sin resolver y la edición bloquea envíos con alertas
-    submissionsBlocked: boolean
 }
 
 export interface IAuditEntry {

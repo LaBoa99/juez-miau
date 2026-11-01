@@ -1,3 +1,4 @@
+import { TeamsModule } from '../teams/teams.module.js';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ContestClockModule } from '../contest-clock/contest-clock.module.js';
@@ -17,6 +18,7 @@ import { StandingsService } from './standings.service.js';
     SubmissionsModule,
     ContestClockModule,
     RealtimeModule,
+    TeamsModule,
   ],
   controllers: [StandingsController],
   providers: [StandingsService],

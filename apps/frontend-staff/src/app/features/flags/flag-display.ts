@@ -16,6 +16,12 @@ export function flagLabel(type: FlagType): string {
       return 'SIN SEÑAL';
     case FlagType.MANUAL:
       return 'MANUAL';
+    case FlagType.EXTRA_MONITOR:
+      return 'MONITOR EXTRA';
+    case FlagType.USB_STORAGE:
+      return 'MEMORIA USB';
+    case FlagType.NETWORK_CHANGE:
+      return 'RED NUEVA';
   }
 }
 
@@ -26,6 +32,9 @@ export function flagTone(type: FlagType): FlagTone {
     case FlagType.SESSION_REPLACED:
       return 'danger';
     case FlagType.HEARTBEAT_LOST:
+    case FlagType.EXTRA_MONITOR:
+    case FlagType.USB_STORAGE:
+    case FlagType.NETWORK_CHANGE:
       return 'warning';
     case FlagType.MANUAL:
       return 'neutral';
@@ -46,6 +55,16 @@ export function flagMessage(flag: IFlag): string {
       return 'El equipo dejó de reportar actividad: se perdió la señal de su cliente.';
     case FlagType.MANUAL:
       return stripStaffTag(flag.details) || 'Alerta levantada por el staff.';
+    case FlagType.EXTRA_MONITOR:
+      return `El equipo tiene más monitores conectados de los permitidos (${flag.details}).`;
+    case FlagType.USB_STORAGE: {
+      const drive = afterColon(flag.details);
+      return drive ? `Se conectó una memoria USB: ${drive}` : 'Se conectó una memoria USB al equipo.';
+    }
+    case FlagType.NETWORK_CHANGE: {
+      const name = afterColon(flag.details);
+      return name ? `Apareció una conexión de red nueva: ${name}` : 'Apareció una conexión de red nueva en el equipo.';
+    }
   }
 }
 

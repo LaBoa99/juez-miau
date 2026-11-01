@@ -61,6 +61,17 @@ describe('computeStandings (ICPC)', () => {
         expect(principiantes.rows.map((row) => [row.rank, row.teamName])).toEqual([[1, 'Beta'], [2, 'Alfa'], [2, 'Gama']])
     })
 
+    it('los suspendidos van al final, sin lugar, y no le quitan lugares a los demás', () => {
+        const input = base([sub(10, 101, Verdict.AC, 5), sub(10, 100, Verdict.AC, 6), sub(11, 101, Verdict.AC, 20)])
+        input.teams[0].suspended = true
+        const [principiantes] = computeStandings(input, null)
+        expect(principiantes.rows.map((row) => [row.rank, row.teamName, row.suspended, row.solved])).toEqual([
+            [1, 'Beta', false, 1],
+            [2, 'Gama', false, 0],
+            [null, 'Alfa', true, 2],
+        ])
+    })
+
     it('congelado: lo enviado desde el congelamiento queda pendiente', () => {
         const submissions = [sub(10, 101, Verdict.WA, 50), sub(10, 101, Verdict.AC, 95), sub(11, 101, null, 20, SubmissionStatus.QUEUED)]
 

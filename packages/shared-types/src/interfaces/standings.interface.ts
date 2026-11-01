@@ -16,7 +16,9 @@ export interface IStandingsCell {
 }
 
 export interface IStandingsRow {
-    rank: number
+    // null: equipo suspendido (va al final, sin lugar)
+    rank: number | null
+    suspended: boolean
     teamId: number
     teamName: string
     solved: number

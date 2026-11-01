@@ -15,6 +15,10 @@ export interface IEdition {
     finished_at: string | Date | null
     block_submissions_on_alert: boolean
     forbidden_processes: string[]
+    // null: no se vigilan los monitores
+    max_monitors: number | null
+    watch_usb_storage: boolean
+    watch_network: boolean
     created_at: string | Date
 }
 
@@ -49,7 +53,7 @@ export interface IRoomObserver {
 export type IEditionFilters = Partial<Pick<IEdition, 'status'>>
 
 export type ICreateEdition = Pick<IEdition, 'name' | 'duration_ms' | 'freeze_duration_ms' | 'block_submissions_on_alert'>
-    & Partial<Pick<IEdition, 'forbidden_processes'>>
+    & Partial<Pick<IEdition, 'forbidden_processes' | 'max_monitors' | 'watch_usb_storage' | 'watch_network'>>
 
 export type IUpdateEdition = Partial<ICreateEdition>
 

@@ -296,6 +296,22 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Concurso en vivo: reloj, envíos, ju
       expect.objectContaining({ teamId: otherTeam.id, solved: 0, rank: 1 }),
     ]);
 
+    // Suspender: queda al final, sin lugar; solo el admin; al reactivarlo vuelve a su lugar
+    const suspension = (teamId: number, suspended: boolean, token = adminToken) =>
+      api().put(`/api/v1/editions/${edition.id}/teams/${teamId}/suspension`).set(bearer(token)).send({ suspended });
+    await suspension(team.id, true, teamToken).expect(403);
+    await suspension(999_999, true).expect(404);
+    await suspension(team.id, true).expect(204);
+    const prinNow = async () => ((await api().get(`/api/v1/editions/${edition.id}/standings`).set(bearer(adminToken)).expect(200)).body as IStandings)
+      .categories.find((category) => category.code === 'PRIN')!.rows;
+    expect(await prinNow()).toEqual([expect.objectContaining({ teamId: team.id, rank: null, suspended: true, solved: 1 })]);
+    // Su sesión se cerró: ya no puede enviar ni consultar
+    await api().get('/api/v1/contest').set(bearer(teamToken)).expect(401);
+    await suspension(team.id, false).expect(204);
+    const { session: renewed } = await app.get(TeamSessionsService).start(team.id, 'maquina');
+    teamToken = await app.get(JwtService).signAsync({ ...AccessTokenPayloadFactory.forTeam(team, renewed.session_id!) });
+    expect(await prinNow()).toEqual([expect.objectContaining({ teamId: team.id, rank: 1, suspended: false })]);
+
     // Faltan 5 minutos: la vista pública se congela (freeze de 10), la del staff no
     await editionRepo.update(edition.id, { started_at: new Date(Date.now() - 55 * 60_000) });
     const frozen = (await api().get(`/api/v1/public/editions/${edition.id}/standings`).expect(200)).body as IStandings;

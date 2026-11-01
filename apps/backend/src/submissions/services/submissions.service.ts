@@ -85,6 +85,9 @@ export class SubmissionsService implements OnApplicationBootstrap {
         }
 
         // Con la opción activa, una alerta abierta frena los envíos hasta que el staff la revise
+        if(team.suspended_at){
+            throw new ForbiddenException('the team is suspended')
+        }
         if(edition.block_submissions_on_alert && await this.flagsService.hasOpen(team.id)){
             throw new ForbiddenException('submissions are blocked until the staff reviews an alert on your team')
         }

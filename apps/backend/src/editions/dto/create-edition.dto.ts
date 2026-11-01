@@ -1,4 +1,4 @@
-import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 import type { ICreateEdition } from '@concurso/shared-types';
 
 export class CreateEditionDto implements ICreateEdition {
@@ -27,4 +27,19 @@ export class CreateEditionDto implements ICreateEdition {
     @IsString({ each: true })
     @Matches(/^[^,]{1,100}$/, { each: true, message: 'each process name must be 1-100 characters without commas' })
     declare forbidden_processes?: string[];
+
+    // null apaga la regla
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    @Max(8)
+    declare max_monitors?: number | null;
+
+    @IsOptional()
+    @IsBoolean()
+    declare watch_usb_storage?: boolean;
+
+    @IsOptional()
+    @IsBoolean()
+    declare watch_network?: boolean;
 }
