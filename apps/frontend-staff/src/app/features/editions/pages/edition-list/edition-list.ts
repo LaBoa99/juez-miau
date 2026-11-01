@@ -14,6 +14,7 @@ import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { EditionStatusPipe } from '../../../../shared/pipes/edition-status.pipe';
 import { msToMin, minToMs } from '../../../../shared/time';
 import { EditionsService } from '../../data/editions.service';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
 
 @Component({
@@ -38,6 +39,7 @@ import { backendMessage } from '../../../../core/http/backend-error.mapper';
 })
 export class EditionList {
   private readonly service = inject(EditionsService);
+  protected readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
 
   protected readonly msToMin = msToMin;

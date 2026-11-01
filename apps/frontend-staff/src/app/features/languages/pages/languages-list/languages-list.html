@@ -40,17 +40,19 @@
                 </td>
                 <td class="lang__num oj-mono">×{{ l.time_multiplier }}</td>
                 <td>
-                  <div class="oj-actions oj-actions--end">
-                    @if (l.active) {
-                      <button ojButton variant="danger-outline" size="sm" type="button" [disabled]="togglingId() === l.id" (click)="toggleActive(l)">
-                        {{ togglingId() === l.id ? 'Guardando…' : 'Desactivar' }}
-                      </button>
-                    } @else {
-                      <button ojButton variant="success" size="sm" type="button" [disabled]="togglingId() === l.id" (click)="toggleActive(l)">
-                        {{ togglingId() === l.id ? 'Guardando…' : 'Activar' }}
-                      </button>
-                    }
-                  </div>
+                  @if (auth.isSuperadmin()) {
+                    <div class="oj-actions oj-actions--end">
+                      @if (l.active) {
+                        <button ojButton variant="danger-outline" size="sm" type="button" [disabled]="togglingId() === l.id" (click)="toggleActive(l)">
+                          {{ togglingId() === l.id ? 'Guardando…' : 'Desactivar' }}
+                        </button>
+                      } @else {
+                        <button ojButton variant="success" size="sm" type="button" [disabled]="togglingId() === l.id" (click)="toggleActive(l)">
+                          {{ togglingId() === l.id ? 'Guardando…' : 'Activar' }}
+                        </button>
+                      }
+                    </div>
+                  }
                 </td>
               </tr>
             }
@@ -63,6 +65,7 @@
     </p> -->
   </div>
 
+  @if (auth.isSuperadmin()) {
   <form class="lang__aside" [formGroup]="form" (ngSubmit)="submit()">
     <h3 class="lang__aside-title">Agregar lenguaje</h3>
 
@@ -113,4 +116,5 @@
       </button>
     </div>
   </form>
+  }
 </div>

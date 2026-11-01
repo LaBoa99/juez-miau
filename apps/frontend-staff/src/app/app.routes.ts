@@ -1,16 +1,23 @@
 import { Routes } from '@angular/router';
 import { LoginStaff } from './login-staff/login-staff';
-import { UiShowcase } from './dev/ui-showcase/ui-showcase';
-import { RealtimeDev } from './dev/realtime/realtime-dev.component';
 import { Shell } from './core/layout/shell.component';
+import { Forbidden } from './core/layout/forbidden.component';
+import { authGuard, guestGuard } from './core/auth/auth.guards';
+import { superadminGuard } from './core/auth/role.guard';
 
-// shortcut: guards de auth diferidos para poder navegar el shell sin login durante el diseño.
-// Antes de cualquier deploy: re-añadir canActivate [authGuard] al Shell y [guestGuard] a 'login'
-// (están implementados y listos en ./core/auth/auth.guards).
+// Páginas de desarrollo: solo existen en el build de desarrollo. El build de producción reemplaza
+// ngDevMode por false, así la rama muerta se elimina y los chunks lazy ni siquiera se emiten.
+declare const ngDevMode: boolean | undefined;
+const devRoutes: Routes = typeof ngDevMode !== 'undefined' && ngDevMode
+  ? [
+      { path: 'dev/ui', loadComponent: () => import('./dev/ui-showcase/ui-showcase').then((m) => m.UiShowcase) },
+      { path: 'dev/realtime', loadComponent: () => import('./dev/realtime/realtime-dev.component').then((m) => m.RealtimeDev) },
+    ]
+  : [];
+
 export const routes: Routes = [
-  { path: 'login', component: LoginStaff },
-  { path: 'dev/ui', component: UiShowcase },
-  { path: 'dev/realtime', component: RealtimeDev },
+  { path: 'login', component: LoginStaff, canActivate: [guestGuard] },
+  ...devRoutes,
   // Proyector público: fuera del shell y sin guards (sin sesión ni token).
   {
     path: 'proyector/:editionId',
@@ -19,6 +26,7 @@ export const routes: Routes = [
   {
     path: '',
     component: Shell,
+    canActivate: [authGuard],
     children: [
       {
         path: 'ediciones',
@@ -26,6 +34,7 @@ export const routes: Routes = [
       },
       {
         path: 'staff',
+        canActivate: [superadminGuard],
         loadChildren: () => import('./features/staff/staff.routes').then((m) => m.routes),
       },
       {
@@ -34,8 +43,10 @@ export const routes: Routes = [
       },
       {
         path: 'auditoria',
+        canActivate: [superadminGuard],
         loadChildren: () => import('./features/audit/audit.routes').then((m) => m.routes),
       },
+      { path: '403', component: Forbidden },
       { path: '', redirectTo: 'ediciones', pathMatch: 'full' },
     ],
   },

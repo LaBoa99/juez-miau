@@ -7,6 +7,7 @@ import { FormField } from '../../../../shared/ui/form-field.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { EditionLanguagesService } from '../../../editions/edition-languages/data/edition-languages.service';
 
 @Component({
@@ -19,6 +20,7 @@ import { EditionLanguagesService } from '../../../editions/edition-languages/dat
 export class LanguagesList {
   private readonly service = inject(EditionLanguagesService);
   private readonly fb = inject(FormBuilder);
+  protected readonly auth = inject(AuthService);
 
   protected readonly rows = signal<ILanguage[]>([]);
   protected readonly loading = signal(false);

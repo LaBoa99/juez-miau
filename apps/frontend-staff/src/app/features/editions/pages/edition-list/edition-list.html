@@ -2,9 +2,11 @@
   title="Ediciones"
   [subtitle]="editions().length + ' ediciones registradas'"
 >
-  <button actions ojButton variant="primary" type="button" (click)="openPanel()">
-    Nueva edición
-  </button>
+  @if (auth.isSuperadmin()) {
+    <button actions ojButton variant="primary" type="button" (click)="openPanel()">
+      Nueva edición
+    </button>
+  }
 </oj-page-header>
 
 <oj-segmented

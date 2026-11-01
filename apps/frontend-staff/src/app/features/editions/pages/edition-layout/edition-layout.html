@@ -1,6 +1,6 @@
 <nav class="edition-bar" aria-label="Secciones de la edición">
   <span class="edition-bar__code oj-mono">{{ code() }}</span>
-  @for (s of sections; track s.path) {
+  @for (s of sections(); track s.path) {
     <a
       class="edition-bar__link"
       [routerLink]="['/ediciones', id, s.path]"

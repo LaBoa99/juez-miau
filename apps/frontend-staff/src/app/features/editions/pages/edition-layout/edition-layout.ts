@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { IFlag, IStaffSubmission, SubmissionStatus, Verdict } from '@concurso/shared-types';
+import { IFlag, IStaffSubmission, StaffRole, SubmissionStatus, Verdict } from '@concurso/shared-types';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { SubmissionsService } from '../../../submissions/data/submissions.service';
 import { FlagsService } from '../../../flags/data/flags.service';
@@ -20,6 +21,7 @@ export class EditionLayout {
   private readonly submissions = inject(SubmissionsService);
   private readonly flags = inject(FlagsService);
   private readonly rt = inject(RealtimeService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly ctx = inject(EditionContext);
 
@@ -35,7 +37,7 @@ export class EditionLayout {
   // El backend no tiene "código" de edición: se muestra el nombre.
   protected readonly code = computed(() => this.ctx.edition()?.name ?? '');
 
-  protected readonly sections = [
+  private readonly allSections = [
     { label: 'Configuración', path: 'configuracion' },
     { label: 'Equipos', path: 'equipos' },
     { label: 'Problemas', path: 'problemas' },
@@ -45,6 +47,14 @@ export class EditionLayout {
     { label: 'Revisión', path: 'revision' },
     { label: 'Alertas', path: 'alertas' },
   ];
+
+  // Un OBSERVER solo ve Envíos, Marcador y Alertas; cualquier otro rol (y superadmin) ve todo.
+  private static readonly observerSections = new Set(['envios', 'marcador', 'alertas']);
+  protected readonly sections = computed(() =>
+    !this.auth.isSuperadmin() && this.auth.roleInEdition(this.id) === StaffRole.OBSERVER
+      ? this.allSections.filter((s) => EditionLayout.observerSections.has(s.path))
+      : this.allSections,
+  );
 
   constructor() {
     this.ctx.load(this.id);

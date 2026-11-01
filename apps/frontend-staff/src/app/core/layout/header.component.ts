@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output } f
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ButtonDirective } from '../../shared/ui/button.directive';
 import { RealtimeService } from '../realtime/realtime.service';
+import { AuthService } from '../auth/auth.service';
 
 @Component({
   selector: 'oj-header',
@@ -14,8 +15,10 @@ import { RealtimeService } from '../realtime/realtime.service';
         <nav aria-label="Principal">
           <a class="oj-hd__link" routerLink="/ediciones" routerLinkActive="oj-hd__link--active">Ediciones</a>
           <a class="oj-hd__link" routerLink="/lenguajes" routerLinkActive="oj-hd__link--active">Lenguajes</a>
-          <a class="oj-hd__link" routerLink="/staff" routerLinkActive="oj-hd__link--active">Staff</a>
-          <a class="oj-hd__link" routerLink="/auditoria" routerLinkActive="oj-hd__link--active">Auditoría</a>
+          @if (auth.isSuperadmin()) {
+            <a class="oj-hd__link" routerLink="/staff" routerLinkActive="oj-hd__link--active">Staff</a>
+            <a class="oj-hd__link" routerLink="/auditoria" routerLinkActive="oj-hd__link--active">Auditoría</a>
+          }
         </nav>
       </div>
       <div class="oj-hd__right">
@@ -102,6 +105,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 })
 export class Header {
   protected readonly rt = inject(RealtimeService);
+  protected readonly auth = inject(AuthService);
   readonly userName = input('Usuario');
   readonly logout = output<void>();
 
