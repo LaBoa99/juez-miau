@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
   IRejudgeResponse,
+  IReviewSubmission,
   IStaffSubmission,
   IStaffSubmissionDetail,
   ISubmissionHistoryEntry,
@@ -33,6 +34,16 @@ export class SubmissionsService {
 
   history(id: number): Observable<ISubmissionHistoryEntry[]> {
     return this.http.get<ISubmissionHistoryEntry[]>(`${API}/submissions/${id}/history`);
+  }
+
+  // Cola de revisión manual (PENDING_REVIEW) de la edición, más viejos primero.
+  reviewQueue(editionId: number): Observable<IStaffSubmission[]> {
+    return this.http.get<IStaffSubmission[]>(`${API}/editions/${editionId}/review-queue`);
+  }
+
+  // Decisión del juez: accept=true → AC, false → WA.
+  review(id: number, dto: IReviewSubmission): Observable<IStaffSubmission> {
+    return this.http.post<IStaffSubmission>(`${API}/submissions/${id}/review`, dto);
   }
 
   // CSV del staff (admin/juez) como blob; el token lo agrega el interceptor.

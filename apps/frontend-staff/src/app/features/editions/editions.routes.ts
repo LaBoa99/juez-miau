@@ -19,6 +19,7 @@ import { ContestControl } from '../contest/pages/contest-control/contest-control
 import { SubmissionList } from '../submissions/pages/submission-list/submission-list';
 import { SubmissionDetail } from '../submissions/pages/submission-detail/submission-detail';
 import { StandingsPage } from '../standings/pages/standings-page/standings-page';
+import { ReviewPage } from '../review/pages/review-page/review-page';
 
 export const routes: Routes = [
   {
@@ -75,7 +76,7 @@ export const routes: Routes = [
             ],
           },
           { path: 'marcador', component: StandingsPage, data: { breadcrumb: 'Marcador' } },
-          { path: 'revision', component: EditionSectionPlaceholder, data: { breadcrumb: 'Revisión' } },
+          { path: 'revision', component: ReviewPage, data: { breadcrumb: 'Revisión' } },
           { path: 'alertas', component: EditionSectionPlaceholder, data: { breadcrumb: 'Alertas' } },
           { path: '', redirectTo: 'configuracion', pathMatch: 'full' },
         ],

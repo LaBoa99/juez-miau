@@ -38,6 +38,12 @@
   border-bottom-color: var(--oj-text);
 }
 
+.edition-bar__count {
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--oj-warning);
+}
+
 .edition-body {
   padding-top: 24px;
 }

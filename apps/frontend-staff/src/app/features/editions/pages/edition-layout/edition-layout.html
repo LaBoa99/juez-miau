@@ -7,6 +7,9 @@
       routerLinkActive="edition-bar__link--active"
     >
       {{ s.label }}
+      @if (s.path === 'revision' && reviewCount() > 0) {
+        <span class="edition-bar__count oj-mono" title="Envíos pendientes de revisión">{{ reviewCount() }}</span>
+      }
     </a>
   }
 </nav>

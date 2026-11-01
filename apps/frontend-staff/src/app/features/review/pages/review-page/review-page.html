@@ -1,0 +1,96 @@
+<oj-page-header 
+title="Revisión manual" 
+subtitle="" 
+/>
+
+@if (error()) {
+  <oj-alert tone="error">No se pudo cargar la cola de revisión.</oj-alert>
+} @else if (loading()) {
+  <p class="rev__muted">Cargando…</p>
+} @else if (queue().length === 0) {
+  <oj-empty-state message="No hay envíos pendientes de revisión." />
+} @else {
+  <div class="rev__split">
+    <!-- Columna izquierda: pendientes -->
+    <aside class="rev__list" aria-label="Pendientes de revisión">
+      <p class="rev__list-head">Pendientes de revisión</p>
+      <p class="rev__list-help">El juez automático no pudo decidir solo.</p>
+      @for (s of queue(); track s.id) {
+        <button
+          type="button"
+          class="rev__item"
+          [class.rev__item--active]="s.id === selectedId()"
+          [attr.aria-current]="s.id === selectedId() ? 'true' : null"
+          (click)="select(s.id)"
+        >
+          <span class="rev__item-top">
+            <span class="rev__item-id oj-mono">#{{ s.id }} · {{ minute(s.contestMs) }}'</span>
+            <span class="rev__item-letter oj-mono">{{ letter(s.problemId) }}</span>
+          </span>
+          <span class="rev__item-team">{{ teamName(s.teamId) }}</span>
+          <span class="rev__item-reason">Revisión manual del problema</span>
+        </button>
+      }
+    </aside>
+
+    <!-- Panel del envío seleccionado -->
+    @if (selected(); as s) {
+      <section class="rev__panel">
+        <header class="rev__panel-head">
+          <h2 class="rev__panel-title">Envío <span class="oj-mono">#{{ s.id }}</span></h2>
+          <oj-badge tone="warning" [dashed]="true">REVISIÓN</oj-badge>
+          <a [routerLink]="['/ediciones', editionId, 'envios', s.id]" class="rev__detail-link">Ver detalle completo</a>
+        </header>
+
+        <dl class="rev__facts">
+          <div><dt>Equipo</dt><dd>{{ teamName(s.teamId) }}</dd></div>
+          <div><dt>Problema</dt><dd><span class="oj-mono rev__letter">{{ letter(s.problemId) }}</span> {{ title(s.problemId) }}</dd></div>
+          <div><dt>Lenguaje</dt><dd class="oj-mono">{{ languageCode(s.languageId) }}</dd></div>
+          <div><dt>Ejecución máx.</dt><dd class="oj-mono">{{ maxTime(s) }}</dd></div>
+        </dl>
+
+        <div class="rev__why">
+          <strong>Por qué está en revisión:</strong> {{ reason }}
+        </div>
+
+        <form class="rev__decision" (ngSubmit)="openConfirm()">
+          <h3 class="rev__decision-title">Decisión del juez</h3>
+
+          @if (actionError()) {
+            <oj-alert tone="error">{{ actionError() }}</oj-alert>
+          }
+
+          <oj-form-field label="Veredicto final" for="rev-verdict">
+            <select id="rev-verdict" class="oj-mono" [formControl]="verdictCtrl">
+              @for (o of verdictOptions; track o.value) {
+                <option [value]="o.value">{{ o.label }}</option>
+              }
+            </select>
+          </oj-form-field>
+
+          <oj-form-field
+            label="Nota (queda en la bitácora)"
+            for="rev-note"
+            [optional]="true"
+            [error]="noteCtrl.touched && noteCtrl.invalid ? 'Máximo 1000 caracteres.' : undefined"
+          >
+            <textarea id="rev-note" rows="3" [formControl]="noteCtrl"></textarea>
+          </oj-form-field>
+
+          <div class="oj-actions">
+            <button ojButton variant="primary" type="submit" [disabled]="saving()">
+              {{ saving() ? 'Guardando…' : 'Confirmar veredicto' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    }
+  </div>
+
+  <oj-confirm-dialog
+    title="Confirmar veredicto"
+    [message]="confirmMessage()"
+    confirmLabel="Confirmar veredicto"
+    (confirmed)="confirmVerdict()"
+  />
+}

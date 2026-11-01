@@ -177,6 +177,26 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - Segmentado por categoría solo si el backend devuelve más de una; la categoría vigente se repone sola si desaparece.
 - "Abrir proyector" abre `/proyector/:editionId` en pestaña nueva; sin datos, `oj-empty-state`.
 
+### Revisión manual (13 / paso 20)
+- `features/review/pages/review-page`: una sola página. **No tiene servicio propio**: reutiliza
+  `SubmissionsService` (features/submissions), extendido con `reviewQueue(editionId)` (`GET
+  /editions/:id/review-queue`) y `review(id, {accept, comment})` (`POST /submissions/:id/review`).
+- **El veredicto final solo ofrece `AC · Aceptado` y `WA · Rechazado`**: el backend solo acepta
+  `{ accept, comment }` (accept:true→AC, false→WA, cuenta como rechazo). No se puede fijar TLE/MLE/RE
+  a mano, así que no se ofrecen. Default AC.
+- **El motivo de revisión es único**: el juez automático solo manda a `PENDING_REVIEW` los envíos que
+  habría aceptado (AC) cuando el testset tiene `manual_review` (`submission.processor`). No existe un
+  campo de "motivo" por envío, así que la lista muestra "Revisión manual del problema" y el panel el
+  mismo detalle en lenguaje sencillo; no se inventa nada por envío.
+- **Contador ámbar en la barra de la edición** (`edition-layout`, mono 11px junto a "Revisión", oculto
+  si es 0): se siembra por HTTP (`review-queue`) y se mantiene con `submission:update` (entra al quedar
+  PENDING_REVIEW, sale al resolverlo un juez). **Efecto**: el layout se une a la edición por socket al
+  entrar, así el indicador "En vivo" del header ahora aparece en todas las páginas de la edición (antes
+  solo en las que ya se unían). `review()` del backend emite `submission:update`, por eso la lista y el
+  contador se actualizan solos al confirmar.
+- Al confirmar (con `oj-confirm-dialog` que repite el veredicto elegido) el envío sale de la lista y se
+  selecciona el siguiente; al entrar se selecciona el primero. Sin pendientes: `oj-empty-state`.
+
 ### Concurso en vivo y público
 - Socket.io en `/ws`. Staff: `edition:join` (con token). Público: `public:join { editionId }` sin token.
 - Eventos: `clock:update`, `standings:update` (público y staff), `submission:update`, `submission:progress`,
@@ -250,7 +270,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 17 | Envíos y detalle | hecho |
 | 18 | Marcador de staff | hecho (congelamiento del público leído del reloj; ver decisiones) |
 | 19 | Proyector | hecho (nombre de la edición añadido al reloj público; ver decisiones) |
-| 20 | Revisión manual | pendiente |
+| 20 | Revisión manual | hecho (veredicto solo AC/WA: el backend solo acepta accept/reject — ver decisiones) |
 | 21 | Alertas | pendiente |
 | 22 | Auditoría | pendiente |
 | 23 | Páginas de error | pendiente |
