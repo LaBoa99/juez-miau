@@ -1,5 +1,5 @@
 import type { ScalarType, TypeRef } from '@concurso/shared-types'
-import { quote, RESULT_PATH, type DriverBuilder } from './driver.types.js'
+import { quote, RESULT_PATH, type DriverBuilder, type DriverInput } from './driver.types.js'
 
 // El participante escribe la función libre en Main.cpp. driver.cpp lo incluye en la misma
 // unidad de compilación: la función puede recibir por valor, por referencia o por referencia
@@ -209,7 +209,26 @@ void wr(const std::vector<T> &v) {
 }  // namespace jd
 `
 
-export const buildCppProgram: DriverBuilder = ({ signature, source, flags }) => {
+// Generador: std::string caso(...) con los parámetros del problema; escribe en su propio búfer
+function casoFunction(caseSignature: DriverInput['caseSignature']): string {
+    if(!caseSignature) return ''
+    const params = caseSignature.params.map((param, index) => cppType(param.type) + ' jd_a' + index).join(', ')
+    const writes = caseSignature.params.map((param, index) =>
+        '    jd::out += ' + quote((index > 0 ? ',' : '') + JSON.stringify(param.name) + ':') + ';\n    jd::wr(jd_a' + index + ');').join('\n')
+    return `
+static std::string caso(${params}) {
+    std::string jd_saved;
+    std::swap(jd_saved, jd::out);
+    jd::out += '{';
+${writes}
+    jd::out += '}';
+    std::swap(jd_saved, jd::out);
+    return jd_saved;
+}
+`
+}
+
+export const buildCppProgram: DriverBuilder = ({ signature, source, flags, caseSignature }) => {
     const reads = signature.params.map((param, index) => [
         index > 0 ? '    jd::expect(\',\');' : null,
         '    ' + cppType(param.type) + ' p' + index + ';',
@@ -219,7 +238,7 @@ export const buildCppProgram: DriverBuilder = ({ signature, source, flags }) => 
 
     const args = signature.params.map((_, index) => 'p' + index).join(', ')
 
-    const driver = `${RUNTIME}
+    const driver = `${RUNTIME}${casoFunction(caseSignature)}
 #define main judge_user_main
 #include "Main.cpp"
 #undef main

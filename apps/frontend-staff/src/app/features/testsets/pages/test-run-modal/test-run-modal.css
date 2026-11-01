@@ -1,0 +1,12 @@
+.tr { display: flex; flex-direction: column; gap: var(--oj-space-md); }
+.tr__muted { margin: 0; font-size: 13px; color: var(--oj-text-muted); }
+.tr__summary { display: flex; align-items: center; gap: var(--oj-space-sm); }
+.tr__num { text-align: right; }
+.tr__msg { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--oj-text-muted); }
+.tr__log {
+  margin: 0; padding: var(--oj-space-sm); max-height: 240px; overflow: auto; white-space: pre-wrap;
+  font-size: 12px; background: var(--oj-bg-muted); border: 1px solid var(--oj-border); border-radius: var(--oj-radius);
+}
+.tr__io { margin: 0; max-width: 280px; max-height: 120px; overflow: auto; white-space: pre-wrap; word-break: break-all; font-size: 12px; }
+.tr__ok { font-size: 12px; color: var(--oj-success); }
+.tr__code { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--oj-font-mono); }

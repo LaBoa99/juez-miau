@@ -1,4 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique, type Relation } from "typeorm";
+import { StaffUser } from "../../staff/entities/staff-user.entity.js";
 import { ProblemStatus, type IProblemSignature } from "@concurso/shared-types";
 import { Edition } from "../../editions/entities/edition.entity.js";
 import { Category } from "../../editions/entities/category.entity.js";
@@ -46,6 +47,11 @@ export class Problem {
     @Column({ type: 'int', nullable: true })
     declare current_testset_id: number | null
 
+    // Quien lo creó: solo él (o un admin de la edición / superadmin) lo puede editar.
+    // null en problemas creados antes de guardar el autor
+    @Column({ type: 'int', nullable: true })
+    declare created_by: number | null
+
     @ManyToOne(() => Edition, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'edition_id' })
     declare edition: Relation<Edition>
@@ -56,6 +62,10 @@ export class Problem {
 
     @OneToMany(() => Testset, testset => testset.problem)
     declare testsets: Relation<Testset[]>
+
+    @ManyToOne(() => StaffUser)
+    @JoinColumn({ name: 'created_by' })
+    declare author: Relation<StaffUser> | null
 
     @ManyToOne(() => Testset, { onDelete: 'SET NULL' })
     @JoinColumn({ name: 'current_testset_id' })

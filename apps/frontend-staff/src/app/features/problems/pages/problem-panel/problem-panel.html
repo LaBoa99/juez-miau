@@ -27,7 +27,28 @@
       </a>
     </oj-empty-state>
   } @else if (view() === 'editar') {
-    <form class="pp__box pp__form" [formGroup]="form" (ngSubmit)="save()">
+    <oj-stepper [steps]="stepItems()" [current]="step()" (select)="goTo($any($event))" />
+    @if (isNew()) {
+      <p class="pp__muted">Los demás pasos se habilitan al crear el problema.</p>
+    }
+
+    @if (actionError()) {
+      <oj-alert tone="error">{{ actionError() }}</oj-alert>
+    }
+
+    @if (!canEdit() && detail(); as d) {
+      <oj-alert tone="info">
+        Solo lectura: este problema es de {{ d.author?.name ?? 'otro juez' }}. Solo su autor o un admin de la edición pueden editarlo.
+      </oj-alert>
+    }
+
+    <h2 class="pp__step-title">{{ stepNumber() }}. {{ stepLabel() }}</h2>
+
+    @if (step() === 'datos') {
+    @if (published() && canEdit()) {
+      <oj-alert tone="warning">El problema está publicado: los equipos ven los cambios del enunciado en cuanto guardas.</oj-alert>
+    }
+    <form class="pp__box pp__form" [formGroup]="form" (ngSubmit)="save(true)">
       <div class="pp__row">
         <oj-form-field label="Categoría" for="pp-category">
           <select id="pp-category" formControlName="categoryId">
@@ -36,31 +57,70 @@
             }
           </select>
         </oj-form-field>
-        <oj-form-field label="Letra" for="pp-letter" class="pp__letter">
-          <input id="pp-letter" class="oj-mono pp__letter-input" type="text" formControlName="letter" maxlength="2" (input)="upperLetter($event)" />
-        </oj-form-field>
         <oj-form-field label="Título" for="pp-title" class="pp__row-grow">
           <input id="pp-title" type="text" formControlName="title" />
         </oj-form-field>
       </div>
 
       <oj-form-field label="Enunciado" for="pp-statement">
-        <textarea id="pp-statement" class="pp__code" rows="10" formControlName="statement"></textarea>
+        <oj-markdown-editor inputId="pp-statement" [rows]="10" formControlName="statement" />
       </oj-form-field>
 
-      <div class="pp__row">
-        <oj-form-field label="Formato de entrada" for="pp-input">
-          <textarea id="pp-input" class="pp__code" rows="5" formControlName="inputFormat"></textarea>
-        </oj-form-field>
-        <oj-form-field label="Formato de salida" for="pp-output">
-          <textarea id="pp-output" class="pp__code" rows="5" formControlName="outputFormat"></textarea>
-        </oj-form-field>
-      </div>
+      <p class="pp__muted">
+        Lo que recibe y regresa la función lo ve el concursante en la firma (paso Firma) y en los ejemplos, que salen de
+        los casos públicos (paso Casos).
+      </p>
 
       <oj-form-field label="Puntos" for="pp-points" hint="Solo se define al crear el problema." class="pp__points">
         <input id="pp-points" class="oj-mono pp__points-input" type="number" min="0" max="100000" formControlName="points" />
       </oj-form-field>
     </form>
+    @if (isNew()) {
+      <div class="oj-actions oj-actions--end">
+        <button ojButton variant="secondary" type="button" (click)="cancel()">Cancelar</button>
+        <button ojButton variant="primary" type="button" [disabled]="saving()" (click)="save(true)">
+          {{ saving() ? 'Creando…' : 'Crear y seguir →' }}
+        </button>
+      </div>
+    } @else if (!canEdit()) {
+      <nav class="oj-actions oj-actions--end pp__nav" aria-label="Pasos">
+        <button ojButton variant="secondary" type="button" (click)="goNext()">Siguiente →</button>
+      </nav>
+    } @else {
+      <div class="oj-actions oj-actions--between">
+        <div class="oj-actions">
+          @if (isDraft()) {
+            <button ojButton variant="danger-outline" type="button" (click)="askDelete()">Eliminar borrador</button>
+          }
+        </div>
+        <div class="oj-actions">
+          <button ojButton variant="secondary" type="button" [disabled]="saving()" (click)="save()">Guardar</button>
+          <button ojButton variant="primary" type="button" [disabled]="saving()" (click)="save(true)">
+            {{ saving() ? 'Guardando…' : 'Guardar y seguir →' }}
+          </button>
+        </div>
+      </div>
+    }
+    } @else if (detail(); as d) {
+      <oj-testset-workspace [problem]="d" [step]="$any(step())" [readOnly]="!canEdit()" (progress)="progress.set($event)" (affects)="affected.set($event)" (next)="goNext()" (changed)="refreshDetail()" />
+
+      <nav class="oj-actions oj-actions--between pp__nav" aria-label="Pasos">
+        <button ojButton variant="secondary" type="button" (click)="goPrev()">← Anterior</button>
+        @if (step() === 'construir') {
+          @if (isDraft() && canEdit()) {
+            <button ojButton variant="success" type="button" class="pp__publish" [class.pp__locked]="!hasCases()"
+                    [attr.aria-disabled]="hasCases() ? null : 'true'" (click)="publish()">
+              Publicar
+            </button>
+          }
+        } @else {
+          <button ojButton variant="secondary" type="button" (click)="goNext()">Siguiente →</button>
+        }
+      </nav>
+      @if (publishBlocked()) {
+        <oj-alert tone="warning">Para publicar, primero construye los casos de prueba.</oj-alert>
+      }
+    }
   } @else {
     <div class="pp__box pp__preview">
       @if (previewLoading()) {
@@ -70,18 +130,27 @@
         @if (p.limits) {
           <span class="pp__limits oj-mono">{{ p.limits.timeLimitMs }} ms · {{ p.limits.memoryLimitMb }} MB</span>
         }
-        <div class="pp__md" [innerHTML]="renderMd(p.statement)"></div>
-        <h3 class="pp__preview-h">Entrada</h3>
-        <div class="pp__md" [innerHTML]="renderMd(p.inputFormat)"></div>
-        <h3 class="pp__preview-h">Salida</h3>
-        <div class="pp__md" [innerHTML]="renderMd(p.outputFormat)"></div>
+        <div class="pp__md oj-md" [innerHTML]="renderMd(p.statement)"></div>
+        @if (p.signature) {
+          <h3 class="pp__preview-h">Función</h3>
+          <pre class="pp__sample-block oj-mono">{{ signatureText(p.signature) }}</pre>
+        }
+        <!-- Solo problemas anteriores que todavía los traen -->
+        @if (p.inputFormat) {
+          <h3 class="pp__preview-h">Entrada</h3>
+          <div class="pp__md oj-md" [innerHTML]="renderMd(p.inputFormat)"></div>
+        }
+        @if (p.outputFormat) {
+          <h3 class="pp__preview-h">Salida</h3>
+          <div class="pp__md oj-md" [innerHTML]="renderMd(p.outputFormat)"></div>
+        }
         @if (p.samples.length) {
           <h3 class="pp__preview-h">Ejemplos</h3>
           @for (s of p.samples; track $index) {
             <div class="pp__sample">
               <div>
                 <div class="pp__sample-label">Entrada</div>
-                <pre class="pp__sample-block oj-mono">{{ s.input }}</pre>
+                <pre class="pp__sample-block oj-mono">{{ caseInput(s.input) }}</pre>
               </div>
               <div>
                 <div class="pp__sample-label">Salida</div>
@@ -94,60 +163,6 @@
         <p class="pp__muted">Sin vista previa.</p>
       }
     </div>
-  }
-
-  @if (actionError()) {
-    <oj-alert tone="error">{{ actionError() }}</oj-alert>
-  }
-
-  @if (loading() || noCategories()) {
-    <!-- cargando o sin categorías: todavía no hay acciones -->
-  } @else if (isNew()) {
-    <div class="oj-actions oj-actions--end">
-      <button ojButton variant="secondary" type="button" (click)="cancel()">Cancelar</button>
-      <button ojButton variant="primary" type="button" [disabled]="saving()" (click)="save()">
-        {{ saving() ? 'Creando…' : 'Crear problema' }}
-      </button>
-    </div>
-  } @else {
-    <div class="pp__tc">
-      <div class="pp__tc-main">
-        <h2 class="pp__tc-title">Casos de prueba</h2>
-        <p class="pp__tc-desc">
-          Define la firma, la solución oficial, la evaluación y los casos. Con eso se generan las salidas
-          esperadas y el problema queda listo para publicar.
-        </p>
-        @if (hasCases() && currentTestset(); as ct) {
-          <p class="pp__tc-state pp__tc-ready">v{{ ct.version }} · {{ (ct.status | testsetStatus).label }}@if (ct.generatedCount != null) { · {{ ct.generatedCount }} {{ ct.generatedCount === 1 ? 'caso' : 'casos' }}}</p>
-        } @else {
-          <p class="pp__tc-state">Aún no hay casos de prueba.</p>
-        }
-      </div>
-      <button type="button" class="pp__cta" (click)="goToCases()">{{ hasCases() ? 'Gestionar casos de prueba' : 'Crear casos de prueba →' }}</button>
-    </div>
-
-    <div class="oj-actions oj-actions--between">
-      <div class="oj-actions">
-        @if (isDraft()) {
-          <button ojButton variant="danger-outline" type="button" (click)="askDelete()">Eliminar borrador</button>
-        }
-      </div>
-      <div class="oj-actions">
-        <button ojButton variant="secondary" type="button" [disabled]="saving()" (click)="save()">
-          {{ saving() ? 'Guardando…' : 'Guardar' }}
-        </button>
-        @if (isDraft()) {
-          <button ojButton variant="success" type="button" class="pp__publish" [class.pp__locked]="!hasCases()"
-                  [attr.aria-disabled]="hasCases() ? null : 'true'" (click)="publish()">
-            Publicar
-          </button>
-        }
-      </div>
-    </div>
-
-    @if (publishBlocked()) {
-      <oj-alert tone="warning">Para publicar, primero crea los casos de prueba.</oj-alert>
-    }
   }
 
   <oj-confirm-dialog

@@ -7,10 +7,12 @@ export class CreateProblemDto implements ICreateProblem {
     @Min(1)
     declare categoryId: number;
 
-    // "A".."Z", o dos letras si la categoría tiene más de 26 problemas
+    // "A".."Z", o dos letras si la categoría tiene más de 26 problemas.
+    // Opcional: si no viene, el sistema asigna la siguiente libre de la categoría
+    @IsOptional()
     @IsString()
     @Matches(/^[A-Z]{1,2}$/)
-    declare letter: string;
+    declare letter?: string;
 
     @IsString()
     @IsNotEmpty()
@@ -22,13 +24,14 @@ export class CreateProblemDto implements ICreateProblem {
     @IsNotEmpty()
     declare statement: string;
 
+    // Opcionales: la firma y los ejemplos (casos públicos) ya dicen qué entra y qué sale
+    @IsOptional()
     @IsString()
-    @IsNotEmpty()
-    declare inputFormat: string;
+    declare inputFormat?: string;
 
+    @IsOptional()
     @IsString()
-    @IsNotEmpty()
-    declare outputFormat: string;
+    declare outputFormat?: string;
 
     @IsOptional()
     @IsInt()

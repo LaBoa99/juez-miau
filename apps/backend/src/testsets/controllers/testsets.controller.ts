@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Put, Req } from '@nestjs/common';
-import type { IGenerateTestsetResponse, IProblemSource, IProblemTestset, ITestCase, ITestCaseContent, ITestsetDetail, ITestsetSummary } from '@concurso/shared-types';
+import type { ITestRun, IGenerateTestsetResponse, IProblemSource, IProblemTestset, ITestCase, ITestCaseContent, ITestsetDetail, ITestsetSummary } from '@concurso/shared-types';
 import type { AuthenticatedRequest } from '../../auth/guards/jwt-auth.guard.js';
 import { TestsetsService } from '../services/testsets.service.js';
 import { UpdateTestsetDto } from '../dto/update-testset.dto.js';
@@ -7,6 +7,7 @@ import { CreateTestCaseDto } from '../dto/create-test-case.dto.js';
 import { UpdateTestCaseDto } from '../dto/update-test-case.dto.js';
 import { SetCheckerDto, SetGeneratorDto } from '../dto/set-generator.dto.js';
 import { SetRefSolutionDto } from '../dto/set-ref-solution.dto.js';
+import { CreateTestRunDto } from '../dto/create-test-run.dto.js';
 
 // Juez o admin de la edición del problema; se revisa en el servicio
 @Controller('testsets')
@@ -79,6 +80,26 @@ export class TestsetsController {
     @HttpCode(HttpStatus.NO_CONTENT)
     removeGenerator(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest): Promise<void> {
         return this.testsetsService.removeGenerator(id, req.user.sub);
+    }
+
+    // Prueba una solución (o la oficial) contra el testset construido; 202 y se consulta con el GET
+    @Post(':id/test-runs')
+    @HttpCode(HttpStatus.ACCEPTED)
+    startTestRun(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: CreateTestRunDto,
+        @Req() req: AuthenticatedRequest,
+    ): Promise<ITestRun> {
+        return this.testsetsService.startTestRun(id, dto, req.user.sub);
+    }
+
+    @Get(':id/test-runs/:runId')
+    getTestRun(
+        @Param('id', ParseIntPipe) id: number,
+        @Param('runId') runId: string,
+        @Req() req: AuthenticatedRequest,
+    ): Promise<ITestRun> {
+        return this.testsetsService.getTestRun(id, runId, req.user.sub);
     }
 
     @Post(':id/build')

@@ -1,5 +1,5 @@
 import type { IProblemSignature, ScalarType, TypeRef } from '@concurso/shared-types'
-import type { DriverBuilder, DriverInput, DriverProgram } from './driver.types.js'
+import { LOCAL_BLOCK_END, LOCAL_BLOCK_START, type DriverBuilder, type DriverInput, type DriverProgram } from './driver.types.js'
 import { buildPythonProgram } from './python.driver.js'
 import { buildJavaScriptProgram, buildTypeScriptProgram } from './javascript.driver.js'
 import { buildJavaProgram, javaType } from './java.driver.js'
@@ -120,5 +120,123 @@ export function starterCode(languageCode: string, signature: IProblemSignature):
             ].join('\n')
         default:
             return null
+    }
+}
+
+// ─── Plantilla del generador ────────────────────────────────
+// Esqueleto de generate(seed, group, index) que ya regresa caso(...) con los parámetros del
+// problema y valores de ejemplo del tipo correcto: el juez solo cambia los valores
+
+function placeholder(languageCode: string, type: TypeRef): string {
+    if(type.type === 'array'){
+        switch(languageCode){
+            case 'java': return 'new ' + javaType(type).replace('[]', '[0]')
+            case 'csharp': return 'new ' + csharpType(type).replace('[]', '[0]')
+            case 'c': return '(' + cType(type) + '){ NULL, 0 }'
+            case 'cpp': return '{}'
+            default: return '[]'
+        }
+    }
+    switch(type.type){
+        case 'string': return languageCode === 'python' || languageCode === 'javascript' || languageCode === 'typescript' ? "''" : '""'
+        case 'bool': return languageCode === 'python' ? 'False' : 'false'
+        case 'float': return '0.0'
+        case 'long': return languageCode === 'javascript' || languageCode === 'typescript' ? '0n' : languageCode === 'java' || languageCode === 'csharp' ? '0L' : '0'
+        default: return '0'
+    }
+}
+
+const GENERATOR_STARTER: IProblemSignature = {
+    functionName: 'generate',
+    params: [
+        { name: 'seed', type: { type: 'long' } },
+        { name: 'group', type: { type: 'string' } },
+        { name: 'index', type: { type: 'int' } },
+    ],
+    returns: { type: 'string' },
+}
+
+export function generatorTemplate(languageCode: string, caseSignature: IProblemSignature): string | null {
+    const skeleton = starterCode(languageCode, GENERATOR_STARTER)
+    if(skeleton === null) return null
+
+    const comment = languageCode === 'python' ? '#' : '//'
+    const call = languageCode === 'java' ? 'Caso.de' : languageCode === 'csharp' ? 'Caso.De' : 'caso'
+    const typeName = (type: TypeRef) => (function name(t: TypeRef): string { return t.type === 'array' ? name(t.items) + '[]' : t.type })(type)
+    const signatureText = call + '(' + caseSignature.params.map((param) => param.name + ': ' + typeName(param.type)).join(', ') + ')'
+    const args = caseSignature.params
+        .map((param) => (languageCode === 'python' ? param.name + '=' : '') + placeholder(languageCode, param.type))
+        .join(', ')
+
+    const indent = languageCode === 'java' || languageCode === 'csharp' ? '        ' : '    '
+    const body = [
+        indent + comment + ' Usa la semilla para el azar: misma semilla, mismo caso.',
+        indent + comment + ' ' + signatureText,
+        indent + 'return ' + call + '(' + args + ')' + (languageCode === 'python' ? '' : ';'),
+    ]
+
+    const lines = skeleton.split('\n')
+    if(languageCode === 'python'){
+        lines.splice(lines.findIndex((line) => line.trim() === 'pass'), 1, ...body)
+    } else {
+        const signatureLine = lines.findIndex((line) => line.includes('generate('))
+        // En C# la llave va en la línea siguiente
+        lines.splice(signatureLine + (languageCode === 'csharp' ? 2 : 1), 0, ...body)
+    }
+
+    // caso(...) de prueba para el IDE y para correrlo en tu máquina; el juez quita el bloque
+    const local = [
+        comment + ' ' + LOCAL_BLOCK_START,
+        comment + ' Para tu IDE y para probar en tu máquina. En el juez se quita este bloque y se usa el ' + call + '(...) del sistema.',
+        ...localCaso(languageCode, caseSignature),
+        comment + ' ' + LOCAL_BLOCK_END,
+        '',
+    ]
+    if(languageCode === 'java' || languageCode === 'csharp'){
+        lines.push(...local)
+    } else {
+        const at = lines.findIndex((line) => line.includes('generate('))
+        lines.splice(at, 0, ...local)
+    }
+
+    const header = [
+        comment + ' Generador: se llama una vez por caso con la semilla, el nombre del grupo y el índice.',
+        comment + ' Regresa ' + signatureText + ' con los valores del caso; el sistema arma el JSON (no lo escribas a mano).',
+        '',
+    ]
+    return header.join('\n') + lines.join('\n')
+}
+
+// Versión local de caso(...): en Python y JS arma el JSON de verdad; en los compilados basta con que
+// compile y el IDE la reconozca (regresa "")
+function localCaso(languageCode: string, caseSignature: IProblemSignature): string[] {
+    const params = caseSignature.params
+    const names = params.map((param) => param.name)
+    const jsonObject = '{ ' + names.map((name) => JSON.stringify(name) + ': ' + name).join(', ') + ' }'
+    switch(languageCode){
+        case 'python':
+            return [
+                'import json',
+                'def caso(' + params.map((param) => param.name + ': ' + pyType(param.type)).join(', ') + ') -> str:',
+                '    return json.dumps(' + jsonObject.replace(/^\{ /, '{').replace(/ \}$/, '}') + ')',
+            ]
+        case 'javascript':
+            return ['function caso(' + names.join(', ') + ') {', "    return JSON.stringify(" + jsonObject + ", (k, v) => typeof v === 'bigint' ? v.toString() : v)", '}']
+        case 'typescript':
+            return [
+                'function caso(' + params.map((param) => param.name + ': ' + tsType(param.type)).join(', ') + '): string {',
+                "    return JSON.stringify(" + jsonObject + ", (k, v) => typeof v === 'bigint' ? v.toString() : v)",
+                '}',
+            ]
+        case 'java':
+            return ['class Caso {', '    static String de(' + params.map((param) => javaType(param.type) + ' ' + param.name).join(', ') + ') { return ""; }', '}']
+        case 'csharp':
+            return ['public static class Caso', '{', '    public static string De(' + params.map((param) => csharpType(param.type) + ' ' + param.name).join(', ') + ') => "";', '}']
+        case 'c':
+            return ['char *caso(' + params.map((param) => { const t = cType(param.type); return t.endsWith('*') ? t + param.name : t + ' ' + param.name }).join(', ') + ') { return (char *)""; }']
+        case 'cpp':
+            return ['string caso(' + params.map((param) => cppType(param.type).replaceAll('std::', '') + ' ' + param.name).join(', ') + ') { return ""; }']
+        default:
+            return []
     }
 }

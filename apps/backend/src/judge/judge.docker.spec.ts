@@ -4,6 +4,10 @@ import type { Language } from '../languages/entities/language.entity.js'
 import { CpuPool, parseJudgeCpus } from './cpu-pool.js'
 import { DockerRunnerService } from './docker-runner.service.js'
 import { JudgeService, type JudgeCase } from './judge.service.js'
+import { GENERATOR_SIGNATURE, generatorInput } from './special-programs.js'
+import { generatorTemplate } from './drivers/index.js'
+import { parseJsonPreservingIntegers, serializeInput } from '../testsets/generation/canonical-json.js'
+import { normalizeInput } from '../testsets/generation/signature.js'
 
 // Compila y ejecuta de verdad en Docker (las imágenes de judge-evaluation.md deben estar descargadas).
 // Tarda ~1 min, por eso no corre con `pnpm test`:
@@ -97,6 +101,28 @@ const SOLUTIONS: Record<string, Record<'scale' | 'rowSums' | 'greet', string>> =
     },
 }
 
+// Generador con caso(...): int, long[] con un valor arriba de 2^53, string con comillas y float
+const CASE_SIGNATURE: IProblemSignature = {
+    functionName: 'resolver',
+    params: [
+        { name: 'n', type: int },
+        { name: 'nums', type: { type: 'array', items: long } },
+        { name: 's', type: string },
+        { name: 'x', type: float },
+    ],
+    returns: int,
+}
+const CASE_EXPECTED = '{"n":2,"nums":[7,9007199254740993],"s":"g\\"x","x":0.5}'
+const GENERATORS: Record<string, string> = {
+    python: 'def generate(seed, group, index):\n    return caso(index, [seed, 9007199254740993], s=group + \'"x\', x=0.5)\n',
+    javascript: 'function generate(seed, group, index) {\n  return caso(index, [seed, 9007199254740993n], group + \'"x\', 0.5)\n}\n',
+    typescript: 'function generate(seed: bigint, group: string, index: number): string {\n  return caso(index, [seed, 9007199254740993n], group + \'"x\', 0.5)\n}\n',
+    java: 'class Main {\n  static String generate(long seed, String group, int index) {\n    return Caso.de(index, new long[]{seed, 9007199254740993L}, group + "\\"x", 0.5);\n  }\n}\n',
+    csharp: 'public class Main\n{\n  public static string generate(long seed, string group, int index) => Caso.De(index, new long[] { seed, 9007199254740993L }, group + "\\"x", 0.5);\n}\n',
+    c: '#include "judge.h"\n\nchar *generate(long long seed, char *group, int index) {\n  static long long d[2];\n  d[0] = seed; d[1] = 9007199254740993LL;\n  LongArray a = { d, 2 };\n  char s[64];\n  snprintf(s, sizeof s, "%s\\"x", group);\n  return caso(index, a, s, 0.5);\n}\n',
+    cpp: '#include <bits/stdc++.h>\n\nstd::string generate(long long seed, std::string group, int index) {\n  return caso(index, {seed, 9007199254740993LL}, group + "\\"x", 0.5);\n}\n',
+}
+
 const config = { get: (key: string) => process.env[key] } as unknown as ConfigService
 
 describe.skipIf(!process.env.JUDGE_DOCKER)('JudgeService en Docker', () => {
@@ -131,6 +157,49 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('JudgeService en Docker', () => {
             expect(result.cases.map((testCase) => [testCase.verdict, testCase.output, testCase.message]))
                 .toEqual(cases.map((testCase) => [Verdict.AC, testCase.expected, null]))
             expect(result.verdict).toBe(Verdict.AC)
+        }, 120_000)
+    })
+
+    describe.concurrent.each(Object.keys(GENERATORS))('generador con caso(...) en %s', (language) => {
+        it('arma el JSON del caso con los tipos del problema', async () => {
+            const result = await judge.judge({
+                language: LANGUAGES[language] as Language,
+                signature: GENERATOR_SIGNATURE,
+                caseSignature: CASE_SIGNATURE,
+                source: GENERATORS[language],
+                cases: [{ ordinal: 1, input: generatorInput(7, 'g', 2), expected: null }],
+                timeLimitMs: 5000,
+                memoryLimitMb: 256,
+                compareMode: CompareMode.EXACT,
+                floatTolerance: null,
+            })
+            if(result.verdict === Verdict.CE) throw new Error('CE:\n' + result.compileLog)
+            expect([result.cases[0].verdict, result.cases[0].message]).toEqual([Verdict.AC, null])
+            // Lo mismo que hace el build: el texto regresado es el input del caso
+            const text = JSON.parse(result.cases[0].output!) as string
+            const { value, errors } = normalizeInput(CASE_SIGNATURE, parseJsonPreservingIntegers(text))
+            expect(errors).toEqual([])
+            expect(serializeInput(CASE_SIGNATURE, value as Record<string, unknown>)).toBe(CASE_EXPECTED)
+        }, 120_000)
+    })
+
+    describe.concurrent.each(Object.keys(GENERATORS))('plantilla del generador en %s', (language) => {
+        it('compila y corre tal cual, con valores de ejemplo', async () => {
+            const result = await judge.judge({
+                language: LANGUAGES[language] as Language,
+                signature: GENERATOR_SIGNATURE,
+                caseSignature: CASE_SIGNATURE,
+                source: generatorTemplate(language, CASE_SIGNATURE)!,
+                cases: [{ ordinal: 1, input: generatorInput(1, 'g', 0), expected: null }],
+                timeLimitMs: 5000,
+                memoryLimitMb: 256,
+                compareMode: CompareMode.EXACT,
+                floatTolerance: null,
+            })
+            if(result.verdict === Verdict.CE) throw new Error('CE:\n' + result.compileLog)
+            expect([result.cases[0].verdict, result.cases[0].message]).toEqual([Verdict.AC, null])
+            const { errors } = normalizeInput(CASE_SIGNATURE, parseJsonPreservingIntegers(JSON.parse(result.cases[0].output!) as string))
+            expect(errors).toEqual([])
         }, 120_000)
     })
 

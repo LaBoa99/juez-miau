@@ -81,6 +81,13 @@ Dos modos de generación, combinables con casos escritos a mano:
 | **Generador en código** | Entradas con reglas que el esquema no expresa (dependencias entre campos, grafos, estados válidos, formatos especiales). El juez lo escribe en cualquier lenguaje soportado y corre en su contenedor. |
 | **Casos manuales** | Casos límite (vacío, un elemento, máximos). |
 
+**Contrato del generador en código.** El juez escribe `generate(seed: long, group: string, index: int) -> string`
+y regresa `caso(...)` (en Java `Caso.de(...)`, en C# `Caso.De(...)`): una función que agrega el driver con los
+parámetros **tipados** de la firma del problema y que arma el JSON del caso. Así el juez no escribe JSON a mano,
+los lenguajes con tipos detectan al compilar un parámetro de tipo equivocado o faltante, y el escape de strings,
+los `long` y los `float` los resuelve el sistema. Regresar el texto JSON a mano sigue funcionando. La plantilla
+descargable del panel ya trae `return caso(...)` con valores de ejemplo de cada tipo.
+
 Tipos del esquema: `int`, `long`, `float`, `bool`, `string` (`length`, `charset`), `enum`,
 `array` (`length`, `items`, `unique`, `sorted`), `object` (`fields`). Son anidables.
 

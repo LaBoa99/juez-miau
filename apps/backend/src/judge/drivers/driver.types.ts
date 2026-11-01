@@ -18,6 +18,9 @@ export interface DriverInput {
     source: string
     // `Language.flags`: se agregan al compilador en C y C++
     flags: string
+    // Solo para el generador: la firma del problema. El driver agrega `caso(...)` (Caso.de en Java,
+    // Caso.De en C#) con esos parámetros tipados, que arma el JSON del caso por el juez
+    caseSignature?: IProblemSignature
 }
 
 export type DriverBuilder = (input: DriverInput) => DriverProgram
@@ -44,6 +47,24 @@ export function arrayDepth(type: TypeRef): number {
 
 export function baseType(type: TypeRef): ScalarType {
     return type.type === 'array' ? baseType(type.items) : type.type
+}
+
+// Bloque "solo local" de la plantilla del generador: un caso(...) de prueba para el IDE del juez.
+// Al ejecutarse en el juez se quita y queda el caso(...) del driver.
+//   // ---- solo local: inicio ----   (o con # en Python)
+//   ...
+//   // ---- solo local: fin ----
+export const LOCAL_BLOCK_START = '---- solo local: inicio ----'
+export const LOCAL_BLOCK_END = '---- solo local: fin ----'
+const LOCAL_BLOCK = /^[ \t]*(?:\/\/|#)[ \t]*---- solo local: inicio ----[\s\S]*?^[ \t]*(?:\/\/|#)[ \t]*---- solo local: fin ----[^\n]*\n?/gm
+
+export function stripLocalBlocks(source: string): string {
+    return source.replace(LOCAL_BLOCK, '')
+}
+
+// Firma con los tipos de la del problema agregados, para generar también sus lectores y escritores
+export function withCaseTypes(signature: IProblemSignature, caseSignature?: IProblemSignature): IProblemSignature {
+    return caseSignature ? { ...signature, params: [...signature.params, ...caseSignature.params] } : signature
 }
 
 // Todos los tipos que aparecen en la firma, incluidos los de los elementos de los arrays,

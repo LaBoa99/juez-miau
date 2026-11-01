@@ -25,6 +25,7 @@ describe('Auth staff con cookie httpOnly (e2e)', () => {
   const email = `e2e-login-${Date.now()}@concurso.test`;
   const password = 'Secreta123!';
   let user: StaffUser;
+  let superadmin: StaffUser;
   let inactiveUser: StaffUser;
   let edition: Edition;
 
@@ -57,6 +58,14 @@ describe('Auth staff con cookie httpOnly (e2e)', () => {
     user = await staffRepo.save(
       staffRepo.create({ name: 'Juez E2E', email, password_hash: passwordHash }),
     );
+    superadmin = await staffRepo.save(
+      staffRepo.create({
+        name: 'Superadmin E2E',
+        email: `superadmin-${email}`,
+        password_hash: passwordHash,
+        is_superadmin: true,
+      }),
+    );
     inactiveUser = await staffRepo.save(
       staffRepo.create({
         name: 'Inactivo E2E',
@@ -77,7 +86,7 @@ describe('Auth staff con cookie httpOnly (e2e)', () => {
   afterAll(async () => {
     // Las FK con CASCADE borran refresh tokens y asignaciones de edición
     await editionRepo.delete(edition.id);
-    await staffRepo.delete([user.id, inactiveUser.id]);
+    await staffRepo.delete([user.id, superadmin.id, inactiveUser.id]);
     await app.close();
   });
 
@@ -91,6 +100,7 @@ describe('Auth staff con cookie httpOnly (e2e)', () => {
           id: user.id,
           name: 'Juez E2E',
           roles: [{ editionId: edition.id, role: StaffRole.JUDGE }],
+          isSuperadmin: false,
         },
       });
       expect(res.body).not.toHaveProperty('refreshToken');
@@ -103,6 +113,31 @@ describe('Auth staff con cookie httpOnly (e2e)', () => {
 
       const payload = await jwt.verifyAsync(res.body.accessToken);
       expect(payload).toMatchObject({ sub: user.id, type: 'staff' });
+    });
+
+    it('incluye el permiso de superadmin en login y /auth/me', async () => {
+      const agent = request.agent(app.getHttpServer());
+      const res = await agent
+        .post('/api/v1/auth/staff/login')
+        .send({ email: superadmin.email, password })
+        .expect(200);
+
+      expect(res.body.user).toMatchObject({
+        id: superadmin.id,
+        isSuperadmin: true,
+      });
+
+      await agent
+        .get('/api/v1/auth/me')
+        .set('Authorization', 'Bearer ' + res.body.accessToken)
+        .expect(200)
+        .expect({
+          type: 'staff',
+          id: superadmin.id,
+          name: 'Superadmin E2E',
+          roles: [],
+          isSuperadmin: true,
+        });
     });
 
     it('en BD guarda solo el hash del refresh token', async () => {
@@ -151,6 +186,7 @@ describe('Auth staff con cookie httpOnly (e2e)', () => {
           id: user.id,
           name: 'Juez E2E',
           roles: [{ editionId: edition.id, role: StaffRole.JUDGE }],
+          isSuperadmin: false,
         });
 
       const refreshRes = await agent.post('/api/v1/auth/refresh').expect(200);

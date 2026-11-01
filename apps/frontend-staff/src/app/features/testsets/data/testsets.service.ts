@@ -2,6 +2,9 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
   ICreateTestCase,
+  ICreateTestRun,
+  IGeneratorTemplate,
+  ITestRun,
   ICreateTestsetVersion,
   IGenerateTestsetResponse,
   IProblemSource,
@@ -78,5 +81,18 @@ export class TestsetsService {
 
   removeCase(id: number, caseId: number): Observable<void> {
     return this.http.delete<void>(`${API}/testsets/${id}/cases/${caseId}`);
+  }
+
+  // Prueba una solución contra el testset construido (sin crear envío); se consulta con getTestRun.
+  startTestRun(id: number, dto: ICreateTestRun): Observable<ITestRun> {
+    return this.http.post<ITestRun>(`${API}/testsets/${id}/test-runs`, dto);
+  }
+
+  getTestRun(id: number, runId: string): Observable<ITestRun> {
+    return this.http.get<ITestRun>(`${API}/testsets/${id}/test-runs/${runId}`);
+  }
+
+  generatorTemplate(problemId: number, languageId: string): Observable<IGeneratorTemplate> {
+    return this.http.get<IGeneratorTemplate>(`${API}/problems/${problemId}/generator-template`, { params: { languageId } });
   }
 }

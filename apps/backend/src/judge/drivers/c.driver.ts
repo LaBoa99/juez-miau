@@ -1,5 +1,5 @@
 import type { ScalarType, TypeRef } from '@concurso/shared-types'
-import { arrayDepth, baseType, collectTypes, quote, RESULT_PATH, typeKey, type DriverBuilder } from './driver.types.js'
+import { arrayDepth, baseType, collectTypes, quote, RESULT_PATH, typeKey, withCaseTypes, type DriverBuilder, type DriverInput } from './driver.types.js'
 
 // El participante escribe la función en Main.c (puede incluir "judge.h" para tener los tipos).
 // driver.c incluye Main.c en la misma unidad de compilación: así no hay que repetir la
@@ -262,8 +262,32 @@ function mainType(type: TypeRef): string {
     return type.type === 'array' ? cType(type) : 'jd_' + typeKey(type)
 }
 
-export const buildCProgram: DriverBuilder = ({ signature, source, flags }) => {
-    const arrays = collectTypes(signature)
+// Generador: char *caso(...) con los parámetros del problema. Escribe en un búfer propio (guarda y
+// restaura el del driver) y regresa el JSON del caso en memoria nueva
+function casoFunction(caseSignature: DriverInput['caseSignature']): string {
+    if(!caseSignature) return ''
+    const params = caseSignature.params.map((param, index) => mainType(param.type) + ' jd_a' + index).join(', ')
+    const writes = caseSignature.params.map((param, index) => {
+        const key = quote((index > 0 ? ',' : '') + JSON.stringify(param.name) + ':')
+        return '    jd_put(' + key + ', strlen(' + key + '));\n    jd_wr_' + typeKey(param.type) + '(jd_a' + index + ');'
+    }).join('\n')
+    return `
+static char *caso(${params}) {
+    char *jd_saved = jd_out;
+    size_t jd_saved_len = jd_out_len, jd_saved_cap = jd_out_cap;
+    jd_out = NULL; jd_out_len = 0; jd_out_cap = 0;
+    jd_put("{", 1);
+${writes}
+    jd_put("}", 2);  /* 2: también el '\\0' final, para regresar un string de C */
+    char *jd_json = jd_out;
+    jd_out = jd_saved; jd_out_len = jd_saved_len; jd_out_cap = jd_saved_cap;
+    return jd_json;
+}
+`
+}
+
+export const buildCProgram: DriverBuilder = ({ signature, source, flags, caseSignature }) => {
+    const arrays = collectTypes(withCaseTypes(signature, caseSignature))
         .filter((type): type is Extract<TypeRef, { type: 'array' }> => type.type === 'array')
         .map(arrayFunctions)
         .join('')
@@ -279,7 +303,7 @@ export const buildCProgram: DriverBuilder = ({ signature, source, flags }) => {
     const returns = signature.returns.type === 'string' ? 'const char *' : mainType(signature.returns) + ' '
 
     const driver = `#include "judge.h"
-${RUNTIME}${arrays}
+${RUNTIME}${arrays}${casoFunction(caseSignature)}
 #define main judge_user_main
 #include "Main.c"
 #undef main

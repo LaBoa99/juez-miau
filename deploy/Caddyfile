@@ -13,9 +13,12 @@
 		max_size 16MB
 	}
 
-	# API REST (prefijo global api/v1 en app.setup.ts)
-	handle /api/* {
-		reverse_proxy api:3000
+	# El frontend usa /api; el backend agrega el prefijo global /api/v1.
+	handle_path /api/* {
+		rewrite * /api/v1{uri}
+		reverse_proxy api:3000 {
+			header_down Set-Cookie "Path=/api/v1/auth" "Path=/api/auth"
+		}
 	}
 
 	# Tiempo real (veredictos, marcador). reverse_proxy maneja el upgrade de WebSocket solo

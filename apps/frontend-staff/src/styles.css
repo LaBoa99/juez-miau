@@ -137,3 +137,18 @@ a:focus-visible {
   white-space: nowrap;
   border: 0;
 }
+
+/* Markdown renderizado (enunciados): mismo aspecto en el editor y en la vista previa. */
+.oj-md { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.oj-md > :first-child { margin-top: 0; }
+.oj-md > :last-child { margin-bottom: 0; }
+.oj-md h1, .oj-md h2, .oj-md h3, .oj-md h4 { margin: var(--oj-space-lg) 0 var(--oj-space-xs); font-size: 14px; font-weight: 600; }
+.oj-md p, .oj-md ul, .oj-md ol, .oj-md pre, .oj-md table, .oj-md blockquote { margin: 0 0 var(--oj-space-sm); }
+.oj-md code { font-family: var(--oj-font-mono); font-size: 12px; }
+.oj-md pre {
+  padding: var(--oj-space-sm); overflow-x: auto; background: var(--oj-bg);
+  border: 1px solid var(--oj-border); border-radius: var(--oj-radius);
+}
+.oj-md table { border-collapse: collapse; }
+.oj-md th, .oj-md td { padding: var(--oj-space-xs) var(--oj-space-sm); border: 1px solid var(--oj-border); }
+.oj-md blockquote { padding-left: var(--oj-space-md); border-left: 2px solid var(--oj-border); color: var(--oj-text-muted); }

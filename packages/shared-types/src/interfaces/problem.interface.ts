@@ -11,11 +11,13 @@ export interface IProblemFilters {
 
 export interface ICreateProblem {
     categoryId: number
-    letter: string
+    // La asigna el sistema (siguiente libre de la categoría) si no se manda
+    letter?: string
     title: string
     statement: string // markdown
-    inputFormat: string
-    outputFormat: string
+    // Opcionales: la firma y los ejemplos ya dicen qué entra y qué sale
+    inputFormat?: string
+    outputFormat?: string
     points?: number
 }
 
@@ -98,6 +100,10 @@ export interface IProblemDetail extends IProblem {
     testsets: IProblemTestset[]
     refSolution: IProblemSource | null
     generator: IProblemSource | null
+    // Quien lo creó (null en problemas anteriores a guardar el autor)
+    author: { id: number, name: string } | null
+    // Si quien pide puede editarlo: su autor, un admin de la edición o un superadmin
+    canEdit: boolean
 }
 
 // JSON canónico

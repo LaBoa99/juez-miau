@@ -1,0 +1,15 @@
+<div class="oj-mde__bar" role="toolbar" aria-label="Formato del texto">
+  @for (t of tools; track t.key) {
+    <!-- mousedown sin foco: conserva la selección del textarea -->
+    <button ojButton variant="secondary" size="sm" type="button" [attr.aria-label]="t.label" [title]="t.label"
+            [disabled]="disabled()" (mousedown)="$event.preventDefault()" (click)="apply(t.key)">
+      <span class="oj-mde__tool" [class.oj-mde__tool--b]="t.key === 'bold'" [class.oj-mde__tool--i]="t.key === 'italic'">{{ t.text }}</span>
+    </button>
+  }
+</div>
+<div class="oj-mde__panes">
+  <textarea #ta class="oj-mde__text" [id]="inputId()" [rows]="rows()" [value]="value()" [disabled]="disabled()"
+            (input)="onInput(ta.value)" (blur)="onTouched()" (keydown)="onKey($event)"></textarea>
+  <div class="oj-mde__preview oj-md" aria-live="polite" aria-label="Vista previa" [innerHTML]="html()"></div>
+</div>
+<p class="oj-mde__note">Sin imágenes ni fórmulas: el concursante no las ve.</p>

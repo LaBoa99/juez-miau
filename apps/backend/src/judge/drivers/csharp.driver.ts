@@ -1,5 +1,5 @@
 import type { ScalarType, TypeRef } from '@concurso/shared-types'
-import { collectTypes, quote, RESULT_PATH, typeKey, type DriverBuilder } from './driver.types.js'
+import { collectTypes, quote, RESULT_PATH, typeKey, withCaseTypes, type DriverBuilder, type DriverInput } from './driver.types.js'
 
 // El participante escribe `class Main` (sin namespace) con un método estático; el driver es
 // otra clase y el csproj la marca como punto de entrada, así un Main() del participante no estorba
@@ -171,8 +171,37 @@ const CSPROJ = `<Project Sdk="Microsoft.NET.Sdk">
 </Project>
 `
 
-export const buildCSharpProgram: DriverBuilder = ({ signature, source }) => {
-    const arrays = collectTypes(signature)
+// Generador: Caso.De(...) con los parámetros del problema. Es una clase pública aparte que llama a
+// un método interno de JudgeDriver, porque los escritores son privados de esa clase
+function casoCode(caseSignature: DriverInput['caseSignature']): { inner: string, outer: string } {
+    if(!caseSignature) return { inner: '', outer: '' }
+    const params = caseSignature.params.map((param, index) => csharpType(param.type) + ' a' + index).join(', ')
+    const args = caseSignature.params.map((_, index) => 'a' + index).join(', ')
+    const writes = caseSignature.params.map((param, index) =>
+        '        o.Append(' + quote((index > 0 ? ',' : '') + JSON.stringify(param.name) + ':') + ');\n        W' + typeKey(param.type) + '(o, a' + index + ');').join('\n')
+    return {
+        inner: `
+    internal static string CasoDe(${params})
+    {
+        var o = new StringBuilder();
+        o.Append('{');
+${writes}
+        o.Append('}');
+        return o.ToString();
+    }
+`,
+        outer: `
+public static class Caso
+{
+    public static string De(${params}) => JudgeDriver.CasoDe(${args});
+}
+`,
+    }
+}
+
+export const buildCSharpProgram: DriverBuilder = ({ signature, source, caseSignature }) => {
+    const caso = casoCode(caseSignature)
+    const arrays = collectTypes(withCaseTypes(signature, caseSignature))
         .filter((type): type is Extract<TypeRef, { type: 'array' }> => type.type === 'array')
         .map(arrayFunctions)
         .join('')
@@ -190,7 +219,7 @@ using System.Text;
 
 public static class JudgeDriver
 {
-${RUNTIME}${arrays}
+${RUNTIME}${arrays}${caso.inner}
     static void Run()
     {
         using var input = new MemoryStream();
@@ -213,7 +242,7 @@ ${reads}
         thread.Join();
     }
 }
-`
+${caso.outer}`
 
     return {
         files: { 'Main.cs': source, 'JudgeDriver.cs': driver, 'Main.csproj': CSPROJ },

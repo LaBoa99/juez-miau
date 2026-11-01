@@ -165,6 +165,7 @@ export class TestsetBuildProcessor extends WorkerHost implements OnApplicationBo
         const result = await this.judgeService.judge({
             language: generator.language,
             signature: GENERATOR_SIGNATURE,
+            caseSignature: signature,
             source: generator.source.toString('utf8'),
             cases: items.map((item, index) => ({ ordinal: index + 1, input: generatorInput(item.seed, item.group, item.index), expected: null })),
             timeLimitMs: TOOL_TIME_LIMIT_MS,

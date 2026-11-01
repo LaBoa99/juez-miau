@@ -13,13 +13,13 @@ import { TestCase } from './entities/test-case.entity.js';
 import { TestsetsService } from './services/testsets.service.js';
 import { TestsetsController } from './controllers/testsets.controller.js';
 import { ProblemTestsetsController } from './controllers/problem-testsets.controller.js';
-import { TESTSET_BUILD_QUEUE } from './testsets.constants.js';
+import { TEST_RUN_QUEUE, TESTSET_BUILD_QUEUE } from './testsets.constants.js';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([RefSolution, Generator, Checker, Testset, TestCase, Problem, Language]),
-    // Aquí solo se encolan builds; el consumidor vive en el worker
-    BullModule.registerQueue({ name: TESTSET_BUILD_QUEUE }),
+    // Aquí solo se encolan builds y pruebas; el consumidor vive en el worker
+    BullModule.registerQueue({ name: TESTSET_BUILD_QUEUE }, { name: TEST_RUN_QUEUE }),
     BlobsModule,
     EditionsModule,
   ],

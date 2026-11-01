@@ -20,8 +20,9 @@ de los equipos                     └── /socket.io/* ─►                
 | `postgres` | Base de datos | interno |
 | `redis` | Cola de envíos (BullMQ) | interno |
 
-**Frontend:** el panel debe llamar a la API con la ruta relativa `/api/v1` (mismo origen), no
-con una URL fija; así la misma imagen sirve en cualquier máquina sin reconstruir.
+**Frontend:** el panel llama a la API con rutas relativas `/api/...` (mismo origen), no con una URL
+fija. Caddy las adapta al prefijo `/api/v1` del backend y reescribe el path de la cookie de sesión.
+Así la misma imagen sirve en cualquier máquina sin reconstruir.
 
 `apps/app-competidores` (PySide6) no va aquí: se instala en las máquinas de los equipos y
 se conecta a `PUBLIC_URL`/`api/v1`.
@@ -43,6 +44,45 @@ docker compose ps              # todo "Up"; postgres y redis "(healthy)"
 ```
 
 Entrar a `PUBLIC_URL` con `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
+
+### Ejecutar localmente solo el panel, la API y sus dependencias
+
+El Compose completo también sirve para probar el panel y el backend localmente. Desde la raíz:
+
+```bash
+cp deploy/.env.example deploy/.env
+```
+
+En `deploy/.env`, configura `PUBLIC_URL=http://localhost:8080`, `HTTP_PORT=8080`,
+`SITE_ADDRESS=:80`, `COOKIE_SECURE=false`, `DB_SYNCHRONIZE=false` y `SEED_PROFILE=base`.
+Define valores locales para las contraseñas y secretos (`DB_PASSWORD`, `REDIS_PASSWORD`,
+`JWT_SECRET`, `PASSWORD_ADMIN_MASTERKEY`, `TEAM_SALT` y `SEED_ADMIN_PASSWORD`); no uses los
+marcadores `cambia_esto`.
+
+Después levanta los servicios necesarios:
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d --build postgres redis api web
+docker compose -f deploy/docker-compose.yml ps
+```
+
+Abre `http://localhost:8080`. El superadmin inicial usa `SEED_ADMIN_EMAIL` y
+`SEED_ADMIN_PASSWORD` de `deploy/.env`. Esta configuración usa volúmenes propios de Compose, por
+lo que no comparte la base de datos de `apps/backend/docker-compose.yml`. El worker de evaluación
+no se inicia con este comando; para juzgar envíos se necesita configurarlo aparte con acceso al
+Docker del host.
+
+Para ver errores de API y web:
+
+```bash
+docker compose -f deploy/docker-compose.yml logs -f api web
+```
+
+Para detener los servicios sin borrar sus datos:
+
+```bash
+docker compose -f deploy/docker-compose.yml down
+```
 
 **Sin internet en el laboratorio:** en una máquina con internet, `docker compose build` y
 `scripts/images.sh save`; copiar la carpeta del repo (con `images/`) y en la máquina del

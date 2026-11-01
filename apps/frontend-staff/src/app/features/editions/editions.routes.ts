@@ -13,7 +13,6 @@ import { ProblemWorkspace } from '../problems/pages/problem-workspace/problem-wo
 import { ProblemHome } from '../problems/pages/problem-home/problem-home.component';
 import { ProblemPanel } from '../problems/pages/problem-panel/problem-panel';
 import { problemBreadcrumbResolver } from '../problems/data/problems-bus';
-import { TestsetWorkspace } from '../testsets/pages/testset-workspace/testset-workspace';
 import { ContestControl } from '../contest/pages/contest-control/contest-control';
 import { SubmissionList } from '../submissions/pages/submission-list/submission-list';
 import { SubmissionDetail } from '../submissions/pages/submission-detail/submission-detail';
@@ -46,12 +45,6 @@ export const routes: Routes = [
             ],
           },
           { path: 'equipos', component: TeamList, data: { breadcrumb: 'Equipos' } },
-          // Casos de prueba del problema. Más específica, va antes de 'problemas'.
-          {
-            path: 'problemas/:problemId/casos',
-            resolve: { breadcrumb: problemBreadcrumbResolver },
-            children: [{ path: '', component: TestsetWorkspace, data: { breadcrumb: 'Casos de prueba' } }],
-          },
           {
             path: 'problemas',
             component: ProblemWorkspace,

@@ -14,9 +14,7 @@ export interface IStaffUser {
     id: number;
     name: string;
     roles: IStaffRoleAssignment[];
-    // El backend aún NO lo expone en /auth/me ni en el login (es un campo interno is_superadmin).
-    // Debe exponerse antes de activar el gating de superadmin. Hoy llega undefined → se trata como false.
-    isSuperadmin?: boolean;
+    isSuperadmin: boolean;
 }
 
 export interface ILoginResponse {

@@ -1,0 +1,125 @@
+<oj-modal [title]="mode() === 'verify' ? 'Verificar casos' : mode() === 'ref' ? 'Probar solución oficial' : 'Probar una solución'" size="lg" (closed)="onClosed()">
+  <div class="tr">
+    @if (error()) {
+      <oj-alert tone="error">{{ error() }}</oj-alert>
+    }
+
+    @if (!run() && mode() === 'custom') {
+      <p class="tr__muted">Se juzga contra todos los casos construidos, igual que un envío, pero no cuenta para el marcador.</p>
+      @if (languages().length === 0) {
+        <p class="tr__muted">No hay lenguajes habilitados en esta edición.</p>
+      } @else {
+        <oj-form-field label="Lenguaje" for="tr-lang">
+          <select id="tr-lang" [formControl]="lang">
+            <option [ngValue]="null" disabled>Selecciona un lenguaje</option>
+            @for (l of languages(); track l.id) {
+              <option [ngValue]="l.id">{{ l.code }}</option>
+            }
+          </select>
+        </oj-form-field>
+      }
+      <oj-file-drop accept="" (fileSelected)="onFile($event)" />
+      <oj-form-field label="Código" for="tr-code" hint="Arrastra un archivo arriba o pega el código aquí.">
+        <textarea id="tr-code" class="tr__code" rows="10" spellcheck="false" [value]="source()" (input)="source.set($any($event.target).value)"></textarea>
+      </oj-form-field>
+    } @else if (starting() || running()) {
+      <p class="tr__muted" role="status">
+        @if (run()?.status === 'running') {
+          Juzgando… {{ run()!.judged }} de {{ run()!.total }} casos
+        } @else {
+          En cola…
+        }
+      </p>
+    }
+
+    @if (mode() === 'verify') {
+      <p class="tr__muted">La solución oficial corre sobre cada caso sin guardar nada. Revisa que las salidas tengan sentido antes de construir.</p>
+    }
+
+    @if (run(); as r) {
+      @if (r.status === 'done' && mode() === 'verify') {
+        <div class="tr__summary">
+          <oj-badge [tone]="(r.verdict | verdict: DONE).tone">{{ (r.verdict | verdict: DONE).label }}</oj-badge>
+          <span class="tr__muted oj-mono">{{ r.judged }} de {{ r.total }} casos · máx {{ maxTime() }} ms</span>
+        </div>
+        @if (r.compileLog) {
+          <pre class="tr__log oj-mono">{{ r.compileLog }}</pre>
+        }
+        @if (r.cases.length) {
+          <div class="oj-table-wrap">
+            <table class="oj-table">
+              <thead>
+                <tr><th>Caso</th><th>Entrada</th><th>Salida</th><th class="tr__num">Tiempo</th><th>Estado</th></tr>
+              </thead>
+              <tbody>
+                @for (c of r.cases; track c.ordinal) {
+                  <tr>
+                    <td class="oj-mono">#{{ c.ordinal }}</td>
+                    <td><pre class="tr__io oj-mono">{{ caseInput(c.input) }}</pre></td>
+                    <td><pre class="tr__io oj-mono">{{ c.output ?? '—' }}</pre></td>
+                    <td class="tr__num oj-mono">{{ c.timeMs }} ms</td>
+                    <td>
+                      @if (c.verdict === 'AC') {
+                        <span class="tr__ok">Correcta</span>
+                      } @else {
+                        <oj-badge [tone]="(c.verdict | verdict: DONE).tone">{{ (c.verdict | verdict: DONE).label }}</oj-badge>
+                        <span class="tr__msg oj-mono" [title]="c.message ?? ''">{{ lastLine(c.message) }}</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @if (r.cases.length < r.total && !r.compileLog) {
+          <p class="tr__muted">Se detuvo en el primer error; corrige la solución o el caso y vuelve a verificar.</p>
+        }
+      } @else if (r.status === 'done') {
+        <div class="tr__summary">
+          <oj-badge [tone]="(r.verdict | verdict: DONE).tone">{{ (r.verdict | verdict: DONE).label }}</oj-badge>
+          <span class="tr__muted oj-mono">{{ r.judged }} de {{ r.total }} casos · máx {{ maxTime() }} ms</span>
+        </div>
+        @if (r.compileLog) {
+          <pre class="tr__log oj-mono">{{ r.compileLog }}</pre>
+        }
+        @if (r.cases.length) {
+          <div class="oj-table-wrap">
+            <table class="oj-table">
+              <thead>
+                <tr><th>Caso</th><th>Veredicto</th><th class="tr__num">Tiempo</th><th class="tr__num">Memoria</th><th>Detalle</th></tr>
+              </thead>
+              <tbody>
+                @for (c of r.cases; track c.ordinal) {
+                  <tr>
+                    <td class="oj-mono">#{{ c.ordinal }}</td>
+                    <td><oj-badge [tone]="(c.verdict | verdict: DONE).tone">{{ (c.verdict | verdict: DONE).label }}</oj-badge></td>
+                    <td class="tr__num oj-mono">{{ c.timeMs }} ms</td>
+                    <td class="tr__num oj-mono">{{ mb(c.memoryKb) }} MB</td>
+                    <td class="tr__msg oj-mono" [title]="c.message ?? ''">{{ lastLine(c.message) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @if (r.cases.length < r.total && !r.compileLog) {
+          <p class="tr__muted">La ejecución se detiene en el primer TLE, MLE o RE.</p>
+        }
+      }
+    }
+  </div>
+
+  <div footer>
+    <button ojButton variant="secondary" type="button" (click)="close()">Cerrar</button>
+    @if (mode() === 'custom') {
+      @if (run()?.status === 'done' || run()?.status === 'failed') {
+        <button ojButton variant="primary" type="button" (click)="again()">Probar otra solución</button>
+      } @else if (!run()) {
+        <button ojButton variant="primary" type="button" [disabled]="starting()" (click)="submitCustom()">
+          {{ starting() ? 'Enviando…' : 'Probar' }}
+        </button>
+      }
+    }
+  </div>
+</oj-modal>

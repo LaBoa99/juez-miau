@@ -1,5 +1,5 @@
 import type { ScalarType, TypeRef } from '@concurso/shared-types'
-import { collectTypes, quote, RESULT_PATH, typeKey, type DriverBuilder } from './driver.types.js'
+import { collectTypes, quote, RESULT_PATH, typeKey, withCaseTypes, type DriverBuilder, type DriverInput } from './driver.types.js'
 
 // El participante escribe `class Main` con un método estático; el driver es otra clase.
 // Lee y escribe JSON con código generado para los tipos de la firma, sin dependencias
@@ -155,8 +155,28 @@ const RUNTIME = `
     }
 `
 
-export const buildJavaProgram: DriverBuilder = ({ signature, source }) => {
-    const arrays = collectTypes(signature)
+// Generador: Caso.de(...) con los parámetros del problema, en su propio archivo. Usa los escritores
+// de JudgeDriver (mismo paquete) para armar el JSON del caso
+function casoClass(caseSignature: NonNullable<DriverInput['caseSignature']>): string {
+    const params = caseSignature.params.map((param, index) => javaType(param.type) + ' a' + index).join(', ')
+    const writes = caseSignature.params.map((param, index) =>
+        '        o.append(' + quote((index > 0 ? ',' : '') + JSON.stringify(param.name) + ':') + ');\n        JudgeDriver.w' + typeKey(param.type) + '(o, a' + index + ');').join('\n')
+    return `final class Caso {
+    private Caso() {}
+
+    static String de(${params}) {
+        StringBuilder o = new StringBuilder();
+        o.append('{');
+${writes}
+        o.append('}');
+        return o.toString();
+    }
+}
+`
+}
+
+export const buildJavaProgram: DriverBuilder = ({ signature, source, caseSignature }) => {
+    const arrays = collectTypes(withCaseTypes(signature, caseSignature))
         .filter((type): type is Extract<TypeRef, { type: 'array' }> => type.type === 'array')
         .map(arrayFunctions)
         .join('')
@@ -188,9 +208,12 @@ ${reads}
 }
 `
 
+    const files: Record<string, string> = { 'Main.java': source, 'JudgeDriver.java': driver }
+    if(caseSignature) files['Caso.java'] = casoClass(caseSignature)
+
     return {
-        files: { 'Main.java': source, 'JudgeDriver.java': driver },
-        compileCmd: 'javac -encoding UTF-8 Main.java JudgeDriver.java',
+        files,
+        compileCmd: 'javac -encoding UTF-8 ' + Object.keys(files).join(' '),
         // Sin MaxRAMPercentage la JVM usa solo 1/4 del límite del contenedor como heap
         runCmd: 'java -Xss64m -XX:+UseSerialGC -XX:MaxRAMPercentage=75 JudgeDriver',
     }

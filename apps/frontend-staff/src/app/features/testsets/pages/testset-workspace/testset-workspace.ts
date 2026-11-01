@@ -2,16 +2,22 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
   computed,
   effect,
   inject,
+  input,
+  output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import {
   CompareMode,
+  IEditionLanguage,
   ILanguage,
   IProblemDetail,
   IProblemSignature,
@@ -45,6 +51,9 @@ import { backendMessage } from '../../../../core/http/backend-error.mapper';
 import { ProblemsService } from '../../../problems/data/problems.service';
 import { EditionLanguagesService } from '../../../editions/edition-languages/data/edition-languages.service';
 import { TestsetsService } from '../../data/testsets.service';
+import { RandomGroup, groupsToSchema, schemaToGroups } from './random-schema';
+import { forkJoin, switchMap } from 'rxjs';
+import { TestRunModal } from '../test-run-modal/test-run-modal';
 
 // Identificador válido (igual que el backend): letras, dígitos y _, hasta 64, sin empezar por dígito.
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
@@ -54,24 +63,52 @@ interface EnabledLanguage {
   code: string;
 }
 
-type StepKey = 'firma' | 'solucion' | 'evaluacion' | 'casos' | 'construir';
-type StepState = 'done' | 'next' | 'pending';
+// Pasos de los casos de prueba; la página del problema muestra uno a la vez.
+export type TestsetStep = 'firma' | 'solucion' | 'evaluacion' | 'casos' | 'construir';
+export type TestsetProgress = Record<TestsetStep, boolean>;
 
-interface Step {
-  key: StepKey;
-  n: number;
-  title: string;
-  actionLabel: string;
-  done: boolean;
-  state: StepState;
-  hint: string;
+// Versión que se abre al entrar: la última si no está construida, si no la vigente.
+export function defaultTestsetId(p: IProblemDetail): number | null {
+  const last = p.testsets.at(-1);
+  const inProgress = last && last.status !== TestsetStatus.READY ? last.id : null;
+  return inProgress ?? p.currentTestsetId ?? last?.id ?? null;
 }
+
+// Completado de cada paso (lo mismo que valida el backend al construir).
+export function testsetProgress(p: IProblemDetail, t: ITestsetDetail | null): TestsetProgress {
+  const cases = t?.cases ?? [];
+  const tol = t?.floatTolerance ?? null;
+  return {
+    firma: (p.signature?.params.length ?? 0) > 0,
+    solucion: t?.refSolutionId != null,
+    evaluacion:
+      t?.compareMode === CompareMode.CHECKER
+        ? t.checkerId != null
+        : t?.compareMode === CompareMode.TOLERANCE
+          ? tol != null && tol > 0 && tol <= 1
+          : true, // exacta siempre está configurada (es el valor por defecto)
+    casos: cases.some((c) => c.visibility === TestCaseVisibility.PUBLIC),
+    construir: t?.status === TestsetStatus.READY,
+  };
+}
+// Formularios que se abren dentro del paso Casos (uno a la vez).
+type PanelKey = 'generador' | 'aleatorios';
+
+const STEP_TEXT: Record<TestsetStep, { title: string; hint: string }> = {
+  firma: { title: 'Firma', hint: 'La función que implementa el concursante: nombre, parámetros con su tipo y tipo de retorno.' },
+  solucion: { title: 'Solución oficial', hint: 'Elige el lenguaje y sube el archivo. Con ella se calculan las salidas esperadas de cada caso.' },
+  evaluacion: { title: 'Evaluación', hint: 'Cómo se comparan las salidas y los límites de tiempo y memoria. Exacta funciona para casi todo.' },
+  casos: { title: 'Casos de prueba', hint: 'Al menos un caso público (sale como ejemplo en el enunciado). Agrega manuales, aleatorios por rangos o con un generador.' },
+  construir: { title: 'Construir y publicar', hint: 'Construir ejecuta la solución oficial en cada caso para obtener las salidas esperadas.' },
+};
 
 @Component({
   selector: 'oj-testset-workspace',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NgTemplateOutlet,
     ReactiveFormsModule,
+    TestRunModal,
     RouterLink,
     ButtonDirective,
     Badge,
@@ -86,18 +123,28 @@ interface Step {
   styleUrls: ['./testset-workspace.css', './testset-workspace.boxes.css'],
 })
 export class TestsetWorkspace {
-  private readonly route = inject(ActivatedRoute);
   private readonly problemsService = inject(ProblemsService);
   private readonly languagesService = inject(EditionLanguagesService);
   private readonly service = inject(TestsetsService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly editionId = Number(findParam(this.route, 'id'));
-  protected readonly problemId = Number(findParam(this.route, 'problemId'));
+  // El problema lo carga la página que contiene este bloque; `changed` le pide recargarlo.
+  readonly problem = input.required<IProblemDetail>();
+  readonly step = input.required<TestsetStep>();
+  // Problema de otro juez: se ve todo pero no se edita (el backend también lo rechaza)
+  readonly readOnly = input(false);
+  readonly changed = output<void>();
+  // Qué pasos están completos (para la barra de la página) y "ya guardé, sigue al siguiente"
+  readonly progress = output<TestsetProgress>();
+  readonly next = output<void>();
+  // Pasos que la advertencia del paso actual marca como afectados (la barra los pinta en amarillo)
+  readonly affects = output<TestsetStep[]>();
+  private readonly problemId = computed(() => this.problem().id);
+  private readonly editionId = computed(() => this.problem().editionId);
 
-  protected readonly problem = signal<IProblemDetail | null>(null);
   protected readonly testset = signal<ITestsetDetail | null>(null);
+  private readonly loaded = computed(() => this.testset() !== null);
   protected readonly selectedId = signal<number | null>(null);
   protected readonly loadError = signal(false);
   protected readonly actionError = signal<string | null>(null);
@@ -115,7 +162,7 @@ export class TestsetWorkspace {
   protected readonly published = computed(() => this.problem()?.status === ProblemStatus.PUBLISHED);
   protected readonly editable = computed(() => {
     const s = this.testset()?.status;
-    return s === TestsetStatus.DRAFT || s === TestsetStatus.FAILED;
+    return !this.readOnly() && (s === TestsetStatus.DRAFT || s === TestsetStatus.FAILED);
   });
   // La firma solo cambia con el problema sin publicar y su testset editable (DRAFT/FAILED).
   protected readonly signatureEditable = computed(() => !this.published() && this.editable());
@@ -135,65 +182,136 @@ export class TestsetWorkspace {
     return `${s.total} ${caso} · ${s.pub} ${pub} · ${s.hidden} ${oc}`;
   });
 
+  protected readonly noPublicCase = computed(() => this.caseStats().pub === 0);
+
   // La firma debe tener parámetros para poder armar un caso.
   protected readonly hasParams = computed(() => (this.signature()?.params.length ?? 0) > 0);
 
   // ─── Modo de evaluación vigente (del testset), para los pasos y el resumen ───
   protected readonly compareMode = signal<CompareMode>(CompareMode.EXACT);
 
-  // ─── Completado de cada paso (lo mismo que valida el backend al construir) ───
-  private readonly firmaDone = computed(() => this.hasParams());
-  private readonly solucionDone = computed(() => this.testset()?.refSolutionId != null);
-  private readonly evalDone = computed(() => {
-    const t = this.testset();
-    if (this.compareMode() === CompareMode.CHECKER) return t?.checkerId != null;
-    if (this.compareMode() === CompareMode.TOLERANCE) {
-      const tol = t?.floatTolerance ?? null;
-      return tol != null && tol > 0 && tol <= 1;
-    }
-    return true; // exacta siempre está configurada (es el valor por defecto)
-  });
-  private readonly casosDone = computed(() => {
-    const cases = this.testset()?.cases ?? [];
-    return cases.length > 0 && cases.some((c) => c.visibility === TestCaseVisibility.PUBLIC);
-  });
-  private readonly construirDone = computed(() => this.testset()?.status === TestsetStatus.READY);
+  private readonly done = computed(() => testsetProgress(this.problem(), this.testset()));
 
-  // Los 5 pasos en orden; el primer pendiente es el "siguiente", el resto quedan en gris.
-  protected readonly steps = computed<Step[]>(() => {
-    const t = this.testset();
-    const done = [this.firmaDone(), this.solucionDone(), this.evalDone(), this.casosDone(), this.construirDone()];
-    const firstPending = done.findIndex((d) => !d);
-    const defs: Omit<Step, 'n' | 'done' | 'state'>[] = [
-      { key: 'firma', title: 'Firma', actionLabel: 'Editar', hint: 'Define la firma de la función (con al menos un parámetro).' },
-      { key: 'solucion', title: 'Solución oficial', actionLabel: t?.refSolutionId != null ? 'Reemplazar' : 'Subir', hint: 'Sube la solución oficial que calculará las salidas.' },
-      { key: 'evaluacion', title: 'Evaluación', actionLabel: 'Cambiar', hint: 'Elige cómo se comparan las salidas.' },
-      { key: 'casos', title: 'Casos de prueba', actionLabel: '+ Agregar caso', hint: 'Agrega al menos un caso, con uno público.' },
-      { key: 'construir', title: 'Construir', actionLabel: 'Construir', hint: 'Construye el testset para calcular las salidas esperadas.' },
-    ];
-    return defs.map((d, i) => ({
-      ...d,
-      n: i + 1,
-      done: done[i],
-      state: done[i] ? 'done' : i === firstPending ? 'next' : 'pending',
-    }));
-  });
-  protected readonly progressDone = computed(() => this.steps().filter((s) => s.done).length);
-  protected readonly nextStep = computed(() => this.steps().find((s) => s.state === 'next') ?? null);
   // Construir exige los 4 pasos previos completos.
-  protected readonly canBuild = computed(
-    () => this.firmaDone() && this.solucionDone() && this.evalDone() && this.casosDone(),
-  );
+  protected readonly canBuild = computed(() => {
+    const d = this.done();
+    return this.editable() && d.firma && d.solucion && d.evaluacion && d.casos;
+  });
+  protected readonly built = computed(() => this.testset()?.status === TestsetStatus.READY);
+  // Verificar: hace falta la solución oficial y algún caso; no tiene sentido ya construido
+  protected readonly canVerify = computed(() => {
+    const t = this.testset();
+    return !!t && !this.built() && t.status !== TestsetStatus.BUILDING && t.refSolutionId !== null && t.cases.length > 0;
+  });
 
-  // Un paso (de los 4 primeros) se puede accionar si el testset es editable y ya es el actual o uno hecho.
-  stepEnabled(state: StepState): boolean {
-    return this.editable() && state !== 'pending';
+  protected readonly generating = signal(false);
+  protected readonly genMessage = signal<string | null>(null);
+
+  // Vuelve a generar los casos aleatorios con el esquema guardado
+  regenerate(): void {
+    const t = this.testset();
+    if (!t) return;
+    this.generating.set(true);
+    this.genMessage.set(null);
+    this.service.generate(t.id).subscribe({
+      next: (res) => {
+        this.generating.set(false);
+        this.genMessage.set(`Se generaron ${res.generatedCount} casos aleatorios.`);
+        this.loadTestset(t.id);
+      },
+      error: (err) => {
+        this.generating.set(false);
+        this.actionError.set(message(err, 'No se pudieron generar los casos aleatorios.'));
+      },
+    });
   }
 
-  // ─── Firma (modal) ───
+  downloadGeneratorTemplate(): void {
+    const languageId = this.sourceLang.value;
+    if (!languageId) return;
+    this.service.generatorTemplate(this.problemId(), languageId).subscribe({
+      next: ({ fileName, source }) => {
+        const url = URL.createObjectURL(new Blob([source], { type: 'text/plain' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: (err) => this.sourceError.set(message(err, 'No se pudo descargar la plantilla.')),
+    });
+  }
+
+  protected readonly buildReqs = computed(() => [
+    { label: 'Evaluación configurada', ok: this.done().evaluacion },
+    { label: 'Firma con al menos un parámetro', ok: this.done().firma },
+    { label: 'Solución oficial', ok: this.done().solucion },
+    { label: 'Al menos un caso, con uno público', ok: this.done().casos },
+  ]);
+
+  protected readonly stepTitle = computed(() => STEP_TEXT[this.step()].title);
+  protected readonly stepHint = computed(() => STEP_TEXT[this.step()].hint);
+
+  // Qué rompe en los pasos siguientes editar este (solo si ya hay algo después que cuidar).
+  protected readonly warning = computed<string | null>(() => {
+    const t = this.testset();
+    if (!t || !this.editable()) return null;
+    const hasCases = t.cases.length > 0 || t.schema !== null;
+    switch (this.step()) {
+      case 'firma':
+        if (!this.signatureEditable() || !this.signature() || (!hasCases && t.refSolutionId === null)) return null;
+        return 'La solución oficial y el generador deben usar el nuevo nombre y parámetros, y los casos y rangos aleatorios deben seguir siendo válidos con la nueva firma (si no, no se guarda).';
+      case 'solucion':
+        return t.refSolutionId !== null && hasCases
+          ? 'Reemplazar la solución oficial cambia las salidas esperadas de todos los casos; se recalculan al construir.'
+          : null;
+      case 'evaluacion':
+        return hasCases ? 'Los límites y la forma de comparar cambian cómo se juzgan todos los casos y los envíos.' : null;
+      default:
+        return null;
+    }
+  });
+
+  protected readonly affectedSteps = computed<TestsetStep[]>(() => {
+    if (!this.warning()) return [];
+    switch (this.step()) {
+      case 'firma':
+        return ['solucion', 'casos', 'construir'];
+      case 'solucion':
+      case 'evaluacion':
+        return ['construir'];
+      default:
+        return [];
+    }
+  });
+
+  // Formulario abierto dentro del paso Casos (generador o aleatorios).
+  protected readonly openPanel = signal<PanelKey | null>(null);
+  protected readonly expanded = this.openPanel.asReadonly();
+
+  open(panel: PanelKey): void {
+    this.openPanel.set(panel);
+  }
+
+  closePanel(): void {
+    this.openPanel.set(null);
+  }
+
+  private initPanel(panel: PanelKey | null): void {
+    if (panel === 'generador') this.initSource('generator');
+    else if (panel === 'aleatorios') this.initRandom();
+  }
+
+  // El formulario del paso visible ya está abierto: se prepara al entrar al paso.
+  private initStep(step: TestsetStep): void {
+    if (step === 'firma') this.initSignature();
+    else if (step === 'solucion') this.initSource('ref');
+    else if (step === 'evaluacion') this.initEval();
+  }
+
+  // ─── Firma ───
   protected readonly scalarTypes = SCALAR_TYPES;
   protected readonly depths = Array.from({ length: MAX_ARRAY_DEPTH + 1 }, (_, i) => i);
-  private readonly signatureModal = viewChild.required<Modal>('signatureModal');
   protected readonly signatureSaving = signal(false);
   protected readonly signatureError = signal<string | null>(null);
   protected readonly signatureForm = this.fb.group({
@@ -211,7 +329,7 @@ export class TestsetWorkspace {
     return this.fb.group({ name: [name, [Validators.required, Validators.pattern(IDENTIFIER)]], base: [base], depth: [depth] });
   }
 
-  openSignature(): void {
+  private initSignature(): void {
     this.signatureError.set(null);
     const sig = this.signature();
     this.sigParams.clear();
@@ -224,8 +342,8 @@ export class TestsetWorkspace {
       }
     } else {
       this.signatureForm.patchValue({ functionName: '', returnBase: 'int', returnDepth: 0 });
+      this.sigParams.push(this.paramGroup());
     }
-    this.signatureModal().open();
   }
 
   addParam(): void {
@@ -237,6 +355,11 @@ export class TestsetWorkspace {
   }
 
   saveSignature(): void {
+    // Sin cambios en una firma que ya existe: solo avanza
+    if (this.signature() && this.signatureForm.pristine) {
+      this.next.emit();
+      return;
+    }
     if (this.signatureForm.invalid) {
       this.signatureForm.markAllAsTouched();
       this.signatureError.set(
@@ -268,11 +391,11 @@ export class TestsetWorkspace {
     };
     this.signatureSaving.set(true);
     this.signatureError.set(null);
-    this.problemsService.updateSignature(this.problemId, sig).subscribe({
+    this.problemsService.updateSignature(this.problemId(), sig).subscribe({
       next: () => {
         this.signatureSaving.set(false);
-        this.signatureModal().close();
         this.loadProblem();
+        this.next.emit();
       },
       error: (err) => {
         this.signatureSaving.set(false);
@@ -281,14 +404,13 @@ export class TestsetWorkspace {
     });
   }
 
-  // ─── Evaluación (modal) ───
+  // ─── Evaluación ───
   // Tarjetas con título y "cuándo usarla"; la seleccionada muestra sus campos.
   protected readonly evalCards = [
     { mode: CompareMode.EXACT, title: 'Exacta', when: 'La salida debe coincidir carácter por carácter.' },
     { mode: CompareMode.TOLERANCE, title: 'Con tolerancia', when: 'Para resultados con decimales; acepta una diferencia pequeña.' },
     { mode: CompareMode.CHECKER, title: 'Checker', when: 'Cuando hay varias respuestas válidas; un programa decide.' },
   ];
-  private readonly evalModal = viewChild.required<Modal>('evalModal');
   protected readonly evalMode = signal<CompareMode>(CompareMode.EXACT);
   protected readonly evalSaving = signal(false);
   protected readonly evalError = signal<string | null>(null);
@@ -297,12 +419,12 @@ export class TestsetWorkspace {
     memoryLimitMb: [256, [Validators.required]],
     floatTolerance: [null as number | null],
   });
-  // Checker: se sube dentro del modal de evaluación (solo con la tarjeta "Checker").
+  // Checker: se sube dentro del formulario de evaluación (solo con la tarjeta "Checker").
   protected readonly checkerLang = this.fb.control<string | null>(null);
   protected readonly checkerText = signal('');
   protected readonly checkerFileName = signal('');
 
-  openEval(): void {
+  private initEval(): void {
     const t = this.testset();
     if (!t) return;
     this.evalError.set(null);
@@ -311,7 +433,6 @@ export class TestsetWorkspace {
     this.checkerLang.reset(null);
     this.checkerText.set('');
     this.checkerFileName.set('');
-    this.evalModal().open();
   }
 
   setEvalMode(mode: CompareMode): void {
@@ -338,10 +459,15 @@ export class TestsetWorkspace {
       return;
     }
 
+    if (mode === CompareMode.CHECKER && !this.hasParams()) {
+      this.evalError.set('El checker necesita la firma: defínela primero (paso Firma) y vuelve a elegir Checker.');
+      return;
+    }
+
     // Checker: hace falta uno (el ya guardado o el que se sube ahora).
     const uploadingChecker = mode === CompareMode.CHECKER && !!this.checkerText();
     if (mode === CompareMode.CHECKER && t.checkerId == null && !uploadingChecker) {
-      this.evalError.set('Sube el programa checker (elige el lenguaje y el archivo).');
+      this.evalError.set('Sube o pega el programa checker y elige su lenguaje.');
       return;
     }
     if (uploadingChecker && this.checkerLang.invalid) {
@@ -357,8 +483,8 @@ export class TestsetWorkspace {
           next: () => {
             this.evalSaving.set(false);
             this.compareMode.set(mode);
-            this.evalModal().close();
             this.loadTestset(t.id);
+            this.next.emit();
           },
           error: (err) => {
             this.evalSaving.set(false);
@@ -394,8 +520,46 @@ export class TestsetWorkspace {
   }
 
   constructor() {
-    this.loadLanguages();
-    this.loadProblem();
+    // Los lenguajes dependen de la edición del problema (se cargan una vez)
+    effect(() => {
+      const editionId = this.editionId();
+      untracked(() => this.loadLanguages(editionId));
+    });
+
+    // Al llegar el problema, abre la versión en curso (la última, si no está construida) o la vigente.
+    effect(() => {
+      const p = this.problem();
+      if (untracked(this.selectedId) === null) this.selectedId.set(defaultTestsetId(p));
+    });
+
+    // Al entrar a un paso (y cuando llega el testset) se prepara su formulario; no en cada recarga
+    effect(() => {
+      const step = this.step();
+      if (!this.loaded()) return;
+      untracked(() => {
+        this.openPanel.set(null);
+        this.initStep(step);
+      });
+    });
+
+    effect(() => this.affects.emit(this.affectedSteps()));
+
+    effect(() => this.progress.emit(this.done()));
+
+    // Prepara el formulario que se abre (solo cuando cambia cuál está abierto, no en cada recarga).
+    effect(() => {
+      const panel = this.expanded();
+      untracked(() => this.initPanel(panel));
+    });
+
+    // "Agregar caso" se rearma si cambia la firma o si aparece el primer caso público.
+    effect(() => {
+      this.signature();
+      this.noPublicCase();
+      untracked(() => {
+        if (!this.caseEditing()) this.resetCaseForm();
+      });
+    });
 
     // Al cambiar de versión seleccionada, carga su detalle.
     effect(() => {
@@ -412,12 +576,14 @@ export class TestsetWorkspace {
     this.destroyRef.onDestroy(() => this.stopPoll());
   }
 
-  private loadLanguages(): void {
-    // La solución oficial / generador / checker los escribe el juez: se eligen del catálogo
-    // global (languageId = UUID del catálogo), no de los lenguajes habilitados para los equipos.
-    this.languagesService.catalog().subscribe({
-      next: (catalog: ILanguage[]) =>
-        this.languages.set(catalog.filter((l) => l.active).map((l) => ({ id: l.id, code: l.code }))),
+  // El backend solo acepta lenguajes activos y habilitados en la edición. La lista de la edición
+  // trae el código, no el id, así que se cruza con el catálogo.
+  private loadLanguages(editionId: number): void {
+    forkJoin([this.languagesService.catalog(), this.languagesService.ofEdition(editionId)]).subscribe({
+      next: ([catalog, enabled]: [ILanguage[], IEditionLanguage[]]) => {
+        const codes = new Set(enabled.filter((l) => l.active).map((l) => l.code));
+        this.languages.set(catalog.filter((l) => l.active && codes.has(l.code)).map((l) => ({ id: l.id, code: l.code })));
+      },
       error: () => {},
     });
   }
@@ -431,16 +597,7 @@ export class TestsetWorkspace {
   }
 
   private loadProblem(): void {
-    this.problemsService.get(this.problemId).subscribe({
-      next: (p) => {
-        this.problem.set(p);
-        if (this.selectedId() === null) {
-          const fallback = p.currentTestsetId ?? p.testsets.at(-1)?.id ?? null;
-          this.selectedId.set(fallback);
-        }
-      },
-      error: () => this.loadError.set(true),
-    });
+    this.changed.emit();
   }
 
   private loadTestset(id: number): void {
@@ -496,15 +653,6 @@ export class TestsetWorkspace {
     }
   }
 
-  // ─── Acción del paso ───
-  stepAction(key: StepKey): void {
-    if (key === 'firma') this.openSignature();
-    else if (key === 'solucion') this.openSource('ref');
-    else if (key === 'evaluacion') this.openEval();
-    else if (key === 'casos') this.openAddCase();
-    else if (key === 'construir') this.askBuild();
-  }
-
   // ─── Nueva versión ───
   private readonly newVersionModal = viewChild.required<Modal>('newVersionModal');
   protected readonly reasonCtrl = this.fb.control('', [Validators.required]);
@@ -521,7 +669,7 @@ export class TestsetWorkspace {
       return;
     }
     this.newVersionSaving.set(true);
-    this.service.createVersion(this.problemId, { reason: this.reasonCtrl.value! }).subscribe({
+    this.service.createVersion(this.problemId(), { reason: this.reasonCtrl.value! }).subscribe({
       next: (summary) => {
         this.newVersionSaving.set(false);
         this.newVersionModal().close();
@@ -555,7 +703,6 @@ export class TestsetWorkspace {
   }
 
   // ─── Fuente: solución oficial / generador ───
-  private readonly sourceModal = viewChild.required<Modal>('sourceModal');
   protected readonly sourceKind = signal<'ref' | 'generator'>('ref');
   protected readonly sourceLang = this.fb.control<string | null>(null, [Validators.required]);
   protected readonly sourceText = signal('');
@@ -564,14 +711,13 @@ export class TestsetWorkspace {
   protected readonly sourceSaving = signal(false);
   protected readonly sourceError = signal<string | null>(null);
 
-  openSource(kind: 'ref' | 'generator'): void {
+  private initSource(kind: 'ref' | 'generator'): void {
     this.sourceKind.set(kind);
     this.sourceLang.reset(null);
     this.sourceText.set('');
     this.sourceFileName.set('');
     this.sourceError.set(null);
     this.sourceGroups.set(kind === 'generator' ? [{ name: 'muestra', seeds: '1' }] : []);
-    this.sourceModal().open();
   }
 
   onSourceFile(file: File): void {
@@ -593,8 +739,13 @@ export class TestsetWorkspace {
 
   saveSource(): void {
     const t = this.testset();
+    // Solución oficial ya guardada y sin código nuevo: "Guardar y seguir" solo avanza
+    if (t && this.sourceKind() === 'ref' && !this.sourceText() && t.refSolutionId !== null) {
+      this.next.emit();
+      return;
+    }
     if (!t || this.sourceLang.invalid || !this.sourceText()) {
-      this.sourceError.set('Elige el lenguaje y el archivo de código.');
+      this.sourceError.set('Elige el lenguaje y sube o pega el código.');
       return;
     }
     const languageId = this.sourceLang.value!;
@@ -605,8 +756,9 @@ export class TestsetWorkspace {
     const done = {
       next: () => {
         this.sourceSaving.set(false);
-        this.sourceModal().close();
         this.loadTestset(t.id);
+        if (this.sourceKind() === 'ref') this.next.emit();
+        else this.openPanel.set(null);
       },
       error: (err: unknown) => {
         this.sourceSaving.set(false);
@@ -639,8 +791,73 @@ export class TestsetWorkspace {
     });
   }
 
+  // ─── Casos aleatorios (esquema declarativo; el backend los genera) ───
+  protected readonly randGroups = signal<RandomGroup[]>([]);
+  protected readonly randSaving = signal(false);
+  protected readonly randErrors = signal<string[]>([]);
+  protected readonly randSummary = computed(() => {
+    const schema = this.testset()?.schema;
+    if (!schema) return null;
+    const cases = schema.groups.reduce((n, g) => n + g.seeds.length, 0);
+    return `${schema.groups.length} ${schema.groups.length === 1 ? 'grupo' : 'grupos'} · ${cases} ${cases === 1 ? 'caso' : 'casos'}`;
+  });
+
+  private initRandom(): void {
+    this.randErrors.set([]);
+    this.randGroups.set(schemaToGroups(this.testset()?.schema ?? null, this.signature()?.params ?? []));
+  }
+
+  // El grupo nuevo copia los rangos del último: casi siempre solo cambia el tamaño.
+  addRandGroup(): void {
+    this.randGroups.update((groups) => {
+      const last = groups.at(-1)!;
+      return [...groups, { ...structuredClone(last), name: `grupo ${groups.length + 1}` }];
+    });
+  }
+
+  removeRandGroup(i: number): void {
+    this.randGroups.update((groups) => groups.filter((_, idx) => idx !== i));
+  }
+
+  saveRandom(): void {
+    const t = this.testset();
+    if (!t) return;
+    const { schema, errors, total } = groupsToSchema(this.randGroups(), (this.signature()?.params ?? []).map((p) => p.name));
+    const manual = t.cases.filter((c) => c.origin === TestCaseOrigin.MANUAL).length;
+    if (manual + total > 500) errors.push(`Serían ${manual + total} casos en total; el máximo es 500.`);
+    if (errors.length > 0) {
+      this.randErrors.set(errors.slice(0, 5));
+      return;
+    }
+    this.randErrors.set([]);
+    this.randSaving.set(true);
+    this.service
+      .update(t.id, { schema })
+      .pipe(switchMap(() => this.service.generate(t.id)))
+      .subscribe({
+        next: () => {
+          this.randSaving.set(false);
+          this.openPanel.set(null);
+          this.loadTestset(t.id);
+        },
+        error: (err) => {
+          this.randSaving.set(false);
+          this.randErrors.set([message(err, 'No se pudieron generar los casos aleatorios. Revisa los rangos.')]);
+          this.loadTestset(t.id);
+        },
+      });
+  }
+
+  removeRandom(): void {
+    const t = this.testset();
+    if (!t) return;
+    this.service.update(t.id, { schema: null }).subscribe({
+      next: () => this.loadTestset(t.id),
+      error: (err) => this.actionError.set(message(err, 'No se pudieron quitar los casos aleatorios.')),
+    });
+  }
+
   // ─── Casos ───
-  private readonly caseModal = viewChild.required<Modal>('caseModal');
   protected readonly caseEditing = signal<ITestCase | null>(null);
   protected readonly caseVisibility = signal<TestCaseVisibility>(TestCaseVisibility.HIDDEN);
   protected readonly caseParams = signal<{ param: ISignatureParam; isArray: boolean }[]>([]);
@@ -663,13 +880,28 @@ export class TestsetWorkspace {
     this.caseForm.set(group);
   }
 
-  openAddCase(): void {
+  // Deja el formulario listo para agregar otro caso. El primero sale público: se necesita uno de ejemplo.
+  resetCaseForm(): void {
     this.caseEditing.set(null);
-    this.caseVisibility.set(TestCaseVisibility.HIDDEN);
+    this.caseVisibility.set(this.noPublicCase() ? TestCaseVisibility.PUBLIC : TestCaseVisibility.HIDDEN);
     this.caseError.set(null);
     this.caseFieldErrors.set({});
     this.buildCaseControls();
-    this.caseModal().open();
+  }
+
+  // "Editar" carga el caso en el formulario de abajo: lo llevamos a la vista y lo marcamos
+  private readonly caseFormEl = viewChild<ElementRef<HTMLFormElement>>('caseFormEl');
+
+  private revealCaseForm(): void {
+    const form = this.caseFormEl()?.nativeElement;
+    if (!form) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    form.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+    // Reinicia el destello aunque se pulse "Editar" en otra fila mientras corre
+    form.classList.remove('tw__panel--flash');
+    void form.offsetWidth;
+    form.classList.add('tw__panel--flash');
+    form.querySelector<HTMLElement>('input, textarea, select')?.focus({ preventScroll: true });
   }
 
   openEditCase(c: ITestCase): void {
@@ -696,7 +928,7 @@ export class TestsetWorkspace {
         error: () => {},
       });
     }
-    this.caseModal().open();
+    this.revealCaseForm();
   }
 
   protected readonly caseInputEditable = computed(
@@ -845,8 +1077,8 @@ export class TestsetWorkspace {
 
   private afterCaseSaved(testsetId: number): void {
     this.caseSaving.set(false);
-    this.caseModal().close();
     this.loadTestset(testsetId);
+    this.resetCaseForm();
   }
 
   private caseFailed(err: unknown): void {
@@ -869,13 +1101,9 @@ export class TestsetWorkspace {
     });
   }
 
-  closeModal(m: 'newVersion' | 'source' | 'case' | 'view' | 'signature' | 'eval'): void {
+  closeModal(m: 'newVersion' | 'view'): void {
     if (m === 'newVersion') this.newVersionModal().close();
-    else if (m === 'source') this.sourceModal().close();
-    else if (m === 'view') this.viewModal().close();
-    else if (m === 'signature') this.signatureModal().close();
-    else if (m === 'eval') this.evalModal().close();
-    else this.caseModal().close();
+    else this.viewModal().close();
   }
 
   // Resumen de los parámetros de un caso (del inputPreview JSON) en una línea: "a = 2, b = 3".
@@ -894,10 +1122,6 @@ export class TestsetWorkspace {
   protected readonly TestCaseVisibility = TestCaseVisibility;
   protected readonly CompareMode = CompareMode;
   protected readonly TestCaseOrigin = TestCaseOrigin;
-}
-
-function findParam(route: ActivatedRoute, name: string): string | null {
-  return route.pathFromRoot.map((r) => r.snapshot.paramMap.get(name)).find((v) => v != null) ?? null;
 }
 
 function message(err: unknown, fallback: string): string {

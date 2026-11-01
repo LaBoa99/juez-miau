@@ -1,35 +1,22 @@
-/* Encabezado */
-.tw__header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--oj-space-md); }
-.tw__header-left { display: flex; flex-direction: column; gap: var(--oj-space-xs); min-width: 0; }
-.tw__title { margin: 0; font-size: 22px; font-weight: 600; }
-.tw__sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oj-space-sm); font-size: 13px; }
+/* Bloque dentro de la página del problema */
+:host { display: flex; flex-direction: column; gap: var(--oj-space-md); }
+
 .tw__current { font-size: 12px; font-weight: 600; color: var(--oj-success); }
 .tw__muted { color: var(--oj-text-muted); font-size: 13px; margin: 0; }
 .tw__sig { margin: 0; font-size: 13px; word-break: break-word; }
 
-/* Progreso */
-.tw__progress { display: flex; flex-direction: column; gap: var(--oj-space-xs); }
-.tw__progress-label { font-size: 13px; font-weight: 600; }
-.tw__progress-bar { height: 6px; background: var(--oj-bg-muted); border: 1px solid var(--oj-border); border-radius: var(--oj-radius); overflow: hidden; }
-.tw__progress-fill { height: 100%; background: var(--oj-success); transition: width 120ms linear; }
+/* Versión que se edita */
+.tw__version { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oj-space-sm); font-size: 13px; }
 
-/* Pasos */
-.tw__steps { display: flex; flex-direction: column; gap: var(--oj-space-md); }
-.tw__step { border: 1px solid var(--oj-border); border-radius: var(--oj-radius); padding: 16px; display: flex; flex-direction: column; gap: var(--oj-space-md); }
-.tw__step--pending { opacity: 0.7; }
-.tw__step-head { display: flex; align-items: center; gap: var(--oj-space-sm); }
-.tw__step-num {
-  display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex: 0 0 auto;
-  border: 1px solid var(--oj-border); border-radius: 50%; font-size: 12px; font-weight: 700; font-family: var(--oj-font-mono);
-}
-.tw__step--done .tw__step-num { border-color: var(--oj-success); color: var(--oj-success); }
-.tw__step--next .tw__step-num { border-color: var(--oj-warning); color: var(--oj-warning); }
-.tw__step-title { margin: 0; font-size: 15px; font-weight: 600; }
-.tw__step-state { margin-left: auto; margin-right: var(--oj-space-sm); font-size: 12px; font-weight: 600; }
-.tw__step-done { color: var(--oj-success); }
-.tw__step-next { color: var(--oj-warning); }
-.tw__step-pending { color: var(--oj-text-muted); }
-.tw__step-body { display: flex; flex-direction: column; gap: var(--oj-space-sm); }
+/* Contenido del paso visible */
+.tw__step { display: flex; flex-direction: column; gap: var(--oj-space-md); }
+
+/* Requisitos para construir: ✓ / ✕ */
+.tw__reqs { display: flex; flex-direction: column; gap: var(--oj-space-xs); margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.tw__reqs li { display: flex; align-items: center; gap: var(--oj-space-sm); color: var(--oj-text-muted); }
+.tw__req-mark { width: 14px; color: var(--oj-danger); font-weight: 700; }
+.tw__req--ok { color: var(--oj-text); }
+.tw__req--ok .tw__req-mark { color: var(--oj-success); }
 
 /* Construyendo / log del build */
 .tw__building {
@@ -39,7 +26,14 @@
 }
 .tw__log { margin: 0; white-space: pre-wrap; font-family: var(--oj-font-mono); font-size: 12px; }
 
-/* Firma (modal) */
+/* Formularios abiertos dentro de su paso */
+.tw__panel {
+  display: flex; flex-direction: column; gap: var(--oj-space-md); padding: var(--oj-space-md);
+  background: var(--oj-bg-muted); border: 1px solid var(--oj-border); border-radius: var(--oj-radius);
+}
+.tw__panel-title { margin: 0; font-size: 13px; font-weight: 600; }
+
+/* Firma */
 .tw__sig-form { display: flex; flex-direction: column; gap: 16px; }
 .tw__sig-params { display: flex; flex-direction: column; gap: var(--oj-space-sm); }
 .tw__sig-label { font-size: 12px; font-weight: 600; }
@@ -47,10 +41,10 @@
 .tw__sig-row input { flex: 1; min-width: 0; }
 .tw__sig-return { display: flex; gap: var(--oj-space-sm); }
 
-/* Evaluación (modal) */
-.tw__eval-fields { display: flex; flex-direction: column; gap: var(--oj-space-md); margin-top: var(--oj-space-md); }
+/* Evaluación */
+.tw__eval-fields { display: flex; flex-direction: column; gap: var(--oj-space-md); }
 
-/* Campos del modal de caso y del "Ver" */
+/* Campos del caso y del "Ver" */
 .tw__field { display: flex; flex-direction: column; gap: 6px; }
 .tw__field-label { display: flex; align-items: baseline; gap: var(--oj-space-sm); font-size: 12px; font-weight: 600; color: var(--oj-text); }
 .tw__field-error { margin: 0; font-size: 12px; color: var(--oj-danger); }
@@ -59,3 +53,57 @@
   border: 1px solid var(--oj-border); border-radius: var(--oj-radius);
   font-size: 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
 }
+
+/* Casos aleatorios */
+.tw__rand-group { display: flex; flex-direction: column; gap: var(--oj-space-sm); padding: var(--oj-space-md); background: var(--oj-bg); border: 1px solid var(--oj-border); border-radius: var(--oj-radius); }
+.tw__rand-head { align-items: flex-end; }
+.tw__rand-head > oj-form-field:nth-child(2) { flex: 0 0 120px; }
+.tw__rand-param { display: flex; flex-direction: column; gap: var(--oj-space-xs); }
+.tw__rand-range { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--oj-space-sm); }
+.tw__rand-field { display: flex; flex-direction: column; gap: var(--oj-space-2xs); width: 110px; font-size: var(--oj-text-small); color: var(--oj-text-muted); }
+.tw__rand-field--wide { width: 180px; }
+.tw__rand-check { display: flex; align-items: center; gap: var(--oj-space-xs); font-size: var(--oj-text-small); }
+.tw__rand-items { display: flex; flex-direction: column; gap: var(--oj-space-xs); flex-basis: 100%; padding-left: var(--oj-space-md); border-left: 2px solid var(--oj-border); }
+
+/* Versión construida: explica cómo seguir editando */
+.tw__locked {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--oj-space-md);
+  padding: var(--oj-space-md); background: var(--oj-bg-muted); border: 1px solid var(--oj-border); border-radius: var(--oj-radius);
+}
+.tw__locked > p { flex: 1 1 320px; }
+
+/* Editar un caso: la fila y el formulario quedan marcados mientras dura la edición; al llegar,
+   el formulario hace un destello breve para que se note dónde seguir */
+.tw__row--editing td { background: var(--oj-neutral-bg); }
+.tw__panel { transition: border-color 200ms cubic-bezier(0.16, 1, 0.3, 1); }
+.tw__panel--editing { border-color: var(--oj-text); }
+.tw__panel--flash { animation: tw-flash 900ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes tw-flash {
+  0% { background: var(--oj-neutral-bg); outline: 3px solid var(--oj-border); outline-offset: 2px; }
+  100% { background: var(--oj-bg-muted); outline: 3px solid transparent; outline-offset: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tw__panel { transition: none; }
+  .tw__panel--flash { animation: none; }
+}
+
+/* Construir y publicar: la secuencia completa, cada etapa con su estado */
+.tw__pipe { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; counter-reset: pipe; }
+.tw__pipe-item {
+  position: relative; display: flex; flex-direction: column; gap: var(--oj-space-sm);
+  padding: 0 0 var(--oj-space-lg) 40px; counter-increment: pipe;
+}
+.tw__pipe-item::before {
+  content: counter(pipe); position: absolute; left: 0; top: 0; display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; box-sizing: border-box; border: 2px solid var(--oj-border); border-radius: 50%;
+  background: var(--oj-bg); font-family: var(--oj-font-mono); font-size: 11px; font-weight: 700; line-height: 1; color: var(--oj-text-muted);
+}
+.tw__pipe-item + .tw__pipe-item::after {
+  content: ''; position: absolute; left: 11px; top: calc(-1 * var(--oj-space-lg) + 4px); height: calc(var(--oj-space-lg) - 8px);
+  width: 2px; background: var(--oj-border);
+}
+.tw__pipe-item--done::before { content: '✓'; border-color: var(--oj-success); color: var(--oj-success); font-family: var(--oj-font-sans); font-size: 12px; }
+.tw__pipe-title { margin: 2px 0 0; font-size: 14px; font-weight: 600; }
+
+/* Código pegado o cargado de un archivo */
+.tw__code { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--oj-font-mono); }

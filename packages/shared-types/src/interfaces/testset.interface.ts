@@ -1,4 +1,5 @@
 import { CompareMode, TestCaseOrigin, TestCaseVisibility, TestsetStatus } from "../enums/testset-status.enum.js"
+import { Verdict } from "../enums/verdict.enum.js"
 
 // ─── Esquema declarativo (judge-evaluation.md §3) ────────────
 // Los nodos del esquema base pueden ir incompletos: cada grupo los completa con `overrides`.
@@ -84,7 +85,9 @@ export interface ISetRefSolution {
 // ─── Checker y generador en código (judge-evaluation.md §3 y §5) ─
 // Ambos se escriben en cualquier lenguaje soportado, como una función:
 //   check(<parámetros del problema>, expectedOutput, actualOutput) -> bool
-//   generate(seed: long, group: string, index: int) -> string (JSON del input, un campo por parámetro)
+//   generate(seed: long, group: string, index: int) -> string (JSON del input, un campo por parámetro).
+//   El driver agrega caso(...) (Caso.de en Java, Caso.De en C#) con los parámetros tipados del
+//   problema, que arma ese JSON; regresar el texto JSON a mano sigue funcionando
 
 export type ISetChecker = ISetRefSolution
 
@@ -100,6 +103,17 @@ export interface ISetGenerator extends ISetRefSolution {
 
 export interface ICreateTestsetVersion {
     reason: string
+}
+
+// Prueba del staff: juzga una solución contra un testset construido sin crear un envío.
+// Con useRefSolution se prueba la solución oficial del testset (languageId y source se ignoran)
+export interface ICreateTestRun {
+    languageId?: string
+    source?: string
+    useRefSolution?: boolean
+    // Verificar casos antes de construir: corre la solución oficial sin comparar y regresa
+    // la entrada y la salida de cada caso para revisarlas. No necesita el testset construido
+    verify?: boolean
 }
 
 // ─── Responses ───────────────────────────────────────────────
@@ -136,4 +150,39 @@ export interface ITestsetSummary {
 
 export interface IGenerateTestsetResponse {
     generatedCount: number
+}
+
+export type TestRunStatus = 'queued' | 'running' | 'done' | 'failed'
+
+export interface ITestRunCase {
+    ordinal: number
+    verdict: Verdict
+    timeMs: number
+    memoryKb: number
+    // Por qué falló (stderr del RE, tipo de resultado incorrecto...)
+    message: string | null
+    // Solo al verificar: entrada y salida del caso como JSON canónico (el panel las presenta)
+    input?: string
+    output?: string | null
+}
+
+export interface ITestRun {
+    id: string
+    status: TestRunStatus
+    // Casos juzgados hasta ahora y total del testset (para la barra de avance)
+    judged: number
+    total: number
+    // Con status done
+    verdict: Verdict | null
+    compileLog: string | null
+    // Solo los casos que se ejecutaron: se detiene en el primer TLE, MLE o RE
+    cases: ITestRunCase[]
+    // Con status failed: error del sistema, no de la solución
+    error: string | null
+}
+
+// Plantilla para escribir el generador en un lenguaje: generate(seed, group, index) -> JSON del input
+export interface IGeneratorTemplate {
+    fileName: string
+    source: string
 }

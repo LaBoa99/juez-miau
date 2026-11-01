@@ -12,7 +12,20 @@ function converter(type: TypeRef, value: string): string {
 // El driver va al final del mismo archivo, dentro de una función, para no chocar con los
 // nombres del participante. `process.getBuiltinModule` funciona igual si Node trata el archivo
 // como CommonJS o como ESM (si el participante usa import/export)
-function buildDriver({ signature }: DriverInput): string {
+// Generador: caso(a, b) global, arma el JSON del caso. Si el juez define su propio caso (p. ej. para
+// probar en su máquina), el suyo tiene prioridad sobre el global
+function casoHelper(caseSignature: DriverInput['caseSignature']): string {
+    if(!caseSignature) return ''
+    // En orden, sin usar los nombres como variables (un parámetro `class` no rompe nada)
+    const names = '[' + caseSignature.params.map((param) => quote(param.name)).join(', ') + ']'
+    return [
+        '',
+        '    globalThis.caso = (..._judge_args) => JSON.stringify(Object.fromEntries(' + names + '.map((_judge_n, _judge_i) => [_judge_n, _judge_args[_judge_i]])),',
+        "        (_judge_k, _judge_v) => typeof _judge_v === 'bigint' ? _judge_v.toString() : _judge_v)",
+    ].join('\n')
+}
+
+function buildDriver({ signature, caseSignature }: DriverInput): string {
     const args = signature.params
         .map((param) => converter(param.type, '_judge_input[' + quote(param.name) + ']'))
         .join(', ')
@@ -22,7 +35,7 @@ function buildDriver({ signature }: DriverInput): string {
         '',
         '// ---- driver del juez ----',
         ';(() => {',
-        "    const _judge_fs = process.getBuiltinModule('node:fs')",
+        "    const _judge_fs = process.getBuiltinModule('node:fs')" + casoHelper(caseSignature),
         "    const _judge_text = _judge_fs.readFileSync(0, 'utf8')",
         // Los enteros que no caben en un double se conservan como texto para BigInt
         '    const _judge_input = JSON.parse(_judge_text, (_judge_k, _judge_v, _judge_ctx) =>',

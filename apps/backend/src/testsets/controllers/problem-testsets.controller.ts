@@ -1,5 +1,5 @@
-import { Body, Controller, Param, ParseIntPipe, Patch, Post, Req } from '@nestjs/common';
-import type { IProblem, ITestsetSummary } from '@concurso/shared-types';
+import { Body, Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
+import type { IGeneratorTemplate, IProblem, ITestsetSummary } from '@concurso/shared-types';
 import type { AuthenticatedRequest } from '../../auth/guards/jwt-auth.guard.js';
 import { TestsetsService } from '../services/testsets.service.js';
 import { UpdateSignatureDto } from '../dto/update-signature.dto.js';
@@ -21,6 +21,16 @@ export class ProblemTestsetsController {
         @Req() req: AuthenticatedRequest,
     ): Promise<IProblem> {
         return this.testsetsService.updateSignature(problemId, dto, req.user.sub);
+    }
+
+    // Plantilla del generador en el lenguaje elegido, con el formato del JSON que debe regresar
+    @Get('generator-template')
+    getGeneratorTemplate(
+        @Param('problemId', ParseIntPipe) problemId: number,
+        @Query('languageId', ParseUUIDPipe) languageId: string,
+        @Req() req: AuthenticatedRequest,
+    ): Promise<IGeneratorTemplate> {
+        return this.testsetsService.getGeneratorTemplate(problemId, languageId, req.user.sub);
     }
 
     @Post('testsets')

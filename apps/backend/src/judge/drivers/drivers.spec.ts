@@ -1,6 +1,6 @@
 import type { IProblemSignature } from '@concurso/shared-types'
 import { buildProgram, starterCode, SUPPORTED_LANGUAGES } from './index.js'
-import { collectTypes, typeKey } from './driver.types.js'
+import { collectTypes, stripLocalBlocks, typeKey } from './driver.types.js'
 
 const signature: IProblemSignature = {
     functionName: 'solve',
@@ -42,5 +42,13 @@ describe('drivers', () => {
         expect(starterCode('c', signature)).toContain('LongArray solve(IntArray2D grid, char *name)')
         expect(starterCode('cpp', signature)).toContain('vector<long long> solve(vector<vector<int>> grid, string name)')
         expect(starterCode('cobol', signature)).toBeNull()
+    })
+
+    it('quita el bloque "solo local" del generador (con // o #) y deja lo demás', () => {
+        const js = 'a\n// ---- solo local: inicio ----\nfunction caso() {}\n// ---- solo local: fin ----\nb\n'
+        const py = 'x\n    # ---- solo local: inicio ----\ndef caso(): pass\n    # ---- solo local: fin ----\ny\n'
+        expect(stripLocalBlocks(js)).toBe('a\nb\n')
+        expect(stripLocalBlocks(py)).toBe('x\ny\n')
+        expect(stripLocalBlocks('sin bloque\n')).toBe('sin bloque\n')
     })
 })

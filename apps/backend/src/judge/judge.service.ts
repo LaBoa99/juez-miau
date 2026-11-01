@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { CompareMode, Verdict, type IProblemSignature } from '@concurso/shared-types'
 import { Language } from '../languages/entities/language.entity.js'
 import { buildProgram, type DriverProgram } from './drivers/index.js'
+import { stripLocalBlocks } from './drivers/driver.types.js'
 import { normalizeOutput, outputsMatch } from './compare.js'
 import { CpuPool } from './cpu-pool.js'
 import { DockerRunnerService, JudgeInfrastructureError, type RawCaseResult } from './docker-runner.service.js'
@@ -38,6 +39,8 @@ export interface JudgeRequest {
     exclusive?: boolean
     // Obligatorio con compareMode = checker
     checker?: { language: Language, source: string } | null
+    // Generador: firma del problema para el helper caso(...) del driver
+    caseSignature?: IProblemSignature
     onProgress?: (judged: number, total: number) => void
 }
 
@@ -80,8 +83,10 @@ export class JudgeService {
     judge(request: JudgeRequest): Promise<JudgeResult> {
         const program = buildProgram(request.language.code, {
             signature: request.signature,
-            source: request.source,
+            // El generador puede traer el caso(...) de prueba de la plantilla: se usa el del driver
+            source: request.caseSignature ? stripLocalBlocks(request.source) : request.source,
             flags: request.language.flags,
+            caseSignature: request.caseSignature,
         })
 
         const run = async (cpu: number): Promise<JudgeResult> => {

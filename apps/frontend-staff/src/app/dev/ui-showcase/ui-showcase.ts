@@ -13,18 +13,21 @@ import { ConfirmDialog } from '../../shared/ui/confirm-dialog.component';
 import { FileDrop } from '../../shared/ui/file-drop.component';
 import { Modal } from '../../shared/ui/modal.component';
 import { CodeBlock } from '../../shared/ui/code-block.component';
+import { MarkdownEditor } from '../../shared/ui/markdown-editor/markdown-editor.component';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
 @Component({
   selector: 'oj-ui-showcase',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ButtonDirective, Badge, Alert, FormField, Segmented, PageHeader, Breadcrumb, EmptyState,
-    SidePanel, TabNav, ConfirmDialog, FileDrop, Modal, CodeBlock,
+    SidePanel, TabNav, ConfirmDialog, FileDrop, Modal, CodeBlock, MarkdownEditor, ReactiveFormsModule,
   ],
   templateUrl: './ui-showcase.html',
   styleUrl: './ui-showcase.css',
 })
 export class UiShowcase {
+  protected readonly mdCtrl = new FormControl('Suma **a** y **b**.\n\n- `1 <= a, b <= 100`\n\n| a | b |\n| --- | --- |\n| 2 | 3 |');
   protected readonly lang = signal('cpp');
   protected readonly langOptions = [
     { value: 'cpp', label: 'C++20' },

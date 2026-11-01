@@ -52,13 +52,7 @@
 }
 
 /* Letra: columna angosta (~80px). */
-.pp__row > .pp__letter {
-  flex: 0 0 80px;
-}
 
-.pp__letter-input {
-  text-transform: uppercase;
-}
 
 /* Puntos: input angosto; la ayuda queda en una línea. */
 .pp__points-input {
@@ -67,12 +61,6 @@
 }
 
 /* Textarea de código: solo la fuente mono; el tamaño viene de styles.css. */
-.pp__code {
-  width: 100%;
-  box-sizing: border-box;
-  resize: vertical;
-  font-family: var(--oj-font-mono);
-}
 
 /* Vista previa */
 .pp__preview {
@@ -141,72 +129,6 @@
   font-size: 13px;
 }
 
-/* Caja "Casos de prueba" */
-.pp__tc {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--oj-space-md);
-  padding: 20px;
-  border: 1px solid var(--oj-border);
-  border-radius: var(--oj-radius);
-  background: var(--oj-bg-muted);
-}
-
-.pp__tc-main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--oj-space-2xs);
-  min-width: 0;
-}
-
-.pp__tc-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.pp__tc-desc {
-  margin: 0;
-  max-width: 60ch;
-  font-size: 13px;
-}
-
-.pp__tc-state {
-  margin: 0;
-  font-size: 12px;
-  color: var(--oj-text-muted);
-}
-
-.pp__tc-ready {
-  color: var(--oj-success);
-  font-weight: 600;
-}
-
-/* CTA grande hacia Casos de prueba. Es <button> (no <a>) con color propio para que
-   la regla global de enlaces no sobrescriba el texto blanco. */
-.pp__cta {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  height: 44px;
-  padding: 0 20px;
-  border: none;
-  border-radius: 4px;
-  background: #111827;
-  color: #ffffff;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.pp__cta:hover {
-  background: #1f2937;
-}
-
 /* Publicar bloqueado: se ve deshabilitado pero sigue clicable para explicar por qué */
 .pp__locked.oj-btn {
   background: var(--oj-neutral-bg);
@@ -215,3 +137,7 @@
   cursor: not-allowed;
 }
 
+
+
+.pp__step-title { margin: 0; font-size: 16px; font-weight: 600; }
+.pp__nav { padding-top: var(--oj-space-md); border-top: 1px solid var(--oj-border); }

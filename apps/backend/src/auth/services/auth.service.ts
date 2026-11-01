@@ -47,6 +47,7 @@ export class AuthService {
                 id: user.id,
                 name: user.name,
                 roles: await this.findStaffRoles(user.id),
+                isSuperadmin: user.is_superadmin,
             },
         }
     }
@@ -115,7 +116,13 @@ export class AuthService {
             throw new UnauthorizedException('Usuario inactivo o inexistente')
         }
 
-        return { type: AccessTokenType.STAFF, id: user.id, name: user.name, roles: await this.findStaffRoles(user.id) }
+        return {
+            type: AccessTokenType.STAFF,
+            id: user.id,
+            name: user.name,
+            roles: await this.findStaffRoles(user.id),
+            isSuperadmin: user.is_superadmin,
+        }
     }
 
     private toTeamInfo(team: Team) {

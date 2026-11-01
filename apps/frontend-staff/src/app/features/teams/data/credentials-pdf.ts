@@ -34,8 +34,9 @@ function teamPage(c: ITeamImportCredential, logo: string | null, generatedAt: st
       table: {
         widths: ['auto', '*'],
         body: [
-          [{ text: 'Usuario', bold: true }, { text: c.username, font: 'Courier' }],
-          [{ text: 'Contraseña', bold: true }, { text: c.password, font: 'Courier' }],
+          // Roboto: pdfmake en el navegador solo trae esa fuente en su vfs (Courier truena al generar)
+          [{ text: 'Usuario', bold: true }, { text: c.username, characterSpacing: 0.5 }],
+          [{ text: 'Contraseña', bold: true }, { text: c.password, characterSpacing: 0.5 }],
         ],
       },
       layout: 'noBorders',
@@ -69,8 +70,6 @@ export async function downloadCredentialsPdf(
       italics: 'Roboto-Italic.ttf',
       bolditalics: 'Roboto-MediumItalic.ttf',
     },
-    // Fuente monoespaciada estándar de PDF (no necesita archivo en el vfs).
-    Courier: { normal: 'Courier', bold: 'Courier-Bold', italics: 'Courier-Oblique', bolditalics: 'Courier-BoldOblique' },
   };
 
   const logo = await loadLogoDataUrl();

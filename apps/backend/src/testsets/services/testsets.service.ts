@@ -4,6 +4,7 @@ import {
     TestCaseOrigin,
     TestCaseVisibility,
     TestsetStatus,
+    Verdict,
     type IGenerateTestsetResponse,
     type IProblem,
     type IProblemSignature,
@@ -11,6 +12,8 @@ import {
     type IProblemTestset,
     type ITestCase,
     type ITestCaseContent,
+    type IGeneratorTemplate,
+    type ITestRun,
     type ITestsetDetail,
     type ITestsetSummary,
 } from '@concurso/shared-types';
@@ -32,7 +35,7 @@ import { Generator } from '../entities/generator.entity.js';
 import { compactOrdinals } from '../generation/ordinals.js';
 import { SetCheckerDto, SetGeneratorDto } from '../dto/set-generator.dto.js';
 import { Language } from '../../languages/entities/language.entity.js';
-import { hasDriver } from '../../judge/drivers/index.js';
+import { generatorTemplate, hasDriver } from '../../judge/drivers/index.js';
 import { checkerNameCollisions } from '../../judge/special-programs.js';
 import { parseJsonPreservingIntegers, serializeInput } from '../generation/canonical-json.js';
 import { GenerationError, generateCases } from '../generation/generate.js';
@@ -40,7 +43,8 @@ import { MAX_CASE_BYTES, MAX_GENERATED_TOTAL_BYTES, MAX_INPUT_PREVIEW_BYTES, MAX
 import { validateSchema } from '../generation/schema.js';
 import { normalizeInput, validateSignature } from '../generation/signature.js';
 import { toSourceDto, toTestCaseDto, toTestsetDto, toTestsetSummary } from '../mappers/testset.mapper.js';
-import { TESTSET_BUILD_QUEUE, type TestsetBuildJob } from '../testsets.constants.js';
+import { TEST_RUN_KEEP_SECONDS, TEST_RUN_QUEUE, TESTSET_BUILD_QUEUE, type TestRunJob, type TestRunResult, type TestsetBuildJob } from '../testsets.constants.js';
+import { CreateTestRunDto } from '../dto/create-test-run.dto.js';
 import { UpdateSignatureDto } from '../dto/update-signature.dto.js';
 import { UpdateTestsetDto } from '../dto/update-testset.dto.js';
 import { CreateTestCaseDto } from '../dto/create-test-case.dto.js';
@@ -78,21 +82,25 @@ export class TestsetsService {
         private readonly editionStaffService: EditionStaffService,
         @InjectQueue(TESTSET_BUILD_QUEUE)
         private readonly buildQueue: Queue<TestsetBuildJob>,
+        @InjectQueue(TEST_RUN_QUEUE)
+        private readonly testRunQueue: Queue<TestRunJob, TestRunResult>,
     ) {}
 
     // ─── Firma y versiones (rutas bajo /problems/:problemId) ─────
 
-    // La firma solo cambia mientras el problema es borrador y su testset actual es editable.
-    // Los casos y el esquema que ya existen deben seguir siendo válidos con la nueva firma
+    // La firma solo cambia mientras el problema es borrador y la versión que se edita es editable.
+    // Esa versión es la última si no está construida (una v2 en borrador sobre la v1 vigente) o la
+    // vigente. Sus casos y su esquema deben seguir siendo válidos con la nueva firma
     async updateSignature(problemId: number, dto: UpdateSignatureDto, staffUserId: number): Promise<IProblem> {
-        const problem = await this.getProblemForJudge(problemId, staffUserId)
+        const problem = await this.getProblemForAuthor(problemId, staffUserId)
         if(problem.status !== ProblemStatus.DRAFT){
             throw new ConflictException('the signature of problem #' + problemId + ' can only change while it is a draft')
         }
 
-        const testset = problem.current_testset_id === null
-            ? null
-            : await this.testsetRepository.findOneBy({ id: problem.current_testset_id })
+        const latest = await this.testsetRepository.findOne({ where: { problem_id: problem.id }, order: { version: 'DESC' } })
+        const testset = latest && latest.status !== TestsetStatus.READY
+            ? latest
+            : problem.current_testset_id === null ? null : await this.testsetRepository.findOneBy({ id: problem.current_testset_id })
         if(testset) this.assertEditable(testset)
 
         const signatureErrors = validateSignature(dto)
@@ -117,7 +125,7 @@ export class TestsetsService {
     // Clona el testset actual (READY) en la versión siguiente, en DRAFT. Los casos comparten
     // contenido por sha. El problema sigue usando la versión actual hasta que la nueva quede READY
     async createVersion(problemId: number, dto: CreateTestsetVersionDto, staffUserId: number): Promise<ITestsetSummary> {
-        const problem = await this.getProblemForJudge(problemId, staffUserId)
+        const problem = await this.getProblemForAuthor(problemId, staffUserId)
         const testsets = await this.testsetRepository.find({ where: { problem_id: problem.id }, order: { version: 'DESC' }})
 
         const current = testsets.find((testset) => testset.id === problem.current_testset_id)
@@ -185,7 +193,7 @@ export class TestsetsService {
     }
 
     async update(testsetId: number, dto: UpdateTestsetDto, staffUserId: number): Promise<IProblemTestset> {
-        const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
+        const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
 
         if(dto.timeLimitMs !== undefined) testset.time_limit_ms = dto.timeLimitMs
@@ -220,7 +228,7 @@ export class TestsetsService {
 
     // Reemplaza los casos generados por los que produce el esquema
     async generate(testsetId: number, staffUserId: number): Promise<IGenerateTestsetResponse> {
-        const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
+        const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
 
         const signature = this.requireSignature(problem)
@@ -277,7 +285,7 @@ export class TestsetsService {
     }
 
     async setRefSolution(testsetId: number, dto: SetRefSolutionDto, staffUserId: number): Promise<IProblemSource> {
-        const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
+        const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
         await this.assertLanguageEnabled(problem, dto.languageId)
         const source = Buffer.from(dto.source, 'utf8')
@@ -301,7 +309,7 @@ export class TestsetsService {
 
     // compare_mode = checker lo exige; el build revisa que acepte las salidas de la solución oficial
     async setChecker(testsetId: number, dto: SetCheckerDto, staffUserId: number): Promise<IProblemSource> {
-        const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
+        const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
         await this.assertLanguageEnabled(problem, dto.languageId)
         const collisions = checkerNameCollisions(this.requireSignature(problem))
@@ -326,7 +334,7 @@ export class TestsetsService {
     }
 
     async removeChecker(testsetId: number, staffUserId: number): Promise<void> {
-        const { testset } = await this.getTestsetForJudge(testsetId, staffUserId)
+        const { testset } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
         if(testset.compare_mode === CompareMode.CHECKER){
             throw unprocessable(['change compareMode before removing the checker'])
@@ -338,7 +346,7 @@ export class TestsetsService {
 
     // Los casos del generador se crean (y reemplazan) al construir el testset: necesita Docker
     async setGenerator(testsetId: number, dto: SetGeneratorDto, staffUserId: number): Promise<IProblemSource> {
-        const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
+        const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
         this.requireSignature(problem)
         await this.assertLanguageEnabled(problem, dto.languageId)
@@ -371,7 +379,7 @@ export class TestsetsService {
     }
 
     async removeGenerator(testsetId: number, staffUserId: number): Promise<void> {
-        const { testset } = await this.getTestsetForJudge(testsetId, staffUserId)
+        const { testset } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
 
         await this.dataSource.transaction(async (manager) => {
@@ -403,7 +411,7 @@ export class TestsetsService {
     // Deja el testset en BUILDING y encola el build; el worker (fase 3) ejecuta la solución
     // oficial, llena las salidas y lo pasa a READY o FAILED
     async build(testsetId: number, staffUserId: number): Promise<ITestsetSummary> {
-        const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
+        const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
 
         const errors: string[] = []
@@ -444,6 +452,78 @@ export class TestsetsService {
         return toTestsetSummary(testset)
     }
 
+    async getGeneratorTemplate(problemId: number, languageId: string, staffUserId: number): Promise<IGeneratorTemplate> {
+        const problem = await this.getProblemForJudge(problemId, staffUserId)
+        const signature = this.requireSignature(problem)
+        const language = await this.dataSource.getRepository(Language).findOneBy({ id: languageId })
+        const source = language && generatorTemplate(language.code, signature)
+        if(!language || !source) throw unprocessable(['language ' + languageId + ' has no template for generators'])
+        return { fileName: 'generador.' + language.file_ext, source }
+    }
+
+    // ─── Pruebas del staff: una solución contra un testset construido, sin crear envío ───
+
+    async startTestRun(testsetId: number, dto: CreateTestRunDto, staffUserId: number): Promise<ITestRun> {
+        const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
+        // Verificar corre la solución oficial sobre los casos aún sin salidas; probar necesita el testset construido
+        if(!dto.verify && testset.status !== TestsetStatus.READY){
+            throw unprocessable(['testset v' + testset.version + ' must be built before testing a solution'])
+        }
+        if(dto.verify && testset.status === TestsetStatus.BUILDING){
+            throw new ConflictException('testset v' + testset.version + ' is being built')
+        }
+
+        let languageId: string
+        let source: string
+        if(dto.useRefSolution || dto.verify){
+            const ref = testset.ref_solution_id === null ? null : await this.refSolutionRepository.findOneBy({ id: testset.ref_solution_id })
+            if(!ref) throw unprocessable(['testset v' + testset.version + ' has no reference solution'])
+            languageId = ref.language_id
+            source = ref.source.toString('utf8')
+        } else {
+            if(!dto.languageId || !dto.source) throw unprocessable(['languageId and source are required'])
+            await this.assertLanguageEnabled(problem, dto.languageId)
+            languageId = dto.languageId
+            source = dto.source
+        }
+
+        const total = await this.testCaseRepository.countBy({ testset_id: testset.id })
+        if(total === 0) throw unprocessable(['testset v' + testset.version + ' has no test cases'])
+        const job = await this.testRunQueue.add('run', { testsetId: testset.id, languageId, source, verify: dto.verify === true }, {
+            removeOnComplete: { age: TEST_RUN_KEEP_SECONDS },
+            removeOnFail: { age: TEST_RUN_KEEP_SECONDS },
+        })
+        return { id: job.id!, status: 'queued', judged: 0, total, verdict: null, compileLog: null, cases: [], error: null }
+    }
+
+    async getTestRun(testsetId: number, runId: string, staffUserId: number): Promise<ITestRun> {
+        await this.getTestsetForJudge(testsetId, staffUserId)
+        const job = await this.testRunQueue.getJob(runId)
+        if(!job || job.data.testsetId !== testsetId){
+            throw new NotFoundException('test run not found #' + runId)
+        }
+
+        const state = await job.getState()
+        const progress = (typeof job.progress === 'object' ? job.progress : {}) as { judged?: number, total?: number }
+        const total = progress.total ?? await this.testCaseRepository.countBy({ testset_id: testsetId })
+        const base: ITestRun = { id: runId, status: 'queued', judged: progress.judged ?? 0, total, verdict: null, compileLog: null, cases: [], error: null }
+
+        if(state === 'active') return { ...base, status: 'running' }
+        if(state === 'failed') return { ...base, status: 'failed', error: job.failedReason ?? 'unknown error' }
+        if(state === 'completed'){
+            const result = job.returnvalue
+            return {
+                ...base,
+                status: 'done',
+                judged: result.cases.length,
+                verdict: result.verdict as Verdict,
+                compileLog: result.compileLog,
+                cases: result.cases.map((c) => ({ ...c, verdict: c.verdict as Verdict })),
+            }
+        }
+        return base
+    }
+
     // ─── Casos ───────────────────────────────────────────────────
 
     async getCase(testsetId: number, caseId: number, staffUserId: number): Promise<ITestCaseContent> {
@@ -458,7 +538,7 @@ export class TestsetsService {
     }
 
     async addCase(testsetId: number, dto: CreateTestCaseDto, staffUserId: number): Promise<ITestCase> {
-        const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
+        const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
         const text = this.serializeManualInput(this.requireSignature(problem), dto.input)
 
@@ -494,7 +574,7 @@ export class TestsetsService {
     }
 
     async updateCase(testsetId: number, caseId: number, dto: UpdateTestCaseDto, staffUserId: number): Promise<ITestCase> {
-        const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
+        const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
         const testCase = await this.getCaseOfTestset(testsetId, caseId)
 
@@ -531,7 +611,7 @@ export class TestsetsService {
     }
 
     async removeCase(testsetId: number, caseId: number, staffUserId: number): Promise<void> {
-        const { testset } = await this.getTestsetForJudge(testsetId, staffUserId)
+        const { testset } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
         const testCase = await this.getCaseOfTestset(testsetId, caseId)
 
@@ -550,6 +630,19 @@ export class TestsetsService {
         }
 
         await this.editionStaffService.assertCanJudge(staffUserId, problem.edition_id)
+        return problem
+    }
+
+    // Para escribir: el autor del problema, un admin de la edición o un superadmin
+    private async getTestsetForAuthor(testsetId: number, staffUserId: number): Promise<{ testset: Testset, problem: Problem }> {
+        const result = await this.getTestsetForJudge(testsetId, staffUserId)
+        await this.editionStaffService.assertCanEditProblem(staffUserId, result.problem)
+        return result
+    }
+
+    private async getProblemForAuthor(problemId: number, staffUserId: number): Promise<Problem> {
+        const problem = await this.getProblemForJudge(problemId, staffUserId)
+        await this.editionStaffService.assertCanEditProblem(staffUserId, problem)
         return problem
     }
 

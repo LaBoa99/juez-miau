@@ -17,6 +17,7 @@ import { EditionsService } from '../../editions/services/editions.service.js';
 import { CategoriesService } from '../../editions/services/categories.service.js';
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js';
 import { Testset } from '../../testsets/entities/testset.entity.js';
+import { nextFreeLetter } from '../letters.js';
 import { TestCase } from '../../testsets/entities/test-case.entity.js';
 import { BlobsService } from '../../blobs/services/blobs.service.js';
 import { toSourceDto, toTestsetDto } from '../../testsets/mappers/testset.mapper.js';
@@ -25,6 +26,7 @@ import { CreateProblemDto } from '../dto/create-problem.dto.js';
 import { ProblemFiltersDto } from '../dto/problem-filters.dto.js';
 import { UpdateProblemDto } from '../dto/update-problem.dto.js';
 import { Problem } from '../entities/problem.entity.js';
+import { StaffUser } from '../../staff/entities/staff-user.entity.js';
 
 @Injectable()
 export class ProblemsService {
@@ -58,6 +60,13 @@ export class ProblemsService {
     }
 
     // Carga el problema y valida que el usuario sea juez de su edición
+    // Para escribir: el autor, un admin de la edición o un superadmin
+    private async getByIdForAuthor(id: number, staffUserId: number): Promise<Problem> {
+        const problem = await this.getById(id)
+        await this.editionStaffService.assertCanEditProblem(staffUserId, problem)
+        return problem
+    }
+
     private async getByIdForJudge(id: number, staffUserId: number): Promise<Problem> {
         const problem = await this.getById(id)
         await this.editionStaffService.assertCanJudge(staffUserId, problem.edition_id)
@@ -93,18 +102,27 @@ export class ProblemsService {
         await this.editionStaffService.assertCanJudge(staffUserId, editionId)
 
         const category = await this.categoriesService.getByIdForEdition(dto.categoryId, editionId)
-        await this.assertLetterIsFree(editionId, category.id, dto.letter)
+        // La letra la pone el sistema; solo los scripts y tests la mandan.
+        // shortcut: dos altas simultáneas pueden elegir la misma letra y la segunda recibe 409 (por @Unique); reintentar si los jueces crean problemas en paralelo
+        let letter = dto.letter
+        if(letter === undefined){
+            const taken = await this.problemRepository.find({ select: { letter: true }, where: { edition_id: editionId, category_id: category.id } })
+            letter = nextFreeLetter(taken.map((p) => p.letter))
+        } else {
+            await this.assertLetterIsFree(editionId, category.id, letter)
+        }
 
         // El problema y su testset v1 vacío nacen juntos (RF-17)
         return this.dataSource.transaction(async (manager) => {
             const problem = await manager.save(manager.create(Problem, {
                 edition_id: edition.id,
                 category_id: category.id,
-                letter: dto.letter,
+                letter,
+                created_by: staffUserId,
                 title: dto.title,
                 statement_md: dto.statement,
-                input_format: dto.inputFormat,
-                output_format: dto.outputFormat,
+                input_format: dto.inputFormat ?? '',
+                output_format: dto.outputFormat ?? '',
                 ...(dto.points !== undefined && { points: dto.points }),
             }))
 
@@ -129,17 +147,20 @@ export class ProblemsService {
             order: { version: 'ASC' },
         })
         const current = testsets.find((testset) => testset.id === problem.current_testset_id)
+        const author = problem.created_by === null ? null : await this.dataSource.getRepository(StaffUser).findOneBy({ id: problem.created_by })
 
         return {
             ...toProblemDto(problem),
             testsets: testsets.map((testset) => toTestsetDto(testset)),
             refSolution: toSourceDto(current?.ref_solution),
             generator: toSourceDto(current?.generator),
+            author: author && { id: author.id, name: author.name },
+            canEdit: await this.editionStaffService.canEditProblem(staffUserId, problem),
         }
     }
 
     async update(id: number, dto: UpdateProblemDto, staffUserId: number): Promise<IProblem> {
-        const problem = await this.getByIdForJudge(id, staffUserId)
+        const problem = await this.getByIdForAuthor(id, staffUserId)
 
         if(dto.letter !== undefined && dto.letter !== problem.letter){
             await this.assertLetterIsFree(problem.edition_id, problem.category_id, dto.letter, problem.id)
@@ -194,7 +215,7 @@ export class ProblemsService {
 
     // No ejecuta la solución de referencia: confía en que el build del testset lo dejó en `ready` (RF-21)
     async publish(id: number, staffUserId: number): Promise<IPublishProblemResponse> {
-        const problem = await this.getByIdForJudge(id, staffUserId)
+        const problem = await this.getByIdForAuthor(id, staffUserId)
 
         if(problem.status === ProblemStatus.PUBLISHED){
             return { status: problem.status }
@@ -212,7 +233,7 @@ export class ProblemsService {
     }
 
     async remove(id: number, staffUserId: number): Promise<void> {
-        const problem = await this.getByIdForJudge(id, staffUserId)
+        const problem = await this.getByIdForAuthor(id, staffUserId)
 
         if(problem.status !== ProblemStatus.DRAFT){
             throw new ConflictException('problem #' + id + ' can only be deleted while it is a draft')
@@ -225,8 +246,6 @@ export class ProblemsService {
         const errors: string[] = []
 
         if(!problem.statement_md.trim()) errors.push('statement is empty')
-        if(!problem.input_format.trim()) errors.push('inputFormat is empty')
-        if(!problem.output_format.trim()) errors.push('outputFormat is empty')
         if(!problem.signature) errors.push('signature is not defined')
 
         const testset = await this.findCurrentTestset(problem)
