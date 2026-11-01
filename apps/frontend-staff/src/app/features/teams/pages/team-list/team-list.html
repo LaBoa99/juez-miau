@@ -13,6 +13,9 @@
 @if (actionError()) {
   <oj-alert tone="error">{{ actionError() }}</oj-alert>
 }
+@if (logoWarning()) {
+  <oj-alert tone="warning">{{ logoWarning() }}</oj-alert>
+}
 
 <div class="teams__bar">
   <h2 class="teams__title">Equipos registrados</h2>
@@ -30,6 +33,12 @@
       [formControl]="searchCtrl"
       aria-label="Buscar equipo o usuario"
     />
+    @if (canEdit()) {
+      <button ojButton variant="secondary" type="button" (click)="openAdd()">+ Agregar equipo</button>
+      <button ojButton variant="secondary" type="button" [disabled]="pdfBusy() !== null" (click)="downloadAll()">
+        {{ pdfBusy() === 'all' ? 'Generando…' : 'Descargar todos' }}
+      </button>
+    }
   </div>
 </div>
 
@@ -73,6 +82,18 @@
             </td>
             <td>
               <div class="teams__row-actions">
+                @if (canEdit()) {
+                  <button
+                    ojButton
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    [disabled]="pdfBusy() !== null"
+                    (click)="downloadOne(t)"
+                  >
+                    {{ pdfBusy() === t.id ? 'Generando…' : 'Descargar PDF' }}
+                  </button>
+                }
                 <button ojButton variant="secondary" size="sm" type="button" (click)="openEdit(t)">Editar</button>
                 <button ojButton variant="secondary" size="sm" type="button" (click)="askReset(t)">Nueva contraseña</button>
                 <button ojButton variant="secondary" size="sm" type="button" (click)="askCloseSession(t)">Cerrar sesión</button>
@@ -131,6 +152,58 @@
     </form>
   </oj-side-panel>
 }
+
+<oj-modal #addModal title="Agregar equipo" size="md">
+  <form class="teams__form" [formGroup]="addForm" (ngSubmit)="submitAdd()">
+    @if (addError()) {
+      <oj-alert tone="error">{{ addError() }}</oj-alert>
+    }
+
+    <oj-form-field label="Nombre del equipo" for="add-team-name" [error]="addNameError() ?? undefined">
+      <input id="add-team-name" type="text" formControlName="name" />
+    </oj-form-field>
+
+    <oj-form-field label="Categoría" for="add-team-category" [error]="addCategoryError() ?? undefined">
+      <select id="add-team-category" formControlName="categoryId">
+        <option [ngValue]="null" disabled>Elige una categoría</option>
+        @for (c of categories(); track c.id) {
+          <option [ngValue]="c.id">{{ c.name }}</option>
+        }
+      </select>
+    </oj-form-field>
+
+    <div class="teams__members-edit" formArrayName="members">
+      <span class="teams__members-title">Integrantes</span>
+      @for (m of addMembers().controls; track $index) {
+        <div class="teams__member-row" [formGroupName]="$index">
+          <input type="text" placeholder="Nombre" formControlName="name" aria-label="Nombre del integrante" />
+          <input type="text" placeholder="Carrera" formControlName="career" aria-label="Carrera del integrante" />
+          @if (addMembers().length > 1) {
+            <button ojButton variant="danger-outline" size="sm" type="button" (click)="removeAddMember($index)">
+              Quitar
+            </button>
+          }
+        </div>
+      }
+      @if (addMembersError()) {
+        <p class="teams__error">{{ addMembersError() }}</p>
+      }
+      @if (addMembers().length < 3) {
+        <button ojButton variant="secondary" size="sm" type="button" (click)="addMemberRow()">
+          + Agregar integrante
+        </button>
+      }
+    </div>
+
+    <p class="teams__hint">El usuario y la contraseña se generan al guardar.</p>
+  </form>
+  <div footer>
+    <button ojButton variant="secondary" type="button" (click)="addModal.close()">Cancelar</button>
+    <button ojButton variant="primary" type="button" [disabled]="addSaving()" (click)="submitAdd()">
+      {{ addSaving() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </div>
+</oj-modal>
 
 <oj-confirm-dialog
   [title]="confirmTitle()"

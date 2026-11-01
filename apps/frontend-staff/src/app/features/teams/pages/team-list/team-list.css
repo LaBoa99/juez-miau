@@ -121,6 +121,12 @@
   color: var(--oj-text-muted);
 }
 
+.teams__error {
+  margin: 0;
+  font-size: var(--oj-text-small);
+  color: var(--oj-danger);
+}
+
 .teams__form-actions {
   display: flex;
   justify-content: flex-end;

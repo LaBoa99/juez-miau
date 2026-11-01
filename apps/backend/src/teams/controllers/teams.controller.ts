@@ -29,6 +29,14 @@ export class TeamsController {
         return this.teamsService.update(id, body)
     }
 
+    @Get(':id/credentials')
+    @RequireEditionRole([StaffRole.ADMIN], EditionScope.TEAM, 'id')
+    getCredentialsOfTeam(
+        @Param('id', ParseIntPipe) id: number
+    ){
+        return this.teamsService.getCredentials(id)
+    }
+
     @Post(':id/reset-password')
     @RequireEditionRole([StaffRole.ADMIN], EditionScope.TEAM, 'id')
     resetPasswordOfTeam(

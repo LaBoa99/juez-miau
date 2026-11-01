@@ -83,6 +83,14 @@ export class TeamsService {
         return { team, password }
     }
 
+    // Usuario y contraseña en claro para entregar la credencial al equipo.
+    // La contraseña se guarda cifrada reversible (master key); aquí se descifra.
+    async getCredentials(id: number): Promise<{ username: string, password: string }> {
+        const team = await this.getById(id)
+        const password = await this._passwordService.decryptPassword(team.password)
+        return { username: team.username, password }
+    }
+
     async findAllByEdition(editionId: number, filters: TeamFiltersDto) {
         const query = this._teamRepository.createQueryBuilder('team')
             .leftJoinAndSelect('team.category', 'category')

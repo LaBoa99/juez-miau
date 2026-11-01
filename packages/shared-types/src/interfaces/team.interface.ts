@@ -66,3 +66,9 @@ export interface ITeamImportResult {
     errors: ITeamImportError[]
     credentials: ITeamImportCredential[]
 }
+
+// Usuario y contraseña en claro de un equipo (GET /teams/:id/credentials).
+export interface ITeamCredentials { username: string; password: string }
+
+// Alta rápida de un equipo (POST /editions/:editionId/teams).
+export interface ICreateTeamResult { team: ITeamListItem; credentials: ITeamImportCredential }

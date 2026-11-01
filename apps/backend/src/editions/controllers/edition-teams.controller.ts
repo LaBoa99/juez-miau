@@ -1,8 +1,9 @@
-import { Controller, Get, HttpStatus, Param, ParseFilePipeBuilder, ParseIntPipe, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Param, ParseFilePipeBuilder, ParseIntPipe, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { EditionTeamsService } from '../services/edition-teams.service.js';
 import { CsvFileValidator } from '../../utils/validators/csv-file.validator.js';
+import { CreateTeamDto } from '../../teams/dtos/create-team.dto.js';
 import { TeamFiltersDto } from '../../teams/dtos/team-filters.dto.js';
 import { RequireEditionRole, ANY_EDITION_ROLE } from '../../auth/decorators/access.decorators.js';
 import { StaffRole } from '@concurso/shared-types';
@@ -45,6 +46,15 @@ export class EditionTeamsController {
         @UploadedFile(csvFilePipe) file: Express.Multer.File
     ) {
         return this.editionTeamsService.importFromCsv(editionId, file.buffer)
+    }
+
+    @Post('')
+    @RequireEditionRole([StaffRole.ADMIN])
+    createTeam(
+        @Param('editionId', ParseIntPipe) editionId: number,
+        @Body() dto: CreateTeamDto,
+    ){
+        return this.editionTeamsService.createTeam(editionId, dto)
     }
 
     @Get('')

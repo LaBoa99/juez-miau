@@ -1,6 +1,9 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
+  ICreateTeam,
+  ICreateTeamResult,
+  ITeamCredentials,
   ITeamImportResult,
   ITeamImportValidation,
   ITeamsPage,
@@ -31,6 +34,16 @@ export class TeamsService {
     if (filters.categoryId) params = params.set('categoryId', filters.categoryId);
     if (filters.search?.trim()) params = params.set('search', filters.search.trim());
     return this.http.get<ITeamsPage>(`${API}/editions/${editionId}/teams`, { params });
+  }
+
+  // Alta rápida de un equipo (usuario y contraseña los genera el backend).
+  create(editionId: number, dto: ICreateTeam): Observable<ICreateTeamResult> {
+    return this.http.post<ICreateTeamResult>(`${API}/editions/${editionId}/teams`, dto);
+  }
+
+  // Usuario y contraseña en claro para el PDF. Se pide solo al descargar; no se guarda en estado.
+  getCredentials(teamId: number): Observable<ITeamCredentials> {
+    return this.http.get<ITeamCredentials>(`${API}/teams/${teamId}/credentials`);
   }
 
   validateImport(editionId: number, file: File): Observable<ITeamImportValidation> {

@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { CsvRow, CsvService } from '../../utils/services/csv.service.js';
 import { CoolNames } from '../../utils/classes/cool-names.js';
 import { TeamsService } from '../../teams/services/teams.service.js';
+import { CreateTeamDto } from '../../teams/dtos/create-team.dto.js';
 import { TeamFiltersDto } from '../../teams/dtos/team-filters.dto.js';
 import { Category } from '../entities/category.entity.js';
 import { EditionsService } from './editions.service.js';
@@ -113,6 +114,33 @@ export class EditionTeamsService {
         })
 
         return { created: credentials.length, errors, credentials }
+    }
+
+    // Alta rápida de un equipo (sin CSV). Usuario y contraseña se generan al crear.
+    async createTeam(editionId: number, dto: CreateTeamDto) {
+        const edition = await this.editionService.getById(editionId)
+        this.editionService.assertIsEditable(edition)
+
+        const category = await this.categoryRepository.findOne({ where: { id: dto.category_id, edition_id: editionId } })
+        if(!category){
+            throw new NotFoundException(`La categoría no existe en la edición`)
+        }
+
+        const username = await this.generateUsername(editionId, dto.name, new Set())
+        const { team, password } = await this.teamsService.create(edition, category, null, dto, { username })
+
+        return {
+            team: {
+                id: team.id,
+                name: team.name,
+                username: team.username,
+                category: { id: category.id, code: category.code, name: category.name },
+                room: null,
+                members: team.members.map((member) => ({ id: member.id, name: member.full_name, career: member.career })),
+                online: false,
+            },
+            credentials: { teamName: team.name, username: team.username, password },
+        }
     }
 
     async findAllByEdition(editionId: number, filters: TeamFiltersDto) {
