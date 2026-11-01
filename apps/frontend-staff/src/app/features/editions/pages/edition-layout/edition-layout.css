@@ -43,6 +43,9 @@
   font-size: 11px;
   color: var(--oj-warning);
 }
+.edition-bar__count--alert {
+  color: var(--oj-danger);
+}
 
 .edition-body {
   padding-top: 24px;

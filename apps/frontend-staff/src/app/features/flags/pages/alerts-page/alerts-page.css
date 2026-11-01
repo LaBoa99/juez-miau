@@ -1,0 +1,126 @@
+:host {
+  display: block;
+}
+
+/* Subtítulo "En vivo" con punto verde. */
+.al__live {
+  display: flex;
+  align-items: center;
+  gap: var(--oj-space-xs);
+  margin: var(--oj-space-2xs) 0 var(--oj-space-md);
+  font-size: 13px;
+  color: var(--oj-text-muted);
+}
+.al__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--oj-success);
+}
+
+/* Separación de los campos apilados dentro del modal "Levantar alerta". */
+oj-modal oj-alert {
+  display: block;
+  margin-bottom: var(--oj-space-md);
+}
+oj-modal oj-form-field + oj-form-field {
+  margin-top: var(--oj-space-md);
+}
+
+/* Filtros. */
+.al__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--oj-space-md);
+  margin-bottom: var(--oj-space-md);
+}
+.al__room {
+  flex: 0 0 220px;
+}
+.al__search {
+  flex: 1 1 200px;
+}
+
+/* Tarjetas (una por alerta). */
+.al__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-sm);
+}
+.al__card {
+  padding: 12px 14px;
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+}
+.al__card--danger {
+  border-color: var(--oj-danger);
+}
+.al__card--warning {
+  border-color: var(--oj-warning);
+}
+.al__card--neutral {
+  border-color: var(--oj-neutral);
+}
+.al__card--resolved {
+  border-color: var(--oj-border);
+  background: var(--oj-bg-muted);
+}
+
+/* Alerta nueva: resaltada y se desvanece en 2 s (igual que una fila de envíos nueva). */
+.al__card {
+  transition: background-color 2s ease;
+}
+.al__card--new {
+  background: var(--oj-warning-bg);
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .al__card {
+    transition: none;
+  }
+}
+
+.al__card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--oj-space-sm);
+}
+.al__team {
+  font-weight: 600;
+}
+.al__room-name {
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+.al__time {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+.al__message {
+  margin: var(--oj-space-sm) 0 0;
+  font-size: 13px;
+}
+.al__blocked {
+  margin: var(--oj-space-xs) 0 0;
+  font-size: 12px;
+  color: var(--oj-danger);
+}
+.al__resolved-by {
+  margin: var(--oj-space-xs) 0 0;
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+.al__card-actions {
+  margin-top: var(--oj-space-sm);
+}
+.al__muted {
+  margin: 0;
+  color: var(--oj-text-muted);
+  font-size: 13px;
+}

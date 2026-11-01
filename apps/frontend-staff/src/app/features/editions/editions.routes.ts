@@ -3,7 +3,6 @@ import { EditionList } from './pages/edition-list/edition-list';
 import { EditionLayout } from './pages/edition-layout/edition-layout';
 import { editionBreadcrumbResolver } from './pages/edition-layout/edition-context';
 import { EditionDetail } from './pages/edition-detail/edition-detail';
-import { EditionSectionPlaceholder } from './pages/edition-section-placeholder.component';
 import { CategoriesTab } from './categories/categories-tab';
 import { RoomsTab } from './rooms/rooms-tab';
 import { EditionLanguagesTab } from './edition-languages/edition-languages-tab';
@@ -20,6 +19,7 @@ import { SubmissionList } from '../submissions/pages/submission-list/submission-
 import { SubmissionDetail } from '../submissions/pages/submission-detail/submission-detail';
 import { StandingsPage } from '../standings/pages/standings-page/standings-page';
 import { ReviewPage } from '../review/pages/review-page/review-page';
+import { AlertsPage } from '../flags/pages/alerts-page/alerts-page';
 
 export const routes: Routes = [
   {
@@ -77,7 +77,7 @@ export const routes: Routes = [
           },
           { path: 'marcador', component: StandingsPage, data: { breadcrumb: 'Marcador' } },
           { path: 'revision', component: ReviewPage, data: { breadcrumb: 'Revisión' } },
-          { path: 'alertas', component: EditionSectionPlaceholder, data: { breadcrumb: 'Alertas' } },
+          { path: 'alertas', component: AlertsPage, data: { breadcrumb: 'Alertas' } },
           { path: '', redirectTo: 'configuracion', pathMatch: 'full' },
         ],
       },

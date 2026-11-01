@@ -197,6 +197,47 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - Al confirmar (con `oj-confirm-dialog` que repite el veredicto elegido) el envío sale de la lista y se
   selecciona el siguiente; al entrar se selecciona el primero. Sin pendientes: `oj-empty-state`.
 
+### Alertas (paso 21)
+- `features/flags`: `FlagsService` (`list(editionId,{open?})` = `GET /editions/:id/flags`, `create` =
+  `POST /editions/:id/flags`, `resolve(id,{note?})` = `POST /flags/:id/resolve`) + `pages/alerts-page`.
+- **La lista se carga completa una vez (sin `open`) y se filtra en el cliente** (segmented Abiertas/Resueltas,
+  salón y búsqueda por equipo), igual que Envíos. `flag:update` hace upsert sin recargar; las nuevas quedan
+  arriba (orden por id desc) con el mismo resaltado de 2 s que una fila de envío nueva.
+- **Mensaje en lenguaje sencillo armado en el cliente** (`features/flags/flag-display.ts`, con self-check
+  `flag-display.spec.ts`): el backend manda `details` en español pero con datos técnicos (machine ids, fecha
+  ISO, sufijo `(staff #id)`). Se traduce por tipo: FORBIDDEN_PROCESS saca el nombre del proceso tras el `:`;
+  SESSION_REPLACED y HEARTBEAT_LOST usan texto fijo sin datos técnicos; MANUAL muestra la observación sin el
+  sufijo de staff. Badges en español: PROGRAMA PROHIBIDO / SESIÓN EN OTRA MÁQUINA / SIN SEÑAL / MANUAL.
+- **Color del borde por tipo**: rojo (FORBIDDEN_PROCESS, SESSION_REPLACED), ámbar (HEARTBEAT_LOST), gris
+  (MANUAL); resuelta → gris claro (`--oj-border` + fondo `--oj-bg-muted`).
+- **"Levantar alerta" = modal, NO formulario inline** (`oj-modal`, mismo patrón que el resto: `showModal`, un
+  modal a la vez, cierre con Cancelar/×/Esc). **Sin selector de tipo (Caso B)**: `CreateFlagDto` solo acepta
+  `teamId` y `details` y el controlador fija `FlagType.MANUAL`; con `forbidNonWhitelisted` global, mandar `type`
+  daría 400. Toda alerta creada es MANUAL, con su color gris y etiqueta "MANUAL" fijos. Campos: Equipo (primera
+  opción "Selecciona un equipo") y "Qué observaste" (placeholder "Ej. Un integrante usa el celular").
+- **Validación del modal al pulsar "Levantar alerta"** (no al abrir, con un signal `createSubmitted`): equipo
+  faltante → "Elige el equipo al que aplica la alerta."; texto faltante → "Escribe qué observaste para que quede
+  registrado."; arriba un `oj-alert role="alert"` "No se pudo levantar la alerta. Revisa los campos marcados.";
+  el modal no se cierra con errores y el foco va al primer campo inválido. Éxito → cierra y la alerta aparece
+  arriba; error del backend → mensaje traducido con `backendMessage`.
+- **Aviso de bloqueo** ("Mientras esté abierta, este equipo no puede enviar soluciones.") se muestra en las
+  abiertas cuando `edition.block_submissions_on_alert` es true: el backend bloquea envíos con CUALQUIER alerta
+  abierta del equipo, no por tipo. `block_submissions_on_alert` se lee de `EditionContext` (ya provisto por el
+  layout).
+- **Filtro por salón = cliente, cruzando equipo → salón**: cada `IFlag` trae `teamId`; el salón sale de la lista
+  de equipos (`ITeamListItem.room`). Si el usuario es observador de un salón (se cruza `auth.user().id` con
+  `RoomsService.list().observers`), ese salón queda por defecto y su opción se rotula "Mi salón: <nombre>".
+- **"Resuelta por <persona>"**: `resolvedBy` es un id; el nombre sale del listado de staff de la edición
+  (`GET /editions/:id/staff` incluye `name`). Si no está (p. ej. un superadmin fuera del staff de la edición),
+  cae a "#id".
+- **Contador rojo en la barra de la edición** (`edition-layout`, mono 11px junto a "Alertas", oculto si es 0):
+  se siembra por HTTP (`flags?open=true`) y se mantiene con `flag:update` (entra si `resolvedAt==null`, sale al
+  resolver). Reusa el mismo patrón que el contador ámbar de Revisión.
+- **Subtítulo "En vivo"**: `oj-page-header` no acepta subtítulo con marcado, así que la línea con punto verde se
+  renderiza como nodo propio bajo el encabezado (no se tocó el componente compartido).
+- **Vista de observador (solo Envíos, Marcador y Alertas en la barra): preparada pero NO aplicada** — anotada en
+  "Antes del deploy" (depende de la navegación por rol, diferida hasta el paso Final).
+
 ### Concurso en vivo y público
 - Socket.io en `/ws`. Staff: `edition:join` (con token). Público: `public:join { editionId }` sin token.
 - Eventos: `clock:update`, `standings:update` (público y staff), `submission:update`, `submission:progress`,
@@ -271,7 +312,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 18 | Marcador de staff | hecho (congelamiento del público leído del reloj; ver decisiones) |
 | 19 | Proyector | hecho (nombre de la edición añadido al reloj público; ver decisiones) |
 | 20 | Revisión manual | hecho (veredicto solo AC/WA: el backend solo acepta accept/reject — ver decisiones) |
-| 21 | Alertas | pendiente |
+| 21 | Alertas | hecho (mensaje sencillo armado en el cliente desde `details`; contador rojo en la barra; vista de observador solo anotada — ver decisiones) |
 | 22 | Auditoría | pendiente |
 | 23 | Páginas de error | pendiente |
 | Final | Antes del deploy | pendiente |
@@ -350,7 +391,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
   formulario de decisión (veredicto + nota) con confirmación. Contador en la barra de la edición.
 
 ### 21 · Alertas
-- "Levantar alerta" (formulario inline). Filtros: Abiertas / Resueltas, salón (cliente), equipo.
+- "Levantar alerta" (modal; tipo MANUAL fijo, el backend no acepta otro). Filtros: Abiertas / Resueltas, salón (cliente), equipo.
 - Tarjetas por alerta con borde por tipo, badge en español, mensaje en lenguaje sencillo, aviso de envíos bloqueados,
   "Resolver" en modal con nota. Contador rojo en la barra. flag:update en vivo.
 - Vista de observador preparada (solo Envíos, Marcador, Alertas), sin aplicar.

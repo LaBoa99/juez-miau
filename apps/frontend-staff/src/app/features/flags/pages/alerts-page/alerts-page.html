@@ -1,0 +1,120 @@
+<oj-page-header title="Alertas">
+  <button actions ojButton variant="primary" type="button" (click)="openCreate()">Levantar alerta</button>
+</oj-page-header>
+
+<p class="al__live">
+  <span class="al__dot" aria-hidden="true"></span>
+  En vivo · las nuevas aparecen arriba
+</p>
+
+<div class="al__filters">
+  <oj-segmented [options]="tabOptions()" [value]="tab()" (valueChange)="onTab($event ?? 'open')" />
+
+  <select class="al__room" [formControl]="roomCtrl" aria-label="Filtrar por salón">
+    <option [ngValue]="null">Todos los salones</option>
+    @for (r of rooms(); track r.id) {
+      <option [ngValue]="r.id">{{ roomOptionLabel(r) }}</option>
+    }
+  </select>
+
+  <input class="al__search" type="search" [formControl]="teamSearchCtrl" placeholder="Buscar por equipo…" aria-label="Buscar por equipo" />
+</div>
+
+@if (error()) {
+  <oj-alert tone="error">No se pudieron cargar las alertas.</oj-alert>
+} @else if (loading()) {
+  <p class="al__muted">Cargando…</p>
+} @else if (filtered().length === 0) {
+  <oj-empty-state message="Sin alertas en este filtro." />
+} @else {
+  <ul class="al__list">
+    @for (f of filtered(); track f.id) {
+      <li
+        class="al__card"
+        [class]="f.resolvedAt ? 'al__card--resolved' : 'al__card--' + tone(f)"
+        [class.al__card--new]="isNew(f.id)"
+      >
+        <div class="al__card-top">
+          <oj-badge [tone]="f.resolvedAt ? 'neutral' : tone(f)">{{ label(f) }}</oj-badge>
+          <span class="al__team">{{ teamName(f.teamId) }}</span>
+          <span class="al__room-name">{{ roomName(f.teamId) }}</span>
+          <span class="al__time oj-mono">{{ f.createdAt | date: 'HH:mm' }}</span>
+        </div>
+
+        <p class="al__message">{{ message(f) }}</p>
+
+        @if (showBlockNotice(f)) {
+          <p class="al__blocked">Mientras esté abierta, este equipo no puede enviar soluciones.</p>
+        }
+
+        @if (f.resolvedAt) {
+          <p class="al__resolved-by">
+            Resuelta por {{ resolverName(f) }}@if (f.resolutionNote) { · “{{ f.resolutionNote }}”}
+          </p>
+        } @else {
+          <div class="oj-actions al__card-actions">
+            <button ojButton variant="secondary" size="sm" type="button" (click)="openResolve(f)">Resolver</button>
+          </div>
+        }
+      </li>
+    }
+  </ul>
+}
+
+<oj-modal #createModal title="Levantar alerta" size="sm">
+  @if (createError()) {
+    <oj-alert tone="error" role="alert">{{ createError() }}</oj-alert>
+  }
+  <oj-form-field
+    label="Equipo"
+    for="al-team"
+    [error]="teamInvalid() ? 'Elige el equipo al que aplica la alerta.' : undefined"
+  >
+    <select id="al-team" #teamField [formControl]="teamCtrl">
+      <option [ngValue]="null">Selecciona un equipo</option>
+      @for (t of teamOptions(); track t.id) {
+        <option [ngValue]="t.id">{{ t.name }}</option>
+      }
+    </select>
+  </oj-form-field>
+
+  <oj-form-field
+    label="Qué observaste"
+    for="al-details"
+    [error]="detailsInvalid() ? 'Escribe qué observaste para que quede registrado.' : undefined"
+  >
+    <textarea
+      id="al-details"
+      #detailsField
+      rows="3"
+      placeholder="Ej. Un integrante usa el celular"
+      [formControl]="detailsCtrl"
+    ></textarea>
+  </oj-form-field>
+
+  <div footer>
+    <button ojButton variant="secondary" type="button" (click)="createModal.close()">Cancelar</button>
+    <button ojButton variant="primary" type="button" [disabled]="creating()" (click)="create()">
+      {{ creating() ? 'Levantando…' : 'Levantar alerta' }}
+    </button>
+  </div>
+</oj-modal>
+
+<oj-modal #resolveModal title="Resolver alerta" size="sm">
+  @if (actionError()) {
+    <oj-alert tone="error">{{ actionError() }}</oj-alert>
+  }
+  <oj-form-field
+    label="Nota"
+    for="al-note"
+    [optional]="true"
+    [error]="noteCtrl.touched && noteCtrl.invalid ? 'Máximo 1000 caracteres.' : undefined"
+  >
+    <textarea id="al-note" rows="3" [formControl]="noteCtrl"></textarea>
+  </oj-form-field>
+  <div footer>
+    <button ojButton variant="primary" type="button" [disabled]="resolving()" (click)="confirmResolve()">
+      {{ resolving() ? 'Guardando…' : 'Marcar como resuelta' }}
+    </button>
+  </div>
+</oj-modal>

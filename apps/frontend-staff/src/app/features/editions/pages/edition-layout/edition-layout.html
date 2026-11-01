@@ -10,6 +10,9 @@
       @if (s.path === 'revision' && reviewCount() > 0) {
         <span class="edition-bar__count oj-mono" title="Envíos pendientes de revisión">{{ reviewCount() }}</span>
       }
+      @if (s.path === 'alertas' && flagCount() > 0) {
+        <span class="edition-bar__count edition-bar__count--alert oj-mono" title="Alertas abiertas">{{ flagCount() }}</span>
+      }
     </a>
   }
 </nav>

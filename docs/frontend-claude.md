@@ -60,6 +60,9 @@ Pendientes de seguridad/permisos que hoy están preparados pero NO activados:
     crear edición (`POST /editions`) y crear/editar lenguaje (`POST`/`PATCH /languages`). Editar dentro de una edición
     (schedule, borrar, subrecursos) es rol `ADMIN` de esa edición (usar `roleInEdition(editionId)`), con bypass de superadmin.
 - **Header: mostrar solo los enlaces usables**: ocultar "Staff" si el usuario no es superadmin.
+- **Barra de la edición por rol — vista de observador**: un OBSERVER solo debe ver Envíos, Marcador y Alertas
+  (filtrar `sections` en `edition-layout` según `roleInEdition(editionId)`). Preparado pero NO aplicado hasta
+  activar la navegación por rol (va junto con los guards diferidos).
 - **Auditoría (`/auditoria`) es superadmin-only en el backend** (`AuditController` es `@SuperadminOnly()`): aplicar
   `superadminGuard` (`core/auth/role.guard.ts`) a la ruta `auditoria` en `app.routes.ts` y ocultar su enlace del header
   si el usuario no es superadmin (igual que "Staff"). Hoy la ruta está abierta mientras los guards siguen diferidos.

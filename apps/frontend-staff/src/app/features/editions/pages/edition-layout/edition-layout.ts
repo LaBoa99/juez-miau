@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { IStaffSubmission, SubmissionStatus, Verdict } from '@concurso/shared-types';
+import { IFlag, IStaffSubmission, SubmissionStatus, Verdict } from '@concurso/shared-types';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { SubmissionsService } from '../../../submissions/data/submissions.service';
+import { FlagsService } from '../../../flags/data/flags.service';
 import { EditionContext } from './edition-context';
 
 @Component({
@@ -17,6 +18,7 @@ import { EditionContext } from './edition-context';
 export class EditionLayout {
   private readonly route = inject(ActivatedRoute);
   private readonly submissions = inject(SubmissionsService);
+  private readonly flags = inject(FlagsService);
   private readonly rt = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly ctx = inject(EditionContext);
@@ -27,6 +29,9 @@ export class EditionLayout {
   // socket (un envío entra al quedar PENDING_REVIEW y sale al resolverlo un juez).
   private readonly pending = signal<ReadonlySet<number>>(new Set());
   protected readonly reviewCount = computed(() => this.pending().size);
+  // Contador de alertas abiertas: ids sembrados por HTTP y mantenidos con flag:update.
+  private readonly openFlags = signal<ReadonlySet<number>>(new Set());
+  protected readonly flagCount = computed(() => this.openFlags().size);
   // El backend no tiene "código" de edición: se muestra el nombre.
   protected readonly code = computed(() => this.ctx.edition()?.name ?? '');
 
@@ -49,8 +54,14 @@ export class EditionLayout {
       error: () => {},
     });
 
+    this.flags.list(this.id, { open: true }).subscribe({
+      next: (rows) => this.openFlags.set(new Set(rows.map((f) => f.id))),
+      error: () => {},
+    });
+
     this.rt.joinEdition(this.id);
     this.rt.onSubmission().pipe(takeUntilDestroyed()).subscribe((s) => this.track(s as IStaffSubmission));
+    this.rt.onFlag().pipe(takeUntilDestroyed()).subscribe((f) => this.trackFlag(f));
     this.destroyRef.onDestroy(() => this.rt.leave(this.id));
   }
 
@@ -61,5 +72,14 @@ export class EditionLayout {
     const next = new Set(set);
     inReview ? next.add(s.id) : next.delete(s.id);
     this.pending.set(next);
+  }
+
+  private trackFlag(f: IFlag): void {
+    const open = f.resolvedAt == null;
+    const set = this.openFlags();
+    if (open === set.has(f.id)) return;
+    const next = new Set(set);
+    open ? next.add(f.id) : next.delete(f.id);
+    this.openFlags.set(next);
   }
 }
