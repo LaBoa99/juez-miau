@@ -50,14 +50,20 @@
     const vw = document.documentElement.clientWidth;
     const margin = (vw - Math.min(vw - 32, 1216)) / 2;
     const wide = margin >= 70;
-    const size = wide ? 22 : 13;
-    const step = wide ? 118 : 96;
+    const size = wide ? 26 : 30;
+    const step = wide ? 118 : 112;
+    // Recorrido en S: el centro del camino oscila de lado a lado; en móvil cruza todo el ancho.
+    const mid = wide ? margin * 0.5 : vw / 2;
+    const amp = wide ? Math.max(margin * 0.3, 14) : vw / 2 - size;
+    const period = wide ? 900 : 1100;
     for (let y = 760, i = 0; y < docH - 160; y += step, i++) {
-      const center = wide ? margin * 0.5 + Math.sin(y / 650) * margin * 0.2 : vw - 14;
-      const foot = (i % 2 ? 1 : -1) * (wide ? 11 : 5);
+      const center = mid + Math.sin(y / period * Math.PI * 2) * amp;
+      const slope = Math.cos(y / period * Math.PI * 2) * amp * 2 * Math.PI / period;
+      const heading = 180 + Math.atan(slope) * 180 / Math.PI * -1;
+      const foot = (i % 2 ? 1 : -1) * (wide ? 11 : 8);
       const p = document.createElement('span');
       p.className = 'pawprint';
-      p.style.cssText = `--s:${size}px; left:${center + foot - size / 2}px; top:${y}px; rotate:${180 + Math.cos(y / 650) * 12}deg`;
+      p.style.cssText = `--s:${size}px; left:${center + foot - size / 2}px; top:${y}px; rotate:${heading}deg`;
       paws.append(p);
     }
     prints = [...paws.children];

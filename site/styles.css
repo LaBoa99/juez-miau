@@ -452,7 +452,7 @@ main { position: relative; z-index: 1; }
 .pawprint { position: absolute; width: var(--s, 22px); height: var(--s, 22px); background: var(--ink); opacity: 0; scale: 1.5;
   -webkit-mask: url(assets/icons/paw.svg) center / contain no-repeat; mask: url(assets/icons/paw.svg) center / contain no-repeat;
   transition: opacity 260ms var(--ease), scale 260ms var(--ease); }
-.pawprint.on { opacity: 0.22; scale: 1; }
+.pawprint.on { opacity: 0.3; scale: 1; }
 
 /* ---------- Notificación que llega al terminar el juicio ---------- */
 .toast--pop { position: fixed; z-index: 30; right: 1rem; bottom: 1rem; width: min(22rem, calc(100vw - 2rem)); rotate: 0deg; cursor: pointer;
