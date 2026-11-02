@@ -13,9 +13,9 @@
   --ink: #1E1A16;            /* tinta sobre cartón: 6.9:1 */
   --ink-2: #2A2016;          /* ≥4.5:1 sobre el canal más oscuro del cartón */
   --rule: rgb(30 26 22 / 0.28);
-  --tape: #1F4FD8;           /* cinta de empaque impresa */
+  --tape: #1A43BF;           /* cinta de empaque impresa: blanco encima ≥4.5:1 aun con el brillo */
   --on-tape: #FFFFFF;
-  --sticker: #D92A1E;        /* calcomanía de advertencia */
+  --sticker: #BE2018;        /* calcomanía de advertencia: blanco encima ≥4.5:1 */
   --label: #FFFFFF;          /* etiqueta térmica */
   --label-ink: #141210;
   --label-dim: #57514A;
@@ -305,7 +305,7 @@ code { font: 500 0.88em var(--mono); }
 [data-board] tr { transition: background-color 600ms var(--ease); }
 [data-board] tr.is-moving { background: rgb(15 113 64 / 0.12); }
 .seal { position: absolute; left: -4%; right: -4%; bottom: -0.9rem; z-index: 2; padding: 0.4rem 0; overflow: hidden; white-space: nowrap; rotate: -2deg;
-  background: color-mix(in srgb, var(--tape) 88%, transparent) linear-gradient(180deg, rgb(255 255 255 / 0.2), transparent 45%); color: var(--on-tape);
+  background: color-mix(in srgb, var(--tape) 96%, transparent) linear-gradient(180deg, rgb(255 255 255 / 0.2), transparent 45%); color: var(--on-tape);
   box-shadow: 0 4px 10px -6px rgb(0 0 0 / 0.5); }
 .seal span { font: 800 0.82rem/1 var(--sans); text-transform: uppercase; letter-spacing: 0.08em; }
 .board__clock { margin-top: var(--s6); display: flex; align-items: baseline; gap: var(--s3); font-weight: 700; color: var(--ink); }
