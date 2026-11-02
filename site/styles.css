@@ -59,7 +59,7 @@
 
 /* ---------- Base ---------- */
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 5rem; scrollbar-color: var(--kraft-in) var(--kraft-2); }
+html { overflow-x: clip; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 5rem; scrollbar-color: var(--kraft-in) var(--kraft-2); }
 body {
   margin: 0; color: var(--ink); font: 400 1rem/1.6 var(--sans); font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased; overflow-x: clip;
@@ -357,7 +357,9 @@ code { font: 500 0.88em var(--mono); }
 
 /* Instrucciones de armado */
 .assembly { list-style: none; counter-reset: paso; margin: 0 0 var(--s6); padding: 0; display: grid; gap: var(--s6) var(--s7); }
-@media (min-width: 56rem) { .assembly { grid-template-columns: 1fr 1fr; } }
+.assembly > li, .assembly > li > * { min-width: 0; }
+.assembly { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 56rem) { .assembly { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .assembly > li { counter-increment: paso; position: relative; display: grid; gap: var(--s3); align-content: start; padding: var(--s5) 0 0 4.5rem; border-top: 2px dashed var(--rule); }
 .assembly > li::before { content: counter(paso); position: absolute; left: 0; top: var(--s4); display: grid; place-items: center; width: 3.2rem; height: 3.2rem;
   border: 3px solid var(--ink); border-radius: 50%; font: 900 1.9rem/1 var(--stencil); rotate: -6deg;
