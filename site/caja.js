@@ -97,6 +97,22 @@
     }, 0.2);
   });
 
+  // Cintas y sello: el texto corre sin fin. Se repite la frase hasta cubrir el ancho y se duplica para que -50% cierre sin salto.
+  const runTapes = () => document.querySelectorAll('.tape, .seal').forEach((band) => {
+    const span = band.querySelector('span');
+    band.dataset.text ||= span.textContent.trim().replace(/\s*·$/, '') + ' · ';
+    const unit = band.dataset.text;
+    let n = 1;
+    span.textContent = unit;
+    while (span.offsetWidth < band.clientWidth && n < 40) { n++; span.textContent = unit.repeat(n); }
+    span.textContent = unit.repeat(n * 2);
+    span.style.animationDuration = `${span.offsetWidth / 2 / 60}s`; // 60 px por segundo
+  });
+  runTapes();
+  addEventListener('load', runTapes);
+  let tapeTimer;
+  addEventListener('resize', () => { clearTimeout(tapeTimer); tapeTimer = setTimeout(runTapes, 250); });
+
   // Gatito vivo: parpadea de vez en cuando; el inspector voltea hacia el cursor.
   for (const cat of document.querySelectorAll('[data-cat]')) {
     const blink = () => {

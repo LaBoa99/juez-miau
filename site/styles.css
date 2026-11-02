@@ -325,7 +325,7 @@ code { font: 500 0.88em var(--mono); }
 .alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; font: 400 0.85rem/1.45 var(--mono); }
 .alerts li { display: flex; gap: 0.7rem; align-items: baseline; }
 .alerts .v { min-width: 4.6rem; }
-.paw { position: absolute; left: 1.1rem; bottom: 0.7rem; rotate: -6deg; display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem 0.15rem;
+.paw { position: absolute; right: 1.1rem; bottom: 1.9rem; rotate: 6deg; display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem 0.15rem;
   border: 3px double currentColor; border-radius: 4px; color: #1F4FD8; /* tinta de sello sobre papel: igual en ambos temas */ font: 800 0.95rem/1 var(--sans); text-transform: uppercase; letter-spacing: 0.06em; mix-blend-mode: multiply; opacity: 0.95;
   -webkit-mask: var(--ink-mask-light) center / 160px 80px; mask: var(--ink-mask-light) center / 160px 80px; }
 .paw .ico { --size: 1.2rem; }
@@ -483,6 +483,9 @@ main { position: relative; z-index: 1; }
 
 /* ---------- Movimiento (solo con JS y sin movimiento reducido; el estado final es el de partida) ---------- */
 .tape, .seal { transition: clip-path 900ms var(--ease); }
+@keyframes tape-run { from { translate: 0 0; } to { translate: -50% 0; } }
+.motion .tape span, .motion .seal span { animation: tape-run 30s linear infinite; }
+.motion .tape--alt span, .motion .seal span { animation-direction: reverse; }
 .motion .tape:not(.is-in), .motion .seal:not(.is-in) { clip-path: inset(0 100% 0 0); }
 .caret { display: inline-block; width: 0.55em; height: 1.1em; vertical-align: -0.15em; background: var(--term-ink); animation: caret 1s steps(1) infinite; }
 @keyframes caret { 50% { opacity: 0; } }
