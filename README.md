@@ -7,11 +7,11 @@
 **Juez automático para los concursos de programación del Centro Universitario de los Valles.**<br>
 Evalúa cada envío en un contenedor aislado, publica el marcador en vivo y vigila la integridad de cada equipo.
 
-[![app-competidores](https://github.com/LaBoa99/mi-concurso-monorepo/actions/workflows/app-competidores.yml/badge.svg)](https://github.com/LaBoa99/mi-concurso-monorepo/actions/workflows/app-competidores.yml)
-[![pages](https://github.com/LaBoa99/mi-concurso-monorepo/actions/workflows/pages.yml/badge.svg)](https://laboa99.github.io/mi-concurso-monorepo/)
+[![app-competidores](https://github.com/LaBoa99/juez-miau/actions/workflows/app-competidores.yml/badge.svg)](https://github.com/LaBoa99/juez-miau/actions/workflows/app-competidores.yml)
+[![pages](https://github.com/LaBoa99/juez-miau/actions/workflows/pages.yml/badge.svg)](https://laboa99.github.io/juez-miau/)
 
-[<img src="site/assets/icons/book-open.svg" width="16"> Sitio del proyecto](https://laboa99.github.io/mi-concurso-monorepo/) ·
-[<img src="site/assets/icons/download.svg" width="16"> App para equipos (.exe)](https://github.com/LaBoa99/mi-concurso-monorepo/releases)
+[<img src="site/assets/icons/book-open.svg" width="16"> Sitio del proyecto](https://laboa99.github.io/juez-miau/) ·
+[<img src="site/assets/icons/download.svg" width="16"> App para equipos (.exe)](https://github.com/LaBoa99/juez-miau/releases)
 
 <br>
 
