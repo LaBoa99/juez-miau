@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Juez Miau · Juez automático para concursos de programación</title>
+  <meta name="description" content="Juez Miau califica rápido y parejo: cada envío corre en su propia caja, sin red, con su núcleo y los mismos límites para todos. Móntalo en el laboratorio de tu escuela con Docker.">
+  <meta property="og:title" content="Juez Miau · Cada envío en su caja">
+  <meta property="og:description" content="Un juez automático rápido y parejo para los concursos de programación de tu escuela.">
+  <meta property="og:image" content="assets/gatito-512.png">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <script>try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil:opsz,wght@10..72,700..900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script src="caja.js" defer></script>
+</head>
+<body>
+<!--
+THESIS: A los gatos les encantan las cajas y a Juez Miau también: cada envío corre en su propia caja sellada (sin red, un núcleo, mismos límites). La página es una bodega de paquetería: rechaza el hero + rejilla de tarjetas de la herramienta open source y el disfraz de terminal oscura.
+OWN-WORLD: Cartón corrugado como suelo de toda la página, etiquetas térmicas blancas con tinta negra, cinta de empaque azul impresa como encabezado de sección, calcomanía roja de advertencia, sellos de tinta para veredictos y pictogramas de manejo enmarcados. Estarcido Big Shoulders Stencil para lo que se pinta sobre la caja; Inter para leer; JetBrains Mono para lo que imprime la etiqueta.
+STORY: El organizador ve una caja con el gatito dentro y su etiqueta calificándose sola, entiende «rápido» con el rastreo, «parejo» con los pictogramas y el marcador sellado, «sin trampas» con la inspección, revisa qué trae la caja y sale con las instrucciones de armado.
+FIRST VIEWPORT: Izquierda: «Cada envío en su caja.» en estarcido de 6rem, una frase y los botones «Instálalo en tu escuela» (cinta azul) y «Ver cómo juzga». Derecha: caja abierta con el gatito asomado y la etiqueta del envío #1042 cuyos 12 casos se marcan hasta el sello ACEPTADO. Abajo, a todo el ancho, la banda transportadora con más cajas.
+FORM: Cada envío en su caja, candidato 1 de 7 (elección del usuario sobre la tirada asignada); seed 48d1e8af.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+-->
+  <a class="skip" href="#rapido">Saltar al contenido</a>
+
+  <header class="bar">
+    <div class="wrap bar__in">
+      <a class="brand" href="./"><img src="assets/gatito.svg" alt="" width="34" height="34">Juez Miau</a>
+      <nav class="nav" aria-label="Secciones">
+        <a href="#rapido">Rápido</a><a href="#parejo">Parejo</a><a href="#trampas">Sin trampas</a><a href="#caja">Qué trae</a><a href="#montalo">Móntalo</a><a href="#compose">Compose</a>
+      </nav>
+      <div class="bar__end">
+        <a class="icon-link" href="https://github.com/LaBoa99/mi-concurso-monorepo" aria-label="Código en GitHub"><span class="ico" style="--i:url(assets/icons/github.svg)"></span></a>
+        <div class="theme" role="radiogroup" aria-label="Tema de color">
+          <label title="Claro"><input type="radio" name="theme" value="light"><span class="ico" style="--i:url(assets/icons/sun.svg)"></span><span class="sr">Claro</span></label>
+          <label title="Oscuro"><input type="radio" name="theme" value="dark"><span class="ico" style="--i:url(assets/icons/moon.svg)"></span><span class="sr">Oscuro</span></label>
+          <label title="Según el sistema"><input type="radio" name="theme" value="system" checked><span class="ico" style="--i:url(assets/icons/monitor.svg)"></span><span class="sr">Según el sistema</span></label>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Primer viewport: la caja -->
+    <section class="wrap hero" aria-labelledby="titulo">
+      <div class="pitch">
+        <h1 id="titulo" class="stencil">Cada envío en&nbsp;su&nbsp;caja.</h1>
+        <p class="lead">Juez Miau es un juez automático para concursos de programación. Califica rápido y parejo: cada solución corre sola, sin red, con su propio núcleo y los mismos límites para todos. Tú organizas el concurso; el gatito revisa las cajas.</p>
+        <div class="actions">
+          <a class="btn btn--tape" href="#montalo"><span class="ico" style="--i:url(assets/icons/box.svg)"></span>Instálalo en tu escuela</a>
+          <a class="btn" href="#rapido">Ver cómo juzga<span class="ico" style="--i:url(assets/icons/arrow-right.svg)"></span></a>
+        </div>
+        <p class="langs">C · C++ · Java · Python · JavaScript · C#</p>
+      </div>
+
+      <figure class="crate" aria-labelledby="crate-cap">
+        <div class="crate__scene">
+          <div class="crate__flap crate__flap--back" aria-hidden="true"></div>
+          <div class="crate__cat cat" data-cat><img src="assets/gatito.svg" alt="" width="220" height="220"><i class="lid lid--l"></i><i class="lid lid--r"></i></div>
+          <div class="crate__flap crate__flap--l" aria-hidden="true"></div>
+          <div class="crate__flap crate__flap--r" aria-hidden="true"></div>
+          <div class="crate__front">
+            <span class="sticker" aria-hidden="true"><span class="ico" style="--i:url(assets/icons/wifi-off.svg)"></span>Sin red</span>
+            <div class="label label--ship" data-run>
+              <div class="label__top"><span>Juez Miau · envío</span><b class="mono">#1042</b></div>
+              <p class="label__to">Ajolote Recursivo</p>
+              <dl class="label__data">
+                <div><dt>Problema</dt><dd>C · Rutas en la sierra</dd></div>
+                <div><dt>Lenguaje</dt><dd>C++17</dd></div>
+                <div><dt>Límites</dt><dd>1 s · 256 MB por caso</dd></div>
+                <div><dt>Máximos</dt><dd>42 ms · 2048 KB</dd></div>
+              </dl>
+              <div class="cases" role="img" aria-label="12 de 12 casos aceptados" data-cases>
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
+              <div class="label__foot">
+                <div class="label__code">
+                  <span class="barcode" aria-hidden="true"></span>
+                  <span class="mono"><span data-count>12/12</span> casos</span>
+                </div>
+                <span class="stamp stamp--ok" data-stamp>Aceptado</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption id="crate-cap" class="note">Envío de ejemplo. <span aria-live="polite" data-status>Juzgado: el equipo ya recibió el aviso.</span></figcaption>
+      </figure>
+    </section>
+
+    <!-- Banda transportadora: la cola del juez -->
+    <div class="belt" role="img" aria-label="Ejemplo de la cola del juez: cajas de envíos con su veredicto pasando por la banda.">
+      <div class="belt__track" aria-hidden="true" data-belt>
+        <span class="parcel"><span><b>#1043</b> A · Quetzal Greedy <i class="v v--ac">AC</i></span></span>
+        <span class="parcel"><span><b>#1044</b> B · Bit a Bit <i class="v v--wa">WA</i></span></span>
+        <span class="parcel"><span><b>#1045</b> D · Ornitorrinco Binario <i class="v v--ac">AC</i></span></span>
+        <span class="parcel"><span><b>#1046</b> E · Los Recursivos <i class="v v--tle">TLE</i></span></span>
+        <span class="parcel"><span><b>#1047</b> C · Quetzal Greedy <i class="v v--ce">CE</i></span></span>
+        <span class="parcel"><span><b>#1048</b> B · Ajolote Recursivo <i class="v v--ac">AC</i></span></span>
+        <span class="parcel"><span><b>#1049</b> F · Bit a Bit <i class="v v--mle">MLE</i></span></span>
+        <span class="parcel"><span><b>#1050</b> A · Los Recursivos <i class="v v--re">RE</i></span></span>
+      </div>
+      <span class="belt__cap">La cola del juez · ejemplo</span>
+    </div>
+
+    <!-- Rápido -->
+    <section class="chapter" id="rapido" aria-labelledby="t-rapido">
+      <div class="tape" aria-hidden="true"><span>Juez Miau · Frágil: código adentro · Juez Miau · Frágil: código adentro · Juez Miau · Frágil: código adentro · Juez Miau · Frágil: código adentro · Juez Miau · Frágil: código adentro · Juez Miau · Frágil: código adentro · </span></div>
+      <div class="wrap">
+        <header class="chapter__head">
+          <h2 id="t-rapido" class="stencil">Del archivo al veredicto, sin que nadie se levante.</h2>
+          <p>El equipo programa en su IDE y envía desde la app de escritorio. El juez compila una vez, corre todos los casos y le avisa al equipo con una notificación de Windows. El marcador se recalcula al instante en el panel, en la app y en el proyector.</p>
+        </header>
+
+        <div class="split">
+          <div class="label label--track taped taped--corners">
+            <div class="label__top"><span>Rastreo del envío</span><b class="mono">#1042 · ejemplo</b></div>
+            <ol class="track">
+              <li><time class="mono">10:42:07</time><b>Recibido</b><span>Llega desde la app de escritorio del equipo.</span></li>
+              <li><time class="mono">10:42:07</time><b>En cola</b><span>Espera su turno en la cola del juez.</span></li>
+              <li><time class="mono">10:42:09</time><b>Compilado</b><span>Una sola vez · 1.8 s.</span></li>
+              <li><time class="mono">10:42:10</time><b>Juzgado</b><span>12 casos, cada uno con su núcleo · máx. 42 ms.</span></li>
+              <li class="is-done"><time class="mono">10:42:10</time><b>Entregado</b><span>Aviso al equipo y marcador actualizado.</span></li>
+            </ol>
+          </div>
+
+          <div class="stack">
+            <div class="toast taped" role="img" aria-label="Ejemplo de notificación de Windows: Juez Miau, problema C, Aceptado en 42 milisegundos.">
+              <img src="assets/gatito.svg" alt="" width="40" height="40">
+              <div><b>Juez Miau</b><span>Problema C · Rutas en la sierra</span><span><i class="v v--ac">Aceptado</i> 42 ms</span></div>
+              <small>ahora</small>
+            </div>
+            <p class="aside">La app es un solo <code>.exe</code> que vive en la bandeja, detrás del IDE: ahí están los problemas, las plantillas, los envíos y sus veredictos.</p>
+            <div class="verdicts taped">
+              <p class="aside">Veredictos que reconoce:</p>
+              <ul>
+                <li><i class="v v--ac">AC</i>Aceptado</li>
+                <li><i class="v v--wa">WA</i>Respuesta incorrecta</li>
+                <li><i class="v v--tle">TLE</i>Tiempo excedido</li>
+                <li><i class="v v--mle">MLE</i>Memoria excedida</li>
+                <li><i class="v v--re">RE</i>Error en ejecución</li>
+                <li><i class="v v--ce">CE</i>Error de compilación</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Parejo -->
+    <section class="chapter" id="parejo" aria-labelledby="t-parejo">
+      <div class="tape tape--alt" aria-hidden="true"><span>Este lado arriba · Juez Miau · Sin red · Este lado arriba · Juez Miau · Sin red · Este lado arriba · Juez Miau · Sin red · Este lado arriba · Juez Miau · Sin red · Este lado arriba · Juez Miau · Sin red · Este lado arriba · Juez Miau · Sin red · </span></div>
+      <div class="wrap">
+        <header class="chapter__head">
+          <h2 id="t-parejo" class="stencil">Las mismas reglas para todas las cajas.</h2>
+          <p>Cada envío corre dentro de un contenedor Docker aislado. Nada que haga un equipo le quita tiempo, memoria o ventaja a otro.</p>
+        </header>
+
+        <div class="handling">
+          <ul aria-label="Reglas de cada envío">
+            <li><span class="picto stampable"><span class="ico" style="--i:url(assets/icons/wifi-off.svg)"></span></span><b>Sin red</b></li>
+            <li><span class="picto stampable"><span class="ico" style="--i:url(assets/icons/cpu.svg)"></span></span><b>1 núcleo por caso</b></li>
+            <li><span class="picto stampable"><span class="ico" style="--i:url(assets/icons/alarm.svg)"></span></span><b>Límite de tiempo</b></li>
+            <li><span class="picto stampable"><span class="ico" style="--i:url(assets/icons/memory.svg)"></span></span><b>Límite de memoria</b></li>
+          </ul>
+          <p>El contenedor no tiene salida a internet ni a la red del laboratorio. Cada caso de prueba tiene un núcleo de CPU reservado, así que ninguna corrida le roba tiempo a otra. Los límites de tiempo y de memoria son los mismos para todos los envíos del problema; si un envío se pasa, el veredicto es TLE o MLE.</p>
+        </div>
+
+        <div class="split split--board">
+          <div class="board">
+            <div class="label label--board taped">
+              <div class="label__top"><span>Marcador · avanzado</span><b class="mono">min 107 · ejemplo</b></div>
+              <table>
+                <thead><tr><th scope="col">#</th><th scope="col">Equipo</th><th scope="col">Resueltos</th><th scope="col" class="n">Pen.</th></tr></thead>
+                <tbody data-board>
+                  <tr data-climb><td class="mono">1</td><td>Quetzal Greedy</td><td><span class="solved" role="img" aria-label="A, B, C y D resueltos"><i class="y">A</i><i class="y" data-late>B</i><i class="y">C</i><i class="y">D</i></span></td><td class="n" data-pen>297</td></tr>
+                  <tr><td class="mono">2</td><td>Ajolote Recursivo</td><td><span class="solved" role="img" aria-label="A, B, C y D resueltos"><i class="y">A</i><i class="y">B</i><i class="y">C</i><i class="y">D</i></span></td><td class="n">298</td></tr>
+                  <tr><td class="mono">3</td><td>Ornitorrinco Binario</td><td><span class="solved" role="img" aria-label="A, B, C y D resueltos"><i class="y">A</i><i class="y">B</i><i class="y">C</i><i class="y">D</i></span></td><td class="n">312</td></tr>
+                  <tr><td class="mono">4</td><td>Bit a Bit</td><td><span class="solved" role="img" aria-label="A y C resueltos"><i class="y">A</i><i>B</i><i class="y">C</i><i>D</i></span></td><td class="n">164</td></tr>
+                </tbody>
+              </table>
+              <div class="seal" aria-hidden="true"><span>No abrir hasta la premiación · No abrir hasta la premiación · No abrir hasta la premiación ·</span></div>
+            </div>
+            <p class="board__clock"><b class="mono">00:48:00</b> Marcador congelado</p>
+          </div>
+
+          <div class="rules">
+            <h3>Cómo se ordena el marcador</h3>
+            <p>Gana quien resuelve más problemas. El empate se rompe con la penalización: el minuto de cada aceptado más 20 por cada rechazo previo. Un error de compilación no cuenta.</p>
+            <h3>Un reloj para todo el concurso</h3>
+            <p>El mismo tiempo en el panel, en la app y en el proyector. El staff lo inicia, lo pausa y lo termina.</p>
+            <h3>El final se sella</h3>
+            <p>En la última parte el marcador público se congela. Los envíos se siguen juzgando y el resultado se revela en la premiación.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sin trampas -->
+    <section class="chapter" id="trampas" aria-labelledby="t-trampas">
+      <div class="tape tape--warn" aria-hidden="true"><span>Precaución · Zona de inspección · Precaución · Zona de inspección · Precaución · Zona de inspección · Precaución · Zona de inspección · Precaución · Zona de inspección · Precaución · Zona de inspección · </span></div>
+      <div class="wrap">
+        <div class="inspect">
+          <div class="inspect__cat cat" data-cat data-follow><img src="assets/gatito.svg" alt="El gatito detective de Juez Miau con su lupa" width="320" height="320"><i class="lid lid--l"></i><i class="lid lid--r"></i></div>
+          <div class="inspect__text">
+            <h2 id="t-trampas" class="stencil">El gatito revisa cada computadora.</h2>
+            <p>La app de escritorio le manda al juez un latido periódico con los procesos abiertos, los monitores conectados y las memorias USB de cada equipo. Cada edición define qué está prohibido.</p>
+            <p>Si algo rompe una regla, el staff ve la alerta y puede suspender al equipo. El equipo nunca ve la alerta.</p>
+          </div>
+          <div class="label label--report taped">
+            <div class="label__top"><span>Reporte de inspección · LAB-2</span><b class="mono">solo staff</b></div>
+            <ul class="alerts">
+              <li><i class="v v--bad">Alerta</i><span>Quetzal Greedy · 2 monitores (máx. 1)</span></li>
+              <li><i class="v v--bad">Alerta</i><span>Quetzal Greedy · memoria USB conectada</span></li>
+              <li><i class="v v--warn">Aviso</i><span>Bit a Bit · sin latido hace 2 min</span></li>
+            </ul>
+            <span class="paw stampable" aria-hidden="true"><span class="ico" style="--i:url(assets/icons/paw.svg)"></span>Revisado</span>
+            <p class="note note--in">Ejemplo</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Qué trae la caja -->
+    <section class="chapter chapter--plain" id="caja" aria-labelledby="t-caja">
+      <div class="wrap">
+        <header class="chapter__head">
+          <h2 id="t-caja" class="stencil">¿Qué trae la caja?</h2>
+          <p>Todo lo que usa el staff, los equipos y el auditorio el día del concurso.</p>
+        </header>
+        <div class="split split--slip">
+          <div class="label label--slip taped taped--corners">
+            <div class="label__top"><span>Lista de empaque</span><b class="mono">Juez Miau v1.0</b></div>
+            <table>
+              <thead><tr><th scope="col" class="n">Cant.</th><th scope="col">Artículo</th><th scope="col">Para</th></tr></thead>
+              <tbody>
+                <tr><td class="n">1</td><td><b>Panel web</b><span>Ediciones, categorías, salones, equipos y problemas con sus casos de prueba.</span></td><td>Staff</td></tr>
+                <tr><td class="n">4</td><td><b>Roles por edición</b><span>Superadmin, administrador, juez y observador, cada uno con sus permisos.</span></td><td>Staff</td></tr>
+                <tr><td class="n">1</td><td><b>App de escritorio</b><span>Un solo <code>.exe</code> para Windows: problemas, envíos y avisos.</span></td><td>Equipos</td></tr>
+                <tr><td class="n">1</td><td><b>Aclaraciones</b><span>El equipo pregunta desde la app; el juez responde a ese equipo o a todos.</span></td><td>Jueces y equipos</td></tr>
+                <tr><td class="n">1</td><td><b>Vista de proyector</b><span>Marcador por categoría y reloj, en vivo.</span></td><td>Auditorio</td></tr>
+                <tr><td class="n">1</td><td><b>Credenciales en PDF</b><span>Usuario y contraseña de cada equipo, listas para imprimir.</span></td><td>Equipos</td></tr>
+                <tr><td class="n">1</td><td><b>Bitácora de auditoría</b><span>Las acciones importantes del staff quedan registradas.</span></td><td>Staff</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="note-card taped" role="img" aria-label="Ejemplo de aclaración. Pregunta: ¿puede haber dos caminos entre el mismo par de pueblos? Respuesta: sí, toma el de menor distancia.">
+            <p class="note-card__top mono">Aclaración · problema C · para todos</p>
+            <p><b>P:</b> ¿Puede haber dos caminos entre el mismo par de pueblos?</p>
+            <p><b>R:</b> Sí. Toma el de menor distancia.</p>
+            <p class="note note--in">Ejemplo</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Móntalo tú -->
+    <section class="chapter" id="montalo" aria-labelledby="t-montalo">
+      <div class="tape" aria-hidden="true"><span>Juez Miau · Hecho en el CUValles · Juez Miau · Hecho en el CUValles · Juez Miau · Hecho en el CUValles · Juez Miau · Hecho en el CUValles · Juez Miau · Hecho en el CUValles · Juez Miau · Hecho en el CUValles · </span></div>
+      <div class="wrap">
+        <header class="chapter__head">
+          <h2 id="t-montalo" class="stencil">Instrucciones de armado.</h2>
+          <p>Todo corre en un solo servidor del laboratorio con Docker Compose. Se monta unos días antes del concurso y se desmonta después.</p>
+        </header>
+        <ol class="assembly">
+          <li>
+            <h3>Consigue una máquina</h3>
+            <p>Palomea lo que ya tienes:</p>
+            <ul class="checklist">
+              <li><label><input type="checkbox" data-check="linux"><span class="check" aria-hidden="true"></span><span>Linux x86_64</span></label></li>
+              <li><label><input type="checkbox" data-check="docker"><span class="check" aria-hidden="true"></span><span>Docker 24 o más nuevo</span></label></li>
+              <li><label><input type="checkbox" data-check="compose"><span class="check" aria-hidden="true"></span><span>Docker Compose v2 <code>docker compose version</code></span></label></li>
+              <li><label><input type="checkbox" data-check="cgroup"><span class="check" aria-hidden="true"></span><span>cgroup v2 <code>stat -fc %T /sys/fs/cgroup</code></span></label></li>
+              <li><label><input type="checkbox" data-check="disco"><span class="check" aria-hidden="true"></span><span>Unos 20 GB libres</span></label></li>
+              <li><label><input type="checkbox" data-check="ip"><span class="check" aria-hidden="true"></span><span>IP fija en la red del laboratorio</span></label></li>
+            </ul>
+          </li>
+          <li>
+            <h3>Clona y configura</h3>
+            <div class="term-wrap taped"><pre class="term"><span class="dim">$</span> git clone https://github.com/LaBoa99/mi-concurso-monorepo
+<span class="dim">$</span> cd mi-concurso-monorepo/deploy
+<span class="dim">$</span> cp .env.example .env</pre></div>
+            <p>En <code>.env</code> pon la dirección pública, las contraseñas y los secretos.</p>
+          </li>
+          <li>
+            <h3>Levántalo</h3>
+            <div class="term-wrap taped"><pre class="term" data-type><span class="dim">$</span> docker compose up -d --build
+web      <i class="v v--ac">Up</i>   api    <i class="v v--ac">Up</i>
+worker   <i class="v v--ac">Up</i>   redis  <i class="v v--ac">Up</i>
+postgres <i class="v v--ac">Up</i></pre></div>
+          </li>
+          <li>
+            <h3>Entra al panel</h3>
+            <p>Abre la dirección pública con el usuario administrador del <code>.env</code> y crea tu primera edición. Reparte la app de escritorio en las máquinas de los equipos.</p>
+          </li>
+        </ol>
+        <p class="offline"><span class="ico" style="--i:url(assets/icons/wifi-off.svg)"></span>¿Tu laboratorio no tiene internet? Prepara las imágenes en otra máquina y cópialas; la guía explica cómo.</p>
+        <div class="actions">
+          <a class="btn btn--tape" href="https://github.com/LaBoa99/mi-concurso-monorepo/blob/main/deploy/README.md"><span class="ico" style="--i:url(assets/icons/book-open.svg)"></span>Guía de despliegue</a>
+          <a class="btn" href="https://github.com/LaBoa99/mi-concurso-monorepo"><span class="ico" style="--i:url(assets/icons/github.svg)"></span>Ver el repositorio</a>
+          <a class="btn" href="https://github.com/LaBoa99/mi-concurso-monorepo/releases"><span class="ico" style="--i:url(assets/icons/download.svg)"></span>Descargar la app</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Docker Compose -->
+    <section class="chapter" id="compose" aria-labelledby="t-compose">
+      <div class="tape tape--alt" aria-hidden="true"><span>docker compose · Un solo servidor · Juez Miau · docker compose · Un solo servidor · Juez Miau · docker compose · Un solo servidor · Juez Miau · docker compose · Un solo servidor · Juez Miau · docker compose · Un solo servidor · Juez Miau · docker compose · Un solo servidor · Juez Miau · </span></div>
+      <div class="wrap">
+        <header class="chapter__head">
+          <h2 id="t-compose" class="stencil">Lo que viene en el compose.</h2>
+          <p>Un solo archivo, <code>deploy/docker-compose.yml</code>, levanta todo el concurso. Es el mismo para el día del concurso y para desarrollo.</p>
+        </header>
+        <ul class="pallet">
+          <li class="box"><div class="box__label"><b class="mono">web</b><span class="box__role">Caddy</span><p>Sirve el panel de staff y pasa <code>/api</code> y <code>/socket.io</code> a la API.</p><span class="box__port mono">:80 · :443</span></div></li>
+          <li class="box"><div class="box__label"><b class="mono">api</b><span class="box__role">NestJS</span><p>La API del panel y de la app de escritorio. Al arrancar carga los datos iniciales.</p><span class="box__port mono">interno</span></div></li>
+          <li class="box"><div class="box__label"><b class="mono">worker</b><span class="box__role">El juez</span><p>Mismo código que la API. Toma los envíos de la cola y los corre en contenedores.</p><span class="box__port mono">sin puertos</span></div></li>
+          <li class="box"><div class="box__label"><b class="mono">postgres</b><span class="box__role">PostgreSQL 14</span><p>Ediciones, equipos, problemas, envíos y bitácora.</p><span class="box__port mono">solo 127.0.0.1</span></div></li>
+          <li class="box"><div class="box__label"><b class="mono">redis</b><span class="box__role">Redis 7</span><p>La cola de envíos que reparte el trabajo al juez.</p><span class="box__port mono">solo 127.0.0.1</span></div></li>
+          <li class="box"><div class="box__label"><b class="mono">judge-*</b><span class="box__role">Lenguajes</span><p>Imágenes de gcc, Java, .NET, Node y Python. Solo se descargan; terminan en <code>Exited (0)</code>.</p><span class="box__port mono">sin puertos</span></div></li>
+        </ul>
+        <div class="docs-wrap">
+          <div class="label label--docs taped taped--corners">
+            <div class="label__top"><span>Documentación incluida</span><b class="mono">en el repo</b></div>
+            <ul class="docs">
+              <li><a href="https://github.com/LaBoa99/mi-concurso-monorepo/blob/main/deploy/README.md">Guía de despliegue</a><span>Instalación, laboratorio sin internet, respaldos por semestre y HTTP o HTTPS.</span></li>
+              <li><a href="https://github.com/LaBoa99/mi-concurso-monorepo/blob/main/docs/design/server-specs.md">Requisitos del servidor</a><span>Qué máquina conviene para el día del concurso.</span></li>
+              <li><a href="https://github.com/LaBoa99/mi-concurso-monorepo/blob/main/docs/arquitectura.md">Arquitectura</a><span>Cómo se conectan el panel, la API, el juez y la app.</span></li>
+              <li><a href="https://github.com/LaBoa99/mi-concurso-monorepo/blob/main/docs/design/judge-evaluation.md">Cómo juzga</a><span>Compilación, casos de prueba, límites y veredictos.</span></li>
+              <li><a href="https://github.com/LaBoa99/mi-concurso-monorepo/blob/main/docs/backend-api.md">API</a><span>Los endpoints del backend.</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Remitente -->
+    <section class="wrap sender" id="equipo" aria-labelledby="t-eq">
+      <div class="label label--sender taped taped--corners">
+        <div class="label__top"><span>Remitente</span><b class="mono">CUValles · UdeG</b></div>
+        <div class="sender__body">
+          <div>
+            <h2 id="t-eq" class="stencil">Hecho en el CUValles.</h2>
+            <p>Juez Miau nació en la Maestría en Ingeniería de Software del Centro Universitario de los Valles, para que la universidad tuviera un juez propio, a la medida de sus laboratorios. Ahora la caja está abierta para que otras escuelas lo usen en sus concursos.</p>
+          </div>
+          <span class="logo-udg" role="img" aria-label="Universidad de Guadalajara, Centro Universitario de los Valles"></span>
+        </div>
+        <ul class="members">
+                    <li><b>Gael Rodríguez</b><span>Ing. · Maestría en Ingeniería de Software</span><span class="contact"><a class="icon-link" href="mailto:claudio.rodriguez4333@alumnos.udg.mx" aria-label="Correo de Gael Rodríguez" title="claudio.rodriguez4333@alumnos.udg.mx"><span class="ico" style="--i:url(assets/icons/mail.svg)"></span></a><a class="icon-link" href="https://www.linkedin.com/in/claudio-gael-rodr%C3%ADguez-vega-b83507217/" aria-label="LinkedIn de Gael Rodríguez" title="LinkedIn" rel="noopener"><span class="ico" style="--i:url(assets/icons/linkedin.svg)"></span></a></span></li>
+          <li><b>Maribel Navarro</b><span>Ing. · Maestría en Ingeniería de Software</span><span class="contact"><a class="icon-link" href="mailto:maribel.navarro5583@alumnos.udg.mx" aria-label="Correo de Maribel Navarro" title="maribel.navarro5583@alumnos.udg.mx"><span class="ico" style="--i:url(assets/icons/mail.svg)"></span></a></span></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot"><div class="wrap"><span>Juez Miau v1.0 · Maestría en Ingeniería de Software · CUValles</span><a href="https://github.com/LaBoa99/mi-concurso-monorepo/blob/main/docs/arquitectura.md">Arquitectura</a><a href="https://github.com/LaBoa99/mi-concurso-monorepo">GitHub</a></div></footer>
+</body>
+</html>

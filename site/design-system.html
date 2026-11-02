@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hoja de estilo · Juez Miau</title>
+  <meta name="description" content="Colores, tipografía, paletas, iconos y componentes del tablero de Juez Miau.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <script>try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script src="tablero.js" defer></script>
+  <style>
+    .ds { padding-block: var(--s6) var(--s8); display: grid; gap: var(--s7); }
+    .ds h1 { font-size: clamp(2rem, 3.6vw + .8rem, 3.5rem); font-weight: 800; letter-spacing: -.045em; line-height: 1; }
+    .ds__lead { color: var(--ink-2); max-width: 60ch; margin-top: var(--s3); font-size: 1.0625rem; }
+    .ds section { display: grid; gap: var(--s4); }
+    .ds h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -.03em; padding-bottom: var(--s3); border-bottom: 1px solid var(--rule); }
+    .ds h3 { font: 600 .75rem/1 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--ink-2); }
+    .ds ol { margin: var(--s4) 0 0; padding-left: 1.25rem; display: grid; gap: var(--s2); max-width: 60ch; color: var(--ink-2); }
+    .ds ol b { color: var(--ink); }
+    .sw { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: var(--s3); margin: 0; padding: 0; list-style: none; }
+    .sw li { border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; background: var(--panel); font: 500 .75rem/1.4 var(--mono); }
+    .sw i { display: block; height: 3rem; background: var(--c); border-bottom: 1px solid var(--rule); }
+    .sw span { display: block; padding: var(--s2) var(--s3); color: var(--ink-2); }
+    .sw b { display: block; font: 600 .875rem/1.3 var(--sans); color: var(--ink); }
+    .type-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s1) var(--s5); align-items: baseline; padding-block: var(--s3); border-top: 1px solid var(--rule); }
+    @media (min-width: 46rem) { .type-row { grid-template-columns: 12rem 1fr; } }
+    .type-row code { font-size: .75rem; color: var(--ink-2); }
+    .row-demo { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; }
+    .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+    .icons li { display: grid; justify-items: center; gap: var(--s2); padding: var(--s4) var(--s2); background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; font: 400 .6875rem/1.3 var(--mono); color: var(--ink-2); }
+    .icons .ico { --size: 1.5rem; color: var(--ink); }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#hoja">Saltar al contenido</a>
+  <header class="bar">
+    <div class="wrap bar__in">
+      <a class="brand" href="./"><img src="assets/gatito.svg" alt="" width="28" height="28">Juez Miau <small>hoja de estilo</small></a>
+      <div class="theme" role="radiogroup" aria-label="Tema de color">
+        <label title="Claro"><input type="radio" name="theme" value="light"><span class="ico" style="--i:url(assets/icons/sun.svg)"></span><span class="sr">Claro</span></label>
+        <label title="Oscuro"><input type="radio" name="theme" value="dark"><span class="ico" style="--i:url(assets/icons/moon.svg)"></span><span class="sr">Oscuro</span></label>
+        <label title="Según el sistema"><input type="radio" name="theme" value="system" checked><span class="ico" style="--i:url(assets/icons/monitor.svg)"></span><span class="sr">Según el sistema</span></label>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap ds" id="hoja" tabindex="-1">
+    <div>
+      <h1>Hoja de estilo del tablero de Juez Miau</h1>
+      <p class="ds__lead">La página se arma como un tablero split-flap de estación: carcasa, paletas con costura al centro y letras que giran
+        hasta asentarse. Todo vive en <code>site/styles.css</code> y <code>site/tablero.js</code>; las fuentes son las del panel de staff.</p>
+      <ol>
+        <li><b>Las paletas son para datos del tablero</b>: nombres, códigos y estados cortos, en mayúsculas.</li>
+        <li><b>El amarillo de señalización marca rótulos y la acción principal.</b></li>
+        <li><b>El naranja del reloj es la única luz cálida.</b> No se usa en nada más.</li>
+        <li><b>Verde, rojo y ámbar son estados</b>, nunca decoración.</li>
+      </ol>
+    </div>
+
+    <section aria-labelledby="t-color">
+      <h2 id="t-color">Color</h2>
+      <h3>Carcasa y paletas</h3>
+      <ul class="sw">
+        <li><i style="--c:var(--housing)"></i><span><b>Carcasa</b>--housing</span></li>
+        <li><i style="--c:var(--housing-2)"></i><span><b>Fondo del tablero</b>--housing-2</span></li>
+        <li><i style="--c:var(--panel)"></i><span><b>Placa</b>--panel</span></li>
+        <li><i style="--c:var(--flap)"></i><span><b>Paleta</b>--flap</span></li>
+        <li><i style="--c:var(--flap-ink)"></i><span><b>Letra de paleta</b>--flap-ink</span></li>
+        <li><i style="--c:var(--ink-2)"></i><span><b>Texto secundario</b>--ink-2</span></li>
+      </ul>
+      <h3>Señal y estados</h3>
+      <ul class="sw">
+        <li><i style="--c:var(--sign)"></i><span><b>Señalización</b>--sign</span></li>
+        <li><i style="--c:var(--glow)"></i><span><b>Reloj</b>--glow</span></li>
+        <li><i style="--c:var(--ok)"></i><span><b>En servicio / aceptado</b>--ok</span></li>
+        <li><i style="--c:var(--bad)"></i><span><b>Alerta / rechazado</b>--bad</span></li>
+        <li><i style="--c:var(--warn)"></i><span><b>Aviso / límite</b>--warn</span></li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="t-type">
+      <h2 id="t-type">Tipografía</h2>
+      <div>
+        <div class="type-row"><code>Titular · Inter 800</code><span style="font-size:2.25rem;font-weight:800;letter-spacing:-.035em;line-height:1.05">El juez del CUValles</span></div>
+        <div class="type-row"><code>Placa · Inter 800</code><span style="font-size:1.6rem;font-weight:800;letter-spacing:-.035em">Juez en contenedores</span></div>
+        <div class="type-row"><code>Texto · Inter 400</code><span>Cada envío se compila una vez y se ejecuta en un contenedor sin red.</span></div>
+        <div class="type-row"><code>Paletas · Mono 700</code><span class="flaps" style="--fs:1.25rem" data-flap>JM 101</span></div>
+        <div class="type-row"><code>Reloj · Mono 700</code><span class="clock" style="justify-items:start"><b>04:12:00</b></span></div>
+        <div class="type-row"><code>Datos · Mono 400</code><span class="mono">42 ms · 2048 KB · #1042</span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="t-comp">
+      <h2 id="t-comp">Componentes</h2>
+      <h3>Paletas · .flaps</h3>
+      <div class="row-demo">
+        <span class="flaps" style="--fs:1.4rem" data-flap>Juez Miau</span>
+        <span class="flaps flaps--sign" style="--fs:1.4rem" data-flap>CUValles</span>
+        <span class="flaps flaps--ok" style="--fs:1.4rem" data-flap>Aceptado</span>
+        <span class="flaps flaps--warn" style="--fs:1.4rem" data-flap>Congelado</span>
+      </div>
+      <h3>Botones · .btn</h3>
+      <div class="row-demo">
+        <a class="btn btn--sign" href="#hoja">Ver las funciones</a>
+        <a class="btn" href="#hoja"><span class="ico" style="--i:url(assets/icons/github.svg)"></span>Secundario</a>
+      </div>
+      <h3>Estados · .v</h3>
+      <div class="row-demo">
+        <span class="v v--ac">AC</span><span class="v v--wa">WA</span><span class="v v--tle">TLE</span><span class="v v--mle">MLE</span><span class="v v--re">RE</span><span class="v v--ce">CE</span><span class="v v--bad">ALERTA</span><span class="v v--warn">AVISO</span>
+      </div>
+      <h3>Selector de tema · .theme</h3>
+      <p class="ds__lead" style="margin:0">Claro, Oscuro o Según el sistema (por defecto). Se recuerda en el navegador y se aplica antes de pintar, sin parpadeo. Es un grupo de radios: se usa con las flechas del teclado.</p>
+      <h3>Pantalla de prueba · .screen</h3>
+      <div class="screen" style="max-width:32rem">
+        <div class="screen__bar"><span>Envío #1042 · ejemplo</span><span>12/12</span></div>
+        <pre><span class="dim">lenguaje</span> C++17 · 12 casos
+<span class="dim">máximos </span> 42 ms · 2048 KB</pre>
+      </div>
+    </section>
+
+    <section aria-labelledby="t-ico">
+      <h2 id="t-ico">Iconos</h2>
+      <p class="ds__lead" style="margin:0">Trazo de 2px estilo Lucide en <code>site/assets/icons/</code>. En la página se pintan con <code>.ico</code> y toman el color del texto.</p>
+      <ul class="icons">
+        <li><span class="ico" style="--i:url(assets/icons/box.svg)"></span>box</li>
+        <li><span class="ico" style="--i:url(assets/icons/trophy.svg)"></span>trophy</li>
+        <li><span class="ico" style="--i:url(assets/icons/presentation.svg)"></span>presentation</li>
+        <li><span class="ico" style="--i:url(assets/icons/message-question.svg)"></span>message-question</li>
+        <li><span class="ico" style="--i:url(assets/icons/shield-check.svg)"></span>shield-check</li>
+        <li><span class="ico" style="--i:url(assets/icons/monitor.svg)"></span>monitor</li>
+        <li><span class="ico" style="--i:url(assets/icons/timer.svg)"></span>timer</li>
+        <li><span class="ico" style="--i:url(assets/icons/users.svg)"></span>users</li>
+        <li><span class="ico" style="--i:url(assets/icons/server.svg)"></span>server</li>
+        <li><span class="ico" style="--i:url(assets/icons/sun.svg)"></span>sun</li>
+        <li><span class="ico" style="--i:url(assets/icons/moon.svg)"></span>moon</li>
+        <li><span class="ico" style="--i:url(assets/icons/mail.svg)"></span>mail</li>
+        <li><span class="ico" style="--i:url(assets/icons/linkedin.svg)"></span>linkedin</li>
+        <li><span class="ico" style="--i:url(assets/icons/github.svg)"></span>github</li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="t-marcas">
+      <h2 id="t-marcas">Marcas</h2>
+      <div class="row-demo" style="gap:var(--s6)">
+        <img src="assets/gatito.svg" alt="Gatito detective, mascota de Juez Miau" width="96" height="96">
+        <span class="logo-udg" role="img" aria-label="Universidad de Guadalajara, Centro Universitario de los Valles"></span>
+      </div>
+    </section>
+  </main>
+  <footer class="foot"><div class="wrap"><span>Juez Miau · hoja de estilo</span><a href="./">Volver al tablero</a></div></footer>
+</body>
+</html>
