@@ -15,6 +15,7 @@ class RealtimeService(QObject):
     clock_update = Signal(dict)
     standings_update = Signal(dict)
     clarification_update = Signal(dict)
+    clarification_delete = Signal(dict)
     connected = Signal()
     disconnected = Signal()
 
@@ -32,6 +33,7 @@ class RealtimeService(QObject):
             ("clock:update", self.clock_update),
             ("standings:update", self.standings_update),
             ("clarification:update", self.clarification_update),
+            ("clarification:delete", self.clarification_delete),
         ):
             sio.on(event, signal.emit, namespace=NAMESPACE)
         sio.on("connect", lambda: self.connected.emit(), namespace=NAMESPACE)

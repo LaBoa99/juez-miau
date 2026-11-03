@@ -10,23 +10,18 @@
   </div>
 </oj-page-header>
 
+<!-- Conteos de la lista completa; "—" mientras no hay datos (el backend no entrega conteos) -->
+@let ready = !loading() && !error();
 <div class="sub__cards">
-  <div class="sub__card">
-    <span class="sub__card-label">En cola</span>
-    <span class="sub__card-num oj-mono">{{ counters().queued }}</span>
-  </div>
-  <div class="sub__card">
-    <span class="sub__card-label">Evaluando</span>
-    <span class="sub__card-num oj-mono">{{ counters().judging }}</span>
-  </div>
-  <div class="sub__card">
-    <span class="sub__card-label">Aceptados</span>
-    <span class="sub__card-num sub__card-num--ac oj-mono">{{ counters().accepted }}</span>
-  </div>
-  <div class="sub__card">
-    <span class="sub__card-label">Total</span>
-    <span class="sub__card-num oj-mono">{{ counters().total }}</span>
-  </div>
+  @for (card of cards; track card.key) {
+    <div class="sub__card">
+      <span class="sub__card-label" [ojTooltip]="card.hint">{{ card.label }}</span>
+      <span class="sub__card-num oj-mono" [class.sub__card-num--ac]="card.key === 'accepted'">
+        {{ ready ? counters()[card.key] : '—' }}
+      </span>
+      <span class="sub__card-hint">{{ card.hint }}</span>
+    </div>
+  }
 </div>
 
 <div class="sub__filters">
@@ -51,7 +46,7 @@
   <oj-form-field label="Equipo" for="sub-team" class="sub__filter sub__filter--grow">
     <input id="sub-team" type="text" [formControl]="teamCtrl" placeholder="Buscar por equipo" />
   </oj-form-field>
-  <oj-segmented [options]="verdictOptions" [value]="verdictSeg()" (valueChange)="onVerdictSeg($event!)" />
+  <oj-segmented [options]="verdictOptions()" [value]="verdictSeg()" (valueChange)="onVerdictSeg($event!)" />
 </div>
 
 @if (actionError()) {
@@ -63,8 +58,15 @@
 } @else if (error()) {
   <oj-alert tone="error">No se pudieron cargar los envíos.</oj-alert>
 } @else if (filtered().length === 0) {
-  <oj-empty-state message="No hay envíos con estos filtros." />
+  <oj-empty-state [message]="filtering() ? 'No hay envíos con estos filtros.' : 'Todavía no hay envíos.'" />
 } @else {
+  <p class="sub__count oj-mono">
+    @if (filtering()) {
+      {{ filtered().length }} de {{ counters().total }} envíos
+    } @else {
+      {{ counters().total }} envíos en total
+    }
+  </p>
   <div class="oj-table-wrap">
     <table class="oj-table">
       <thead>
@@ -95,7 +97,7 @@
             <td class="oj-mono sub__lang">{{ languageCode(s.languageId) }}</td>
             <td>
               @let v = s.verdict | verdict: s.status;
-              <oj-badge [tone]="v.tone" [dashed]="v.dashed">{{ v.label }}</oj-badge>
+              <oj-badge [tone]="v.tone" [dashed]="v.dashed" [ojTooltip]="v.hint">{{ v.label }}</oj-badge>
               @if (progressText(s); as pt) {
                 <span class="sub__progress oj-mono">{{ pt }}</span>
               }
@@ -113,11 +115,4 @@
     </table>
   </div>
 
-  @if (hasMore()) {
-    <div class="sub__more">
-      <button ojButton variant="secondary" type="button" [disabled]="loadingMore()" (click)="loadMore()">
-        {{ loadingMore() ? 'Cargando…' : 'Cargar más' }}
-      </button>
-    </div>
-  }
 }

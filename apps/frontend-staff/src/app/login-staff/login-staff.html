@@ -1,11 +1,11 @@
 <div class="login">
   <header class="login__bar">
-    <span class="login__bar-brand">[OJ]</span>
+    <img class="login__bar-brand" src="assets/logos/gatito.svg" alt="Juez Virtual" />
   </header>
 
   <main class="login__main">
     <form class="login__card" (submit)="onSubmit($event)" (input)="error.set(null)">
-      <span class="login__brand">[OJ]</span>
+      <img class="login__brand" src="assets/logos/gatito.svg" alt="Juez Virtual" />
       <h1 class="login__title">Panel de staff</h1>
       <p class="login__subtitle">Juez Virtual · CUValles</p>
 
@@ -18,12 +18,30 @@
       </oj-form-field>
 
       <oj-form-field label="Contraseña" for="password">
-        <input
-          id="password"
-          type="password"
-          autocomplete="current-password"
-          [formField]="loginForm.password"
-        />
+        <div class="login__password">
+          <input
+            id="password"
+            [type]="showPassword() ? 'text' : 'password'"
+            autocomplete="current-password"
+            [formField]="loginForm.password"
+          />
+          <button
+            type="button"
+            class="login__toggle"
+            [attr.aria-pressed]="showPassword()"
+            [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            [title]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            (click)="showPassword.set(!showPassword())"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+              <circle cx="12" cy="12" r="3" />
+              @if (showPassword()) {
+                <path d="M3 3l18 18" />
+              }
+            </svg>
+          </button>
+        </div>
       </oj-form-field>
 
       <button ojButton variant="primary" type="submit" [disabled]="submitting()">

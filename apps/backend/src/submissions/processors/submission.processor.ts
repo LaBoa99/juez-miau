@@ -12,6 +12,9 @@ import { Submission } from '../entities/submission.entity.js'
 import { SubmissionCase } from '../entities/submission-case.entity.js'
 import { SUBMISSIONS_QUEUE, type SubmissionJob } from '../submissions.constants.js'
 
+// La salida del equipo se guarda para el detalle por caso del staff; más que esto no aporta
+const MAX_CASE_OUTPUT = 64 * 1024
+
 const PROGRESS_EVERY_MS = 250
 
 export type SubmissionOutcome = 'judged' | 'error' | 'skipped'
@@ -139,6 +142,8 @@ export class SubmissionProcessor extends WorkerHost implements OnApplicationBoot
                     cpu_ms: testCase.cpuMs,
                     wall_ms: testCase.wallMs,
                     memory_kb: testCase.memoryKb,
+                    exit_code: testCase.exitCode,
+                    output: testCase.output?.slice(0, MAX_CASE_OUTPUT) ?? null,
                     message: testCase.message?.slice(0, 4096) ?? null,
                 })))
             }

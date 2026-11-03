@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
+  ITeamsPage,
   EditionStatus,
   ICreateEdition,
   IEdition,
@@ -50,7 +51,7 @@ export class EditionsService {
     return this.http.get<IProblemListItem[]>(`${EDITIONS}/${id}/problems`);
   }
 
-  teams(id: number): Observable<unknown[]> {
-    return this.http.get<unknown[]>(`${EDITIONS}/${id}/teams`);
+  teams(id: number): Observable<ITeamsPage> {
+    return this.http.get<ITeamsPage>(`${EDITIONS}/${id}/teams`);
   }
 }

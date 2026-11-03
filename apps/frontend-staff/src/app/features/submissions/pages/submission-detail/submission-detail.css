@@ -100,6 +100,11 @@
   font-size: 11px;
   color: var(--oj-bg);
 }
+button.sd__case {
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
 .sd__case--ac {
   background: var(--oj-success);
 }
@@ -169,4 +174,48 @@
   margin: 0;
   color: var(--oj-text-muted);
   font-size: 13px;
+}
+
+.sd__fail-text {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* Modal de detalle de caso */
+.sd__case-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-md);
+}
+.sd__case-head {
+  display: flex;
+  align-items: center;
+  gap: var(--oj-space-sm);
+}
+.sd__io {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-xs);
+  min-width: 0;
+}
+.sd__io-label {
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+.sd__compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--oj-space-md);
+}
+@media (max-width: 640px) {
+  .sd__compare {
+    grid-template-columns: 1fr;
+  }
+}
+.sd__line {
+  display: block;
+  min-height: 1lh;
+}
+.sd__line--diff {
+  background: var(--oj-danger-bg);
 }

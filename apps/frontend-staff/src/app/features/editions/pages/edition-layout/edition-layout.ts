@@ -6,12 +6,19 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { SubmissionsService } from '../../../submissions/data/submissions.service';
 import { FlagsService } from '../../../flags/data/flags.service';
+import { ClarificationsService } from '../../../clarifications/data/clarifications.service';
 import { EditionContext } from './edition-context';
+import { TeamsService } from '../../../teams/data/teams.service';
+import { ToastService } from '../../../../core/notifications/toast.service';
+import { LiveClockService } from '../../../../core/realtime/live-clock.service';
+import { ContestClockService } from '../../../contest/data/contest-clock.service';
+import { ToastStack } from '../../../../shared/ui/toast-stack.component';
+import { flagToastText, flagTone } from '../../../flags/flag-display';
 
 @Component({
   selector: 'oj-edition-layout',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, ToastStack],
   providers: [EditionContext],
   templateUrl: './edition-layout.html',
   styleUrl: './edition-layout.css',
@@ -20,9 +27,14 @@ export class EditionLayout {
   private readonly route = inject(ActivatedRoute);
   private readonly submissions = inject(SubmissionsService);
   private readonly flags = inject(FlagsService);
+  private readonly clarifications = inject(ClarificationsService);
   private readonly rt = inject(RealtimeService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly teams = inject(TeamsService);
+  protected readonly toast = inject(ToastService);
+  private readonly liveClock = inject(LiveClockService);
+  private readonly clockService = inject(ContestClockService);
   protected readonly ctx = inject(EditionContext);
 
   protected readonly id = Number(this.route.snapshot.paramMap.get('id'));
@@ -33,7 +45,12 @@ export class EditionLayout {
   protected readonly reviewCount = computed(() => this.pending().size);
   // Contador de alertas abiertas: ids sembrados por HTTP y mantenidos con flag:update.
   private readonly openFlags = signal<ReadonlySet<number>>(new Set());
+  // Nombres para los avisos (la alerta solo trae teamId)
+  private readonly teamNames = signal<Map<number, string>>(new Map());
   protected readonly flagCount = computed(() => this.openFlags().size);
+  // Preguntas sin responder: sembradas por HTTP y mantenidas con clarification:update.
+  private readonly unanswered = signal<ReadonlySet<number>>(new Set());
+  protected readonly clarificationCount = computed(() => this.unanswered().size);
   // El backend no tiene "código" de edición: se muestra el nombre.
   protected readonly code = computed(() => this.ctx.edition()?.name ?? '');
 
@@ -46,6 +63,7 @@ export class EditionLayout {
     { label: 'Marcador', path: 'marcador' },
     { label: 'Revisión', path: 'revision' },
     { label: 'Alertas', path: 'alertas' },
+    { label: 'Aclaraciones', path: 'aclaraciones' },
   ];
 
   // Un OBSERVER solo ve Envíos, Marcador y Alertas; cualquier otro rol (y superadmin) ve todo.
@@ -69,10 +87,41 @@ export class EditionLayout {
       error: () => {},
     });
 
+    // Reloj de la edición para el header, Marcador y Concurso
+    this.clockService.get(this.id).subscribe({ next: (c) => this.liveClock.set(c), error: () => {} });
+    this.rt.onClock().pipe(takeUntilDestroyed()).subscribe((c) => {
+      if (c.editionId === this.id) this.liveClock.set(c);
+    });
+
+    this.teams.listAll(this.id).subscribe({
+      next: (teams) => this.teamNames.set(new Map(teams.map((t) => [t.id, t.name]))),
+      error: () => {},
+    });
+
+    this.clarifications.list(this.id).subscribe({
+      next: (rows) => this.unanswered.set(new Set(rows.filter((c) => c.answer == null && c.rejectedAt == null).map((c) => c.id))),
+      error: () => {},
+    });
+
     this.rt.joinEdition(this.id);
     this.rt.onSubmission().pipe(takeUntilDestroyed()).subscribe((s) => this.track(s as IStaffSubmission));
     this.rt.onFlag().pipe(takeUntilDestroyed()).subscribe((f) => this.trackFlag(f));
-    this.destroyRef.onDestroy(() => this.rt.leave(this.id));
+    this.rt.onClarification().pipe(takeUntilDestroyed()).subscribe((c) => {
+      const next = new Set(this.unanswered());
+      c.answer == null && c.rejectedAt == null ? next.add(c.id) : next.delete(c.id);
+      this.unanswered.set(next);
+    });
+    this.rt.onClarificationDelete().pipe(takeUntilDestroyed()).subscribe(({ id }) => {
+      if (!this.unanswered().has(id)) return;
+      const next = new Set(this.unanswered());
+      next.delete(id);
+      this.unanswered.set(next);
+    });
+    this.destroyRef.onDestroy(() => {
+      this.rt.leave(this.id);
+      this.toast.clear();
+      this.liveClock.clear(this.id);
+    });
   }
 
   private track(s: IStaffSubmission): void {
@@ -91,5 +140,7 @@ export class EditionLayout {
     const next = new Set(set);
     open ? next.add(f.id) : next.delete(f.id);
     this.openFlags.set(next);
+    // Alerta nueva: aviso en la esquina (las resueltas no avisan)
+    if (open) this.toast.show(this.teamNames().get(f.teamId) ?? 'Equipo #' + f.teamId, flagToastText(f.type), flagTone(f.type));
   }
 }

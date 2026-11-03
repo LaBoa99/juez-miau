@@ -1,0 +1,100 @@
+<oj-page-header title="Aclaraciones" />
+
+<p class="cl__live">
+  <span class="cl__dot" aria-hidden="true"></span>
+  En vivo · las preguntas nuevas aparecen arriba
+</p>
+<p class="cl__muted">
+  Las respuestas son públicas para todos los equipos de la categoría, pero anónimas: solo el staff ve qué equipo preguntó.
+</p>
+@if (actionError()) {
+  <oj-alert tone="error" role="alert">{{ actionError() }}</oj-alert>
+}
+
+<div class="cl__filters">
+  <oj-segmented size="sm" [options]="tabOptions()" [value]="tab()" (valueChange)="onTab($event ?? 'pending')" />
+</div>
+
+@if (error()) {
+  <oj-alert tone="error">No se pudieron cargar las aclaraciones.</oj-alert>
+} @else if (loading()) {
+  <p class="cl__muted">Cargando…</p>
+} @else if (filtered().length === 0) {
+  <oj-empty-state [message]="tab() === 'pending' ? 'No hay preguntas sin responder.' : 'Todavía no hay respuestas publicadas.'" />
+} @else {
+  <ul class="cl__list">
+    @for (c of filtered(); track c.id) {
+      <li class="cl__card" [class.cl__card--pending]="c.answer == null && c.rejectedAt == null">
+        <div class="cl__card-top">
+          <oj-badge [tone]="c.problemId == null ? 'neutral' : 'warning'">{{ problemLabel(c) }}</oj-badge>
+          @if (c.rejectedAt) {
+            <oj-badge tone="danger">Rechazada</oj-badge>
+          }
+          <span class="cl__team">{{ c.teamName }}</span>
+          <span class="cl__time oj-mono">{{ c.createdAt | date: 'HH:mm' }}</span>
+        </div>
+
+        <p class="cl__question">{{ c.question }}</p>
+
+        @if (c.answer != null) {
+          <div class="cl__answer">
+            <span class="cl__answer-label">Respuesta · <span class="oj-mono">{{ c.answeredAt | date: 'HH:mm' }}</span></span>
+            <p class="cl__answer-text">{{ c.answer }}</p>
+          </div>
+        }
+
+        <div class="oj-actions cl__card-actions">
+          <button ojButton size="sm" type="button" [variant]="c.answer == null ? 'primary' : 'secondary'" (click)="openAnswer(c)">
+            {{ c.answer == null ? 'Responder' : 'Corregir respuesta' }}
+          </button>
+          @if (!c.rejectedAt) {
+            <button ojButton size="sm" variant="danger-outline" type="button" (click)="askReject(c)">Rechazar aclaración</button>
+          }
+          @if (tab() === 'answered') {
+            <button ojButton size="sm" variant="danger" type="button" (click)="askDelete(c)">Eliminar</button>
+          }
+        </div>
+      </li>
+    }
+  </ul>
+}
+
+<oj-modal #answerModal [title]="target()?.answer == null ? 'Responder aclaración' : 'Corregir respuesta'" size="sm">
+  @if (saveError()) {
+    <oj-alert tone="error" role="alert">{{ saveError() }}</oj-alert>
+  }
+  @if (target(); as t) {
+    <p class="cl__modal-q"><strong>{{ t.teamName }}</strong> · {{ problemLabel(t) }}<br />{{ t.question }}</p>
+  }
+  <oj-form-field
+    label="Respuesta"
+    for="cl-answer"
+    hint="La verán todos los equipos, sin el nombre de quien preguntó."
+    [error]="answerInvalid() ? 'Escribe la respuesta (máximo 2000 caracteres).' : undefined"
+  >
+    <textarea id="cl-answer" rows="4" [formControl]="answerCtrl"></textarea>
+  </oj-form-field>
+  <div footer>
+    <button ojButton variant="secondary" type="button" (click)="answerModal.close()">Cancelar</button>
+    <button ojButton variant="primary" type="button" [disabled]="saving()" (click)="save()">
+      {{ saving() ? 'Publicando…' : 'Publicar respuesta' }}
+    </button>
+  </div>
+</oj-modal>
+
+<oj-confirm-dialog
+  #rejectDlg
+  title="Rechazar aclaración"
+  message="Deja de ser visible para los demás equipos y ya no cuenta como pendiente. El equipo que preguntó la verá como rechazada. Si después la respondes, se vuelve a publicar."
+  confirmLabel="Rechazar"
+  [danger]="true"
+  (confirmed)="reject()"
+/>
+<oj-confirm-dialog
+  #deleteDlg
+  title="Eliminar aclaración"
+  message="Se borra para todos, incluido el equipo que preguntó. No se puede deshacer."
+  confirmLabel="Eliminar"
+  [danger]="true"
+  (confirmed)="remove()"
+/>

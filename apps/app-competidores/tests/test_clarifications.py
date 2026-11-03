@@ -53,3 +53,9 @@ def test_by_topic_all_topics_keeps_everything_newest_first():
     items = [{"id": 1, "problemId": None, "createdAt": "2026-10-29T18:00:00.000Z"},
              {"id": 2, "problemId": 10, "createdAt": "2026-10-29T18:05:00.000Z"}]
     assert [c["id"] for c in by_topic(items, ALL_TOPICS)] == [2, 1]
+
+
+def test_merge_uses_mine_from_team_only_event():
+    # Al rechazarla, el evento público la borra y luego llega al equipo con `mine`
+    merged, previous, accepted = merge([], c(7, mine=True), set())
+    assert accepted and previous is None and merged[0]["mine"] is True

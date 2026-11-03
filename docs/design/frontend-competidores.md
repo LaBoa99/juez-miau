@@ -194,9 +194,9 @@ Ninguno. El documento está listo para empezar la fase 1.
 
 ## Pendientes del backend
 0. ~~Quitar `forbiddenProcesses` y `submissionsBlocked` de `IHeartbeatResponse`.~~ Hecho: el heartbeat solo responde `nextHeartbeatMs`.
-1. ~~Módulo de clarificaciones.~~ Hecho (ver fase 6). Falta la pantalla del staff para responder.
+1. ~~Módulo de clarificaciones.~~ Hecho (ver fase 6), con la pantalla del staff para responder (Aclaraciones en la edición).
 2. ~~Campos de hardware en `HeartbeatDto`, reglas por edición y `FlagType` nuevos.~~ Hecho (ver fase 5).
 3. (Opcional) Un evento al equipo cuando cambia `submissionsBlocked` o cuando se reemplaza su sesión.
 4. (Opcional) Un evento al entrar en congelado; hoy se calcula en el cliente con `elapsedMs >= durationMs - freezeDurationMs`.
 5. Revisar que `packages/shared-types` coincida con los DTOs del backend antes de copiar los contratos a Python.
-6. Suspensión de equipos: `Team.suspended_at` (migración `TeamSuspension`) y `PUT /editions/:id/teams/:teamId/suspension {suspended}` (solo admin). En el marcador `IStandingsRow.suspended` y `rank: null`; van al final y no le quitan lugares a nadie. La app los muestra tachados. Falta la pantalla del staff para suspender; hoy solo por API. Suspender no bloquea envíos ni el login: si se quiere, es una decisión aparte.
+6. Suspensión de equipos: `Team.suspended_at` (migración `TeamSuspension`) y `PUT /editions/:id/teams/:teamId/suspension {suspended}` (solo admin). En el marcador `IStandingsRow.suspended` y `rank: null`; van al final y no le quitan lugares a nadie. La app los muestra tachados. El staff suspende desde el marcador de la edición. Suspender no bloquea envíos ni el login: si se quiere, es una decisión aparte.

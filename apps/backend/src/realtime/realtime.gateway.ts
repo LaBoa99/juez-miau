@@ -7,7 +7,7 @@ import { ANY_EDITION_ROLE } from '../auth/decorators/access.decorators.js'
 import { AccessTokenType, type AccessTokenPayload } from '../auth/factories/access-token-payload.factory.js'
 import { EditionStaffService } from '../editions/services/edition-staff.service.js'
 import { Edition } from '../editions/entities/edition.entity.js'
-import { TeamSessionsService } from '../teams/services/team-sessions.service.js'
+import { TeamSessionsService, type TeamSessionChange } from '../teams/services/team-sessions.service.js'
 import { Team } from '../teams/entities/team.entity.js'
 import { SOCKET_EVENTS, type IJoinEdition } from '@concurso/shared-types'
 import { publicRoom, staffRoom, teamRoom } from './rooms.js'
@@ -36,7 +36,22 @@ export class RealtimeGateway implements OnGatewayConnection {
         private readonly teamSessionsService: TeamSessionsService,
         private readonly editionStaffService: EditionStaffService,
         private readonly dataSource: DataSource,
-    ) {}
+    ) {
+        // El token del equipo solo se revisa al conectar: al reemplazar o cerrar su sesión
+        // se desconectan aquí los sockets que siguen abiertos con la sesión vieja
+        this.teamSessionsService.changes.subscribe((change) => {
+            this.closeStaleTeamSockets(change).catch((error) => this.logger.warn('could not close team sockets: ' + String(error)))
+        })
+    }
+
+    async closeStaleTeamSockets({ teamId, activeSessionId }: TeamSessionChange): Promise<void> {
+        if(!this.server) return
+        const sockets = await this.server.in(teamRoom(teamId)).fetchSockets()
+        for(const socket of sockets){
+            const user = (socket.data as SocketData).user
+            if(user?.type === AccessTokenType.TEAM && user.sid !== activeSessionId) socket.disconnect(true)
+        }
+    }
 
     async handleConnection(socket: ClientSocket): Promise<void> {
         const token: unknown = socket.handshake.auth?.token

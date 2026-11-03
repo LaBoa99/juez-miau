@@ -1,5 +1,5 @@
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QMenu, QStyle, QSystemTrayIcon
+from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 
 class NotificationService(QObject):
@@ -10,7 +10,7 @@ class NotificationService(QObject):
 
     def __init__(self, app):
         super().__init__()
-        self.tray = QSystemTrayIcon(app.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon))
+        self.tray = QSystemTrayIcon(app.windowIcon())
         self.tray.setToolTip("Concurso")
         menu = QMenu()
         menu.addAction("Abrir", self.open_requested.emit)

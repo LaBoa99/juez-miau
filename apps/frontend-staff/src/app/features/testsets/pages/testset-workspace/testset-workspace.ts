@@ -17,7 +17,6 @@ import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } fr
 import { RouterLink } from '@angular/router';
 import {
   CompareMode,
-  IEditionLanguage,
   ILanguage,
   IProblemDetail,
   IProblemSignature,
@@ -52,8 +51,9 @@ import { ProblemsService } from '../../../problems/data/problems.service';
 import { EditionLanguagesService } from '../../../editions/edition-languages/data/edition-languages.service';
 import { TestsetsService } from '../../data/testsets.service';
 import { RandomGroup, groupsToSchema, schemaToGroups } from './random-schema';
-import { forkJoin, switchMap } from 'rxjs';
+import { switchMap } from 'rxjs';
 import { TestRunModal } from '../test-run-modal/test-run-modal';
+import { CodeBlock } from '../../../../shared/ui/code-block.component';
 
 // Identificador válido (igual que el backend): letras, dígitos y _, hasta 64, sin empezar por dígito.
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
@@ -118,6 +118,7 @@ const STEP_TEXT: Record<TestsetStep, { title: string; hint: string }> = {
     FileDrop,
     ConfirmDialog,
     TestsetStatusPipe,
+    CodeBlock,
   ],
   templateUrl: './testset-workspace.html',
   styleUrls: ['./testset-workspace.css', './testset-workspace.boxes.css'],
@@ -141,7 +142,6 @@ export class TestsetWorkspace {
   // Pasos que la advertencia del paso actual marca como afectados (la barra los pinta en amarillo)
   readonly affects = output<TestsetStep[]>();
   private readonly problemId = computed(() => this.problem().id);
-  private readonly editionId = computed(() => this.problem().editionId);
 
   protected readonly testset = signal<ITestsetDetail | null>(null);
   private readonly loaded = computed(() => this.testset() !== null);
@@ -520,11 +520,7 @@ export class TestsetWorkspace {
   }
 
   constructor() {
-    // Los lenguajes dependen de la edición del problema (se cargan una vez)
-    effect(() => {
-      const editionId = this.editionId();
-      untracked(() => this.loadLanguages(editionId));
-    });
+    this.loadLanguages();
 
     // Al llegar el problema, abre la versión en curso (la última, si no está construida) o la vigente.
     effect(() => {
@@ -576,16 +572,22 @@ export class TestsetWorkspace {
     this.destroyRef.onDestroy(() => this.stopPoll());
   }
 
-  // El backend solo acepta lenguajes activos y habilitados en la edición. La lista de la edición
-  // trae el código, no el id, así que se cruza con el catálogo.
-  private loadLanguages(editionId: number): void {
-    forkJoin([this.languagesService.catalog(), this.languagesService.ofEdition(editionId)]).subscribe({
-      next: ([catalog, enabled]: [ILanguage[], IEditionLanguage[]]) => {
-        const codes = new Set(enabled.filter((l) => l.active).map((l) => l.code));
-        this.languages.set(catalog.filter((l) => l.active && codes.has(l.code)).map((l) => ({ id: l.id, code: l.code })));
+  // Los programas del staff aceptan cualquier lenguaje activo, no solo los habilitados en la edición
+  private loadLanguages(): void {
+    this.languagesService.catalog().subscribe({
+      next: (catalog: ILanguage[]) => {
+        this.languages.set(catalog.filter((l) => l.active).map((l) => ({ id: l.id, code: l.code })));
       },
       error: () => {},
     });
+  }
+
+  // Id del testset cuya última verificación / prueba de la oficial dio AC (solo en esta pantalla)
+  protected readonly passed = signal<{ verify: number | null; ref: number | null }>({ verify: null, ref: null });
+
+  protected markPassed(kind: 'ref' | 'verify'): void {
+    const id = this.testset()?.id ?? null;
+    this.passed.update((p) => ({ ...p, [kind]: id }));
   }
 
   enabledLanguages(): EnabledLanguage[] {

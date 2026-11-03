@@ -30,6 +30,10 @@ export class AntiCheatTab {
   protected readonly selected = signal<Set<string>>(new Set());
   protected readonly otros = signal<string[]>([]);
   protected readonly blockOnAlert = signal(false);
+  // null: no se vigilan los monitores
+  protected readonly maxMonitors = signal<number | null>(null);
+  protected readonly watchUsb = signal(false);
+  protected readonly watchNetwork = signal(false);
   protected readonly saving = signal(false);
   protected readonly saveError = signal<string | null>(null);
 
@@ -51,6 +55,9 @@ export class AntiCheatTab {
         this.selected.set(selected);
         this.otros.set(otros);
         this.blockOnAlert.set(e.block_submissions_on_alert);
+        this.maxMonitors.set(e.max_monitors);
+        this.watchUsb.set(e.watch_usb_storage);
+        this.watchNetwork.set(e.watch_network);
       }
     });
   }
@@ -74,6 +81,12 @@ export class AntiCheatTab {
     const n = normalizeProcessName(v);
     if (this.otros().some((o) => normalizeProcessName(o) === n)) return;
     this.otros.update((list) => [...list, v]);
+  }
+
+  // Vacío apaga la regla; el backend acepta de 1 a 8.
+  setMaxMonitors(value: string): void {
+    const n = Math.floor(Number(value));
+    this.maxMonitors.set(value.trim() && n >= 1 ? Math.min(n, 8) : null);
   }
 
   removeOtro(value: string): void {
@@ -107,6 +120,9 @@ export class AntiCheatTab {
       .update(this.editionId, {
         forbidden_processes: forbidden,
         block_submissions_on_alert: this.blockOnAlert(),
+        max_monitors: this.maxMonitors(),
+        watch_usb_storage: this.watchUsb(),
+        watch_network: this.watchNetwork(),
       })
       .subscribe({
         next: () => {

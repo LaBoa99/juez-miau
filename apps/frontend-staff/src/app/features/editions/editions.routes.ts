@@ -19,6 +19,7 @@ import { SubmissionDetail } from '../submissions/pages/submission-detail/submiss
 import { StandingsPage } from '../standings/pages/standings-page/standings-page';
 import { ReviewPage } from '../review/pages/review-page/review-page';
 import { AlertsPage } from '../flags/pages/alerts-page/alerts-page';
+import { ClarificationsPage } from '../clarifications/pages/clarifications-page/clarifications-page';
 
 export const routes: Routes = [
   {
@@ -71,6 +72,7 @@ export const routes: Routes = [
           { path: 'marcador', component: StandingsPage, data: { breadcrumb: 'Marcador' } },
           { path: 'revision', component: ReviewPage, data: { breadcrumb: 'Revisión' } },
           { path: 'alertas', component: AlertsPage, data: { breadcrumb: 'Alertas' } },
+          { path: 'aclaraciones', component: ClarificationsPage, data: { breadcrumb: 'Aclaraciones' } },
           { path: '', redirectTo: 'configuracion', pathMatch: 'full' },
         ],
       },

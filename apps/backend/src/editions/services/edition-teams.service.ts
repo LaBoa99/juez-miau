@@ -138,6 +138,7 @@ export class EditionTeamsService {
                 room: null,
                 members: team.members.map((member) => ({ id: member.id, name: member.full_name, career: member.career })),
                 online: false,
+                suspended: false,
             },
             credentials: { teamName: team.name, username: team.username, password },
         }
@@ -156,6 +157,7 @@ export class EditionTeamsService {
                 room: team.room ? { id: team.room.id, name: team.room.name } : null,
                 members: team.members.map((member) => ({ id: member.id, name: member.full_name, career: member.career })),
                 online: !!team.teamSession && !team.teamSession.ended_at,
+                suspended: team.suspended_at !== null,
             })),
             total,
         }

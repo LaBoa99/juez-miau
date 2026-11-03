@@ -23,6 +23,7 @@ export class LoginStaff {
   loginForm = form(LoginModel);
   readonly error = signal<string | null>(null);
   readonly submitting = signal(false);
+  readonly showPassword = signal(false);
 
   onSubmit(event: Event) {
     event.preventDefault();

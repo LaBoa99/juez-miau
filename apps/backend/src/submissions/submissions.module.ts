@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
+import { BlobsModule } from '../blobs/blobs.module.js';
 import { Edition } from '../editions/entities/edition.entity.js';
 import { EditionsModule } from '../editions/editions.module.js';
 import { FlagsModule } from '../flags/flags.module.js';
@@ -12,15 +13,17 @@ import { SubmissionsController } from './controllers/submissions.controller.js';
 import { Submission } from './entities/submission.entity.js';
 import { SubmissionCase } from './entities/submission-case.entity.js';
 import { SubmissionHistory } from './entities/submission-history.entity.js';
+import { SubmissionReview } from './entities/submission-review.entity.js';
 import { SubmissionQueueService } from './services/submission-queue.service.js';
 import { SubmissionsService } from './services/submissions.service.js';
 import { SUBMISSIONS_QUEUE } from './submissions.constants.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Submission, SubmissionCase, SubmissionHistory, Team, Problem, Language, Edition]),
+    TypeOrmModule.forFeature([Submission, SubmissionCase, SubmissionHistory, SubmissionReview, Team, Problem, Language, Edition]),
     // Aquí solo se encolan envíos; el consumidor vive en el worker
     BullModule.registerQueue({ name: SUBMISSIONS_QUEUE }),
+    BlobsModule,
     EditionsModule,
     FlagsModule,
     RealtimeModule,

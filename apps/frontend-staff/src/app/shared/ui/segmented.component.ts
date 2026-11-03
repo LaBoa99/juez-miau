@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, input, model } from '@angular/core';
+import { TooltipDirective } from './tooltip.directive';
 
 @Component({
   selector: 'oj-segmented',
+  imports: [TooltipDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.oj-seg--lg]': "size() === 'lg'",
@@ -15,6 +17,8 @@ import { ChangeDetectionStrategy, Component, input, model } from '@angular/core'
         [attr.aria-pressed]="opt.value === value()"
         [disabled]="disabled() || opt.disabled"
         (click)="value.set(opt.value)"
+        [ojTooltip]="opt.hint ?? ''"
+        [class.oj-seg__btn--plain]="!opt.hint"
       >
         {{ opt.label }}
       </button>
@@ -25,7 +29,16 @@ import { ChangeDetectionStrategy, Component, input, model } from '@angular/core'
       display: inline-flex;
       border: 1px solid var(--oj-border);
       border-radius: var(--oj-radius);
-      overflow: hidden;
+    }
+    /* Sin overflow:hidden (recortaría el tooltip): las esquinas las redondean la primera y la última opción */
+    .oj-seg__btn:first-child {
+      border-radius: var(--oj-radius) 0 0 var(--oj-radius);
+    }
+    .oj-seg__btn:last-child {
+      border-radius: 0 var(--oj-radius) var(--oj-radius) 0;
+    }
+    .oj-seg__btn:only-child {
+      border-radius: var(--oj-radius);
     }
     .oj-seg__btn {
       height: 30px;
@@ -56,6 +69,10 @@ import { ChangeDetectionStrategy, Component, input, model } from '@angular/core'
     .oj-seg__btn--active + .oj-seg__btn {
       border-left-color: transparent;
     }
+    /* Opciones sin ayuda: no se muestra el globo vacío */
+    .oj-seg__btn--plain ::ng-deep > .oj-tooltip {
+      display: none;
+    }
     .oj-seg__btn:disabled:not(.oj-seg__btn--active) {
       color: var(--oj-text-muted);
       cursor: not-allowed;
@@ -74,7 +91,8 @@ import { ChangeDetectionStrategy, Component, input, model } from '@angular/core'
   `,
 })
 export class Segmented {
-  readonly options = input<{ value: string; label: string; disabled?: boolean }[]>([]);
+  // hint: texto de ayuda que se muestra con hover y foco de teclado
+  readonly options = input<{ value: string; label: string; disabled?: boolean; hint?: string }[]>([]);
   readonly value = model<string>();
   readonly size = input<'sm' | 'lg'>('sm');
   readonly disabled = input(false);

@@ -8,11 +8,27 @@ const logger = new Logger('LanguageSeeder')
 // - El código se guarda como Main.<file_ext> en el directorio de trabajo del contenedor
 // - `flags` se agrega al final de `compile_cmd`
 // - Los lenguajes interpretados usan compile_cmd como chequeo de sintaxis (falla = CE)
-// Imágenes según docs/design/judge-evaluation.md
-const LANGUAGES: Omit<Language, 'id' | 'active'>[] = [
+// Imágenes según docs/design/judge-evaluation.md. Las define deploy/docker-compose.yml (JUDGE_IMAGE_*),
+// que también las descarga; sin esas variables (desarrollo) se usan estos valores
+const IMAGES = {
+    gcc: ['JUDGE_IMAGE_GCC', 'gcc:14'],
+    dotnet: ['JUDGE_IMAGE_DOTNET', 'mcr.microsoft.com/dotnet/sdk:8.0'],
+    java: ['JUDGE_IMAGE_JAVA', 'eclipse-temurin:21-jdk'],
+    node: ['JUDGE_IMAGE_NODE', 'node:24-slim'],
+    python: ['JUDGE_IMAGE_PYTHON', 'python:3.12-slim'],
+} as const
+
+type Image = keyof typeof IMAGES
+
+function imageRef(image: Image): string {
+    const [variable, fallback] = IMAGES[image]
+    return process.env[variable]?.trim() || fallback
+}
+
+const LANGUAGES: (Omit<Language, 'id' | 'active' | 'image_ref'> & { image: Image })[] = [
     {
         code: 'c',
-        image_ref: 'gcc:14',
+        image: 'gcc',
         compile_cmd: 'gcc Main.c -o main',
         run_cmd: './main',
         compiler_version: 'GCC 14',
@@ -22,7 +38,7 @@ const LANGUAGES: Omit<Language, 'id' | 'active'>[] = [
     },
     {
         code: 'cpp',
-        image_ref: 'gcc:14',
+        image: 'gcc',
         compile_cmd: 'g++ Main.cpp -o main',
         run_cmd: './main',
         compiler_version: 'GCC 14',
@@ -32,7 +48,7 @@ const LANGUAGES: Omit<Language, 'id' | 'active'>[] = [
     },
     {
         code: 'csharp',
-        image_ref: 'mcr.microsoft.com/dotnet/sdk:8.0',
+        image: 'dotnet',
         // .NET 8 no compila un .cs suelto: se arma un csproj mínimo al vuelo
         compile_cmd: `printf '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><AssemblyName>Main</AssemblyName></PropertyGroup></Project>' > Main.csproj && dotnet build Main.csproj -c Release -o out --nologo -v q`,
         run_cmd: 'dotnet out/Main.dll',
@@ -43,7 +59,7 @@ const LANGUAGES: Omit<Language, 'id' | 'active'>[] = [
     },
     {
         code: 'java',
-        image_ref: 'eclipse-temurin:21-jdk',
+        image: 'java',
         compile_cmd: 'javac -encoding UTF-8 Main.java',
         // Sin MaxRAMPercentage la JVM usa solo 1/4 del límite del contenedor como heap
         run_cmd: 'java -Xss64m -XX:+UseSerialGC -XX:MaxRAMPercentage=75 Main',
@@ -54,7 +70,7 @@ const LANGUAGES: Omit<Language, 'id' | 'active'>[] = [
     },
     {
         code: 'javascript',
-        image_ref: 'node:24-slim',
+        image: 'node',
         compile_cmd: 'node --check Main.js',
         run_cmd: 'node Main.js',
         compiler_version: 'Node.js 24',
@@ -64,7 +80,7 @@ const LANGUAGES: Omit<Language, 'id' | 'active'>[] = [
     },
     {
         code: 'typescript',
-        image_ref: 'node:24-slim',
+        image: 'node',
         // `node --check` no entiende tipos; stripTypeScriptTypes falla con errores de sintaxis
         // y con sintaxis no borrable (enum, namespace), igual que al ejecutar con type-stripping
         compile_cmd: `node --disable-warning=ExperimentalWarning -e "require('node:module').stripTypeScriptTypes(require('node:fs').readFileSync('Main.ts', 'utf8'))"`,
@@ -76,7 +92,7 @@ const LANGUAGES: Omit<Language, 'id' | 'active'>[] = [
     },
     {
         code: 'python',
-        image_ref: 'python:3.12-slim',
+        image: 'python',
         compile_cmd: 'python3 -m py_compile Main.py',
         run_cmd: 'python3 Main.py',
         compiler_version: 'Python 3.12',
@@ -90,10 +106,17 @@ const LANGUAGES: Omit<Language, 'id' | 'active'>[] = [
 export const languageSeeder: Seeder = {
     name: 'base/language',
     async run({ manager }) {
-        for (const language of LANGUAGES) {
-            if (await manager.existsBy(Language, { code: language.code })) continue
-            await manager.insert(Language, language)
-            logger.log(`${language.code} creado`)
+        for (const { image, ...language } of LANGUAGES) {
+            const ref = imageRef(image)
+            const existing = await manager.findOneBy(Language, { code: language.code })
+            if (!existing) {
+                await manager.insert(Language, { ...language, image_ref: ref })
+                logger.log(`${language.code} creado`)
+            } else if (existing.image_ref !== ref) {
+                // Solo la imagen: "active" lo maneja el staff desde el panel y no se toca
+                await manager.update(Language, { id: existing.id }, { image_ref: ref })
+                logger.log(`${language.code}: imagen ${existing.image_ref} → ${ref}`)
+            }
         }
     },
 }

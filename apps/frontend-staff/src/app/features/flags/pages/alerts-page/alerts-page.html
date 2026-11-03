@@ -51,11 +51,17 @@
           <p class="al__resolved-by">
             Resuelta por {{ resolverName(f) }}@if (f.resolutionNote) { · “{{ f.resolutionNote }}”}
           </p>
-        } @else {
-          <div class="oj-actions al__card-actions">
-            <button ojButton variant="secondary" size="sm" type="button" (click)="openResolve(f)">Resolver</button>
-          </div>
         }
+        <div class="oj-actions al__card-actions">
+          @if (!f.resolvedAt) {
+            <button ojButton variant="secondary" size="sm" type="button" (click)="openResolve(f)">Resolver</button>
+          }
+          @if (canSuspend()) {
+            <button ojButton size="sm" type="button" [variant]="isSuspended(f.teamId) ? 'success' : 'warning'" (click)="askSuspend(f)">
+              {{ isSuspended(f.teamId) ? 'Reactivar equipo' : 'Suspender equipo' }}
+            </button>
+          }
+        </div>
       </li>
     }
   </ul>
@@ -118,3 +124,14 @@
     </button>
   </div>
 </oj-modal>
+
+<oj-confirm-dialog
+  #suspendDlg
+  [title]="suspendTarget()?.suspend ? 'Suspender equipo' : 'Reactivar equipo'"
+  [message]="suspendTarget()?.suspend
+    ? (suspendTarget()?.name + ' saldrá de la app y no podrá entrar ni enviar. En el marcador queda tachado y sin lugar.')
+    : (suspendTarget()?.name + ' podrá volver a entrar y enviar.')"
+  [confirmLabel]="suspendTarget()?.suspend ? 'Suspender' : 'Reactivar'"
+  [danger]="suspendTarget()?.suspend ?? false"
+  (confirmed)="confirmSuspend()"
+/>

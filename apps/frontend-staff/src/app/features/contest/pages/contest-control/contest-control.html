@@ -18,8 +18,7 @@
       </header>
 
       <div class="cc__center">
-        <span class="cc__time-label">Tiempo transcurrido</span>
-        <div class="cc__time oj-mono">{{ elapsedText() }}</div>
+        <oj-contest-countdown class="cc__countdown" [clock]="c" />
         @if (status() === EditionStatus.PAUSED) {
           <p class="cc__paused">En pausa · los envíos están bloqueados</p>
         }
@@ -57,19 +56,25 @@
           </div>
         }
         @case (EditionStatus.RUNNING) {
-          <div class="oj-actions cc__actions">
-            <button ojButton variant="warning" type="button" [disabled]="busy()" (click)="pause()">Pausar</button>
-            <button ojButton variant="danger-outline" type="button" [disabled]="busy()" (click)="askFinish()">
-              Finalizar concurso
-            </button>
-          </div>
+          @if (canStopContest()) {
+            <div class="oj-actions cc__actions">
+              <button ojButton variant="warning" type="button" [disabled]="busy()" (click)="pause()">Pausar</button>
+              <button ojButton variant="danger-outline" type="button" [disabled]="busy()" (click)="askFinish()">
+                Finalizar concurso
+              </button>
+            </div>
+          } @else {
+            <p class="cc__note">Solo un superadmin puede pausar o finalizar el concurso.</p>
+          }
         }
         @case (EditionStatus.PAUSED) {
           <div class="oj-actions cc__actions">
             <button ojButton variant="success" type="button" [disabled]="busy()" (click)="resume()">Reanudar</button>
-            <button ojButton variant="danger-outline" type="button" [disabled]="busy()" (click)="askFinish()">
-              Finalizar concurso
-            </button>
+            @if (canStopContest()) {
+              <button ojButton variant="danger-outline" type="button" [disabled]="busy()" (click)="askFinish()">
+                Finalizar concurso
+              </button>
+            }
           </div>
         }
         @case (EditionStatus.FINISHED) {

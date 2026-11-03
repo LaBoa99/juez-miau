@@ -1,6 +1,8 @@
 import sys
+from pathlib import Path
 
 from PySide6.QtCore import QLibraryInfo, QTranslator
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from commands.base import CommandInvoker
@@ -25,9 +27,16 @@ from views.style import apply_theme
 
 
 def main():
+    if sys.platform == "win32":
+        # Sin esto Windows agrupa la ventana bajo python.exe y muestra su ícono en la barra de tareas
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("JuezMiau.Competidores")
     app = QApplication(sys.argv)
+    app.setApplicationName("Juez Miau")
     app.setQuitOnLastWindowClosed(False)
     apply_theme(app)
+    app.setWindowIcon(QIcon(str(Path(__file__).parent / "assets" / "gatito.svg")))
     # Textos de Qt (diálogos de archivo, botones estándar) en español
     translator = QTranslator(app)
     if translator.load("qtbase_es", QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)):

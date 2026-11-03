@@ -8,6 +8,8 @@ export interface IClarification {
     answer: string | null
     createdAt: string | Date
     answeredAt: string | Date | null
+    // El staff la rechazó (contenido indebido o revela una respuesta): no se publica a los demás
+    rejectedAt: string | Date | null
     // Solo en las respuestas al propio equipo; el evento público no lo trae
     mine?: boolean
 }
@@ -25,4 +27,9 @@ export interface ICreateClarification {
 
 export interface IAnswerClarification {
     answer: string
+}
+
+// clarification:delete — el staff la eliminó; cada cliente la quita de su lista
+export interface IClarificationDeleted {
+    id: number
 }

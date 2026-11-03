@@ -40,18 +40,8 @@
   gap: var(--oj-space-xs);
   text-align: center;
 }
-.cc__time-label {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--oj-text-muted);
-}
-.cc__time {
-  font-size: 72px;
-  font-weight: 700;
-  line-height: 1.05;
-  font-variant-numeric: tabular-nums;
+.cc__countdown {
+  align-self: stretch;
 }
 .cc__paused {
   margin: 0;
@@ -107,9 +97,6 @@
   .cc__facts > div:nth-child(odd) {
     border-left: 0;
     padding-left: 0;
-  }
-  .cc__time {
-    font-size: 56px;
   }
 }
 
@@ -179,4 +166,11 @@
   margin: 0;
   color: var(--oj-text-muted);
   font-size: 13px;
+}
+
+.cc__note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--oj-text-muted);
+  text-align: center;
 }

@@ -101,7 +101,7 @@ Hallazgos que cambian el orden:
   - **Vista del equipo**: `GET /contest` regresa reloj, lenguajes y problemas de su categoría con ejemplos y `starterCode`. Antes del inicio, la lista de problemas va vacía.
   - `EditionStaffService.assertRole(userId, editionId, roles[])` generaliza `assertCanJudge`.
   - Pruebas: `test/contest.e2e-spec.ts` (simulacro completo con `JUDGE_DOCKER=1`) y `clock.spec.ts`.
-  - Pendiente: cerrar los sockets de un equipo cuando se revoca su sesión. Hoy el token solo se revisa al conectar.
+  - ~~Pendiente: cerrar los sockets de un equipo cuando se revoca su sesión.~~ Hecho: `TeamSessionsService.changes` avisa al gateway, que desconecta los sockets de la sesión vieja.
 
 - Fase 5 implementada (2026-10-27) → **el backend ya permite el Simulacro 1**:
   - `src/standings/icpc.ts`: `computeStandings()` es una función pura con pruebas. Ordena por resueltos, luego por penalización (minuto del AC + 20 por cada rechazo previo; CE no cuenta) y luego por el último AC más temprano. Los empates exactos comparten lugar. También marca al primero en resolver por categoría y cuenta los pendientes.
@@ -175,10 +175,10 @@ Hallazgos que cambian el orden:
   - Se construyó y probó la imagen: trae el runner, el CLI de Docker y las migraciones, y el entrypoint migra y siembra una BD vacía.
 
 ## Pendiente después de las fases
-- Frontends: consumir `GET /contest`, `POST /submissions`, el socket `/ws`, el marcador, la cola de revisión, las alertas y la bitácora.
+- ~~Frontends: consumir `GET /contest`, `POST /submissions`, el socket `/ws`, el marcador, la cola de revisión, las alertas y la bitácora.~~ Hecho.
 - Tipos `enum` y `object` en firmas y drivers.
-- Calibrar `time_multiplier` (sobre todo Python) con `scripts/judge-bench`.
-- Cerrar los sockets de un equipo al revocar su sesión.
+- Calibrar `time_multiplier` (sobre todo Python) con `scripts/judge-bench`, en el hardware del concurso (ver `deploy/README.md`).
+- ~~Cerrar los sockets de un equipo al revocar su sesión.~~ Hecho.
 
 ## Decisiones abiertas originales
 1. **Formato de los problemas.** Para el simulacro, stdin/stdout comparando por tokens (recomendado) o problemas por función desde el inicio.

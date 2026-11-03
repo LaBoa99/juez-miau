@@ -3,6 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { In, IsNull, LessThanOrEqual, Not, Repository, type FindOptionsWhere } from 'typeorm'
 import { EditionStatus, SOCKET_EVENTS, type IContestClock } from '@concurso/shared-types'
 import { Edition } from '../editions/entities/edition.entity.js'
+import { Submission } from '../submissions/entities/submission.entity.js'
+import { Clarification } from '../clarifications/entities/clarification.entity.js'
+import { Flag } from '../flags/entities/flag.entity.js'
+import { Team } from '../teams/entities/team.entity.js'
+import { TeamSession } from '../teams/entities/team-session.entity.js'
 import { RealtimeService } from '../realtime/realtime.service.js'
 import { elapsedMs, remainingMs, toClockDto } from './clock.js'
 
@@ -65,6 +70,43 @@ export class ContestClockService {
                 finished_at: new Date(end),
             }
         })
+    }
+
+    // Superadmin: reutilizar la edición. Vuelve a borrador y borra lo que dejó el concurso (envíos,
+    // aclaraciones, alertas y sesiones); conserva equipos, problemas y configuración. No se deshace.
+    async reset(editionId: number): Promise<IContestClock> {
+        const from = [EditionStatus.DRAFT, EditionStatus.SCHEDULED, EditionStatus.PAUSED, EditionStatus.FINISHED]
+        const edition = await this.getEdition(editionId)
+        if(!from.includes(edition.status)){
+            throw new ConflictException('edition #' + editionId + ' is ' + edition.status + '; pause or finish it before resetting')
+        }
+        const update: Partial<Edition> = {
+            status: EditionStatus.DRAFT,
+            scheduled_start: null,
+            started_at: null,
+            paused_at: null,
+            paused_total_ms: 0,
+            finished_at: null,
+        }
+        await this.editionRepository.manager.transaction(async (manager) => {
+            const result = await manager.update(Edition, { id: editionId, status: In(from) }, update)
+            if(!result.affected) throw new ConflictException('edition #' + editionId + ' changed while resetting; try again')
+            // Casos, historial y revisiones de los envíos se van en cascada
+            await manager.delete(Submission, { edition_id: editionId })
+            await manager.delete(Clarification, { edition_id: editionId })
+            await manager.delete(Flag, { edition_id: editionId })
+            await manager.createQueryBuilder().delete().from(TeamSession)
+                .where('team_id IN ' + manager.createQueryBuilder().subQuery().select('team.id').from(Team, 'team').where('team.edition_id = :editionId').getQuery())
+                .setParameter('editionId', editionId)
+                .execute()
+        })
+
+        Object.assign(edition, update)
+        const clock = toClockDto(edition)
+        this.logger.log('edition #' + editionId + ' was reset to DRAFT')
+        this.realtime.toPublic(editionId, SOCKET_EVENTS.CLOCK_UPDATE, clock)
+        this.transitionListeners.forEach((listener) => listener(editionId))
+        return clock
     }
 
     // Lo llama el tick (ContestClockProcessor): arranca las programadas y termina las que se acabaron

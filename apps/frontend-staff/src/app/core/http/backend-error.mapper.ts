@@ -43,10 +43,30 @@ const PATTERNS: readonly [RegExp, string][] = [
   // ── Envíos / concurso ──
   [/contest is not running/i, 'El concurso no está en curso.'],
   [/language .* is not enabled|not enabled in this contest/i, 'El lenguaje no está habilitado en este concurso.'],
+  [/cannot be sent to review/i, 'Solo se puede mandar a revisión un envío ya juzgado que no esté en revisión.'],
+  [/is not pending review/i, 'El envío ya no está pendiente de revisión.'],
+  [/belongs to another category/i, 'El salón es de otra categoría.'],
   [/blocked until the staff reviews an alert/i, 'Los envíos están bloqueados hasta que el staff revise una alerta del equipo.'],
   // ── Email / recursos ──
   [/email .* ya está registrado|already registered/i, 'Ese correo ya está registrado.'],
 ];
+
+// Textos fijos del juez en `message` de un caso (judge.service.ts, compare.ts). Lista aparte: los
+// patrones generales de arriba (duration, username...) podrían coincidir con el stderr de un programa.
+const JUDGE_PATTERNS: readonly [RegExp, string][] = [
+  [/rejected by the checker/i, 'El checker rechazó la salida del programa.'],
+  [/ended without returning a result/i, 'El programa terminó sin devolver un resultado.'],
+  [/not valid JSON/i, 'El resultado no es un valor válido (¿NaN o Infinity?).'],
+  [/^result\S*: expected /i, 'El resultado no tiene el tipo que pide la firma.'],
+];
+
+// Traduce un mensaje fijo del juez; null si no es uno conocido (p. ej. el stderr del programa).
+export function judgeMessage(raw: string): string | null {
+  for (const [re, es] of JUDGE_PATTERNS) {
+    if (re.test(raw)) return es;
+  }
+  return null;
+}
 
 function translateOne(raw: string): string | null {
   for (const [re, es] of PATTERNS) {

@@ -39,7 +39,7 @@
     @if (run(); as r) {
       @if (r.status === 'done' && mode() === 'verify') {
         <div class="tr__summary">
-          <oj-badge [tone]="(r.verdict | verdict: DONE).tone">{{ (r.verdict | verdict: DONE).label }}</oj-badge>
+          <oj-badge [tone]="(r.verdict | verdict: DONE).tone" [ojTooltip]="(r.verdict | verdict: DONE).hint">{{ (r.verdict | verdict: DONE).label }}</oj-badge>
           <span class="tr__muted oj-mono">{{ r.judged }} de {{ r.total }} casos · máx {{ maxTime() }} ms</span>
         </div>
         @if (r.compileLog) {
@@ -62,7 +62,7 @@
                       @if (c.verdict === 'AC') {
                         <span class="tr__ok">Correcta</span>
                       } @else {
-                        <oj-badge [tone]="(c.verdict | verdict: DONE).tone">{{ (c.verdict | verdict: DONE).label }}</oj-badge>
+                        <oj-badge [tone]="(c.verdict | verdict: DONE).tone" [ojTooltip]="(c.verdict | verdict: DONE).hint">{{ (c.verdict | verdict: DONE).label }}</oj-badge>
                         <span class="tr__msg oj-mono" [title]="c.message ?? ''">{{ lastLine(c.message) }}</span>
                       }
                     </td>
@@ -77,7 +77,7 @@
         }
       } @else if (r.status === 'done') {
         <div class="tr__summary">
-          <oj-badge [tone]="(r.verdict | verdict: DONE).tone">{{ (r.verdict | verdict: DONE).label }}</oj-badge>
+          <oj-badge [tone]="(r.verdict | verdict: DONE).tone" [ojTooltip]="(r.verdict | verdict: DONE).hint">{{ (r.verdict | verdict: DONE).label }}</oj-badge>
           <span class="tr__muted oj-mono">{{ r.judged }} de {{ r.total }} casos · máx {{ maxTime() }} ms</span>
         </div>
         @if (r.compileLog) {
@@ -93,7 +93,7 @@
                 @for (c of r.cases; track c.ordinal) {
                   <tr>
                     <td class="oj-mono">#{{ c.ordinal }}</td>
-                    <td><oj-badge [tone]="(c.verdict | verdict: DONE).tone">{{ (c.verdict | verdict: DONE).label }}</oj-badge></td>
+                    <td><oj-badge [tone]="(c.verdict | verdict: DONE).tone" [ojTooltip]="(c.verdict | verdict: DONE).hint">{{ (c.verdict | verdict: DONE).label }}</oj-badge></td>
                     <td class="tr__num oj-mono">{{ c.timeMs }} ms</td>
                     <td class="tr__num oj-mono">{{ mb(c.memoryKb) }} MB</td>
                     <td class="tr__msg oj-mono" [title]="c.message ?? ''">{{ lastLine(c.message) }}</td>

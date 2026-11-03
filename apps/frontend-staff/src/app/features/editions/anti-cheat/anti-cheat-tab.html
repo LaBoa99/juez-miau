@@ -50,6 +50,32 @@
   }
 </div>
 
+<fieldset class="ac__group">
+  <legend class="ac__legend">Hardware</legend>
+  <label class="ac__option" for="ac-monitors">
+    <span class="ac__option-label">Máximo de monitores</span>
+    <input
+      id="ac-monitors"
+      class="ac__monitors oj-mono"
+      type="number"
+      min="1"
+      max="8"
+      placeholder="sin límite"
+      [value]="maxMonitors() ?? ''"
+      [disabled]="!editable()"
+      (change)="setMaxMonitors($any($event.target).value)"
+    />
+  </label>
+  <label class="ac__option">
+    <input type="checkbox" [checked]="watchUsb()" [disabled]="!editable()" (change)="watchUsb.set($any($event.target).checked)" />
+    <span class="ac__option-label">Avisar si se conecta una memoria USB</span>
+  </label>
+  <label class="ac__option">
+    <input type="checkbox" [checked]="watchNetwork()" [disabled]="!editable()" (change)="watchNetwork.set($any($event.target).checked)" />
+    <span class="ac__option-label">Avisar si aparece una conexión de red nueva</span>
+  </label>
+</fieldset>
+
 <label class="ac__block">
   <input
     type="checkbox"

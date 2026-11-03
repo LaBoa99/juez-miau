@@ -52,6 +52,20 @@ export const FORBIDDEN_PROCESS_CATALOG: ForbiddenProcessGroup[] = [
       { id: 'rustdesk', etiqueta: 'RustDesk', procesos: ['rustdesk'] },
     ],
   },
+  {
+    grupo: 'Ofimática',
+    opciones: [
+      {
+        id: 'msoffice',
+        etiqueta: 'Microsoft Office',
+        procesos: ['winword', 'excel', 'powerpnt', 'outlook', 'onenote', 'msaccess', 'mspub', 'visio', 'winproj'],
+      },
+      // Windows reporta soffice.exe y soffice.bin; Linux solo soffice.bin
+      { id: 'libreoffice', etiqueta: 'LibreOffice', procesos: ['soffice', 'soffice.bin'] },
+      // Writer, Spreadsheets y Presentation
+      { id: 'wps', etiqueta: 'WPS Office', procesos: ['wps', 'et', 'wpp'] },
+    ],
+  },
 ];
 
 // Mismo criterio que el backend (integrity.service.normalizeProcessName).

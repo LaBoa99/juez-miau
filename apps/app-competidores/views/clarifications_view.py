@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 )
 
 from services.clarification_service import ALL_TOPICS, by_topic
-from views.style import ACCENT, LG, MD, SM, TEXT_MUTED, XS
+from views.style import ACCENT, ERROR, LG, MD, SM, TEXT_MUTED, XS
 
 GENERAL = "General del concurso"
 ALL = "Todos los temas"
@@ -28,7 +28,7 @@ class ClarificationsView(QWidget):
 
         title = QLabel("Clarificaciones")
         title.setObjectName("title")
-        hint = QLabel("Pregunta al staff si algo de un enunciado no es claro. Las respuestas las ven todos los equipos, sin tu nombre.")
+        hint = QLabel("Pregunta al staff si algo de un enunciado no es claro. Tu pregunta y su respuesta las ven todos los equipos, pero de forma anónima: solo el staff sabe qué equipo preguntó.")
         hint.setObjectName("muted")
         hint.setWordWrap(True)
 
@@ -121,6 +121,8 @@ class ClarificationsView(QWidget):
             sent = f"Enviada {_when(c['createdAt'])}"
             answered = f" · Respondida {_when(c['answeredAt'])}" if c.get("answeredAt") else ""
             answer = (
+                f"<p style='margin:{XS}px 0 0 0; color:{ERROR}'><b>Rechazada por el staff.</b> No se publicó para los demás equipos.</p>"
+                if c.get("rejectedAt") else
                 f"<p style='margin:{XS}px 0 0 0'><b style='color:{ACCENT}'>Respuesta:</b> {_text(c['answer'])}</p>"
                 if c["answer"] else
                 f"<p style='margin:{XS}px 0 0 0; color:{TEXT_MUTED}'>Esperando respuesta del staff.</p>"

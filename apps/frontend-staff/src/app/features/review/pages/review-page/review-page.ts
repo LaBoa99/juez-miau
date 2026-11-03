@@ -1,7 +1,8 @@
+import { TooltipDirective } from '../../../../shared/ui/tooltip.directive';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   IProblemListItem,
   IStaffSubmission,
@@ -38,7 +39,7 @@ const VERDICT_OPTIONS = [
 @Component({
   selector: 'oj-review-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
+  imports: [TooltipDirective, 
     ReactiveFormsModule,
     RouterLink,
     PageHeader,
@@ -85,8 +86,10 @@ export class ReviewPage {
   private readonly confirmDialog = viewChild.required(ConfirmDialog);
   protected readonly verdictCtrl = this.fb.nonNullable.control('AC');
   protected readonly noteCtrl = this.fb.nonNullable.control('', [Validators.maxLength(1000)]);
+  // El FormControl no es signal: sin esto el mensaje se quedaba con el veredicto inicial (AC)
+  private readonly verdictValue = toSignal(this.verdictCtrl.valueChanges, { initialValue: this.verdictCtrl.value });
   protected readonly confirmMessage = computed(() => {
-    const label = VERDICT_OPTIONS.find((o) => o.value === this.verdictCtrl.value)?.label ?? '';
+    const label = VERDICT_OPTIONS.find((o) => o.value === this.verdictValue())?.label ?? '';
     const s = this.selected();
     return `Vas a registrar el veredicto ${label} para el envío #${s?.id ?? ''}. Queda en la bitácora.`;
   });
@@ -116,14 +119,24 @@ export class ReviewPage {
     });
   }
 
+  // Recarga sin pantalla de "Cargando…" para no ocultar el aviso de error
+  private reload(): void {
+    this.service.reviewQueue(this.editionId).subscribe({
+      next: (rows) => {
+        this.queue.set(rows);
+        if (!rows.some((r) => r.id === this.selectedId())) this.selectedId.set(rows[0]?.id ?? null);
+      },
+      error: () => {},
+    });
+  }
+
   private loadLookups(): void {
     this.problemsService.list(this.editionId).subscribe({
       next: (ps) => this.problemMap.set(new Map(ps.map((p) => [p.id, p]))),
       error: () => {},
     });
-    // Una página de equipos (igual que la lista de envíos); si hay más, el id cae a "#id".
-    this.teamsService.list(this.editionId, { page: 1, pageSize: 100 }).subscribe({
-      next: (res) => this.teamMap.set(new Map(res.items.map((t) => [t.id, t.name]))),
+    this.teamsService.listAll(this.editionId).subscribe({
+      next: (teams) => this.teamMap.set(new Map(teams.map((t) => [t.id, t.name]))),
       error: () => {},
     });
     this.languagesService.catalog().subscribe({
@@ -198,6 +211,8 @@ export class ReviewPage {
         error: (err) => {
           this.saving.set(false);
           this.actionError.set(backendMessage(err, 'No se pudo registrar el veredicto.'));
+          // 409: otro juez (o un rejudge) ya lo sacó de revisión; se vuelve a pedir la cola
+          if (err?.status === 409) this.reload();
         },
       });
   }

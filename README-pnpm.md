@@ -1,4 +1,4 @@
-# Guía de pnpm en `mi-concurso-monorepo`
+# Guía de pnpm en `juez-miau`
 
 Este repositorio es un **monorepo** gestionado con [pnpm workspaces](https://pnpm.io/workspaces). Esta guía explica cómo instalar, ejecutar y gestionar dependencias en el proyecto.
 
@@ -19,7 +19,7 @@ pnpm es un gestor de paquetes para Node.js, similar a `npm` o `yarn`, pero:
 ## 2. Estructura del workspace
 
 ```
-mi-concurso-monorepo/
+juez-miau/
 ├── package.json            # scripts globales del monorepo
 ├── pnpm-workspace.yaml     # define qué carpetas son paquetes del workspace
 ├── pnpm-lock.yaml          # lockfile único (¡se commitea!)
@@ -76,7 +76,7 @@ curl -fsSL https://get.pnpm.io/install.sh | sh -
 
 ```bash
 git clone <url-del-repo>
-cd mi-concurso-monorepo
+cd juez-miau
 
 # Instala las dependencias de TODOS los paquetes del workspace
 pnpm install
@@ -98,8 +98,9 @@ pnpm --filter backend start:dev
 pnpm --filter frontend-staff start
 ```
 
-> El backend necesita PostgreSQL y Redis. Levántalos con Docker desde `apps/backend`:
-> `docker compose -f apps/backend/docker-compose.yml up -d`
+> El backend necesita PostgreSQL y Redis. Se levantan con el mismo compose del despliegue
+> (quedan solo en `127.0.0.1`): `docker compose -f deploy/docker-compose.yml up -d postgres redis`.
+> `apps/backend/.env` usa las mismas contraseñas que `deploy/.env` (ver [deploy/README.md](deploy/README.md)).
 
 ---
 

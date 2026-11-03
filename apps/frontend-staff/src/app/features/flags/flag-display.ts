@@ -25,6 +25,26 @@ export function flagLabel(type: FlagType): string {
   }
 }
 
+// Nombre corto para el aviso de la esquina: "[Equipo] · Desconectado", "[Equipo] · Programa prohibido"
+export function flagToastText(type: FlagType): string {
+  switch (type) {
+    case FlagType.HEARTBEAT_LOST:
+      return 'Desconectado';
+    case FlagType.FORBIDDEN_PROCESS:
+      return 'Programa prohibido';
+    case FlagType.SESSION_REPLACED:
+      return 'Sesión en otra máquina';
+    case FlagType.EXTRA_MONITOR:
+      return 'Monitor extra';
+    case FlagType.USB_STORAGE:
+      return 'Memoria USB';
+    case FlagType.NETWORK_CHANGE:
+      return 'Red nueva';
+    case FlagType.MANUAL:
+      return 'Alerta manual';
+  }
+}
+
 // Color del borde de la tarjeta. Las resueltas las pinta la página en gris claro, no este color.
 export function flagTone(type: FlagType): FlagTone {
   switch (type) {

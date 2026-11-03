@@ -32,10 +32,20 @@
         }
       </div>
     }
+    @if (canReset()) {
+      <div class="cfg__actions">
+        <button ojButton variant="danger-outline" type="button" [disabled]="resetting()" (click)="confirmReset()">
+          {{ resetting() ? 'Reconfigurando…' : 'Reconfigurar' }}
+        </button>
+      </div>
+    }
   </header>
 
   @if (scheduledAt()) {
     <oj-alert tone="success">Edición programada para el {{ scheduledAt() | date: 'yyyy-MM-dd HH:mm' }}.</oj-alert>
+  }
+  @if (resetError()) {
+    <oj-alert tone="error">{{ resetError() }}</oj-alert>
   }
   @if (deleteError()) {
     <oj-alert tone="error">{{ deleteError() }}</oj-alert>
@@ -153,11 +163,20 @@
   </div>
 
   <oj-confirm-dialog
+    #deleteDlg
     title="Eliminar edición"
     [message]="'Se eliminará «' + e.name + '». Esta acción no se puede deshacer.'"
     confirmLabel="Eliminar"
     [danger]="true"
     (confirmed)="remove()"
+  />
+  <oj-confirm-dialog
+    #resetDlg
+    title="Reconfigurar edición"
+    message="La edición vuelve a Borrador para usarla otra vez. Se borran todos los envíos, aclaraciones, alertas y sesiones; se conservan los equipos, los problemas y la configuración. No se puede deshacer."
+    confirmLabel="Reconfigurar"
+    [danger]="true"
+    (confirmed)="reset()"
   />
 } @else if (ctx.loading()) {
   <p class="cfg__hint">Cargando…</p>

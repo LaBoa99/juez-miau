@@ -247,8 +247,8 @@ class ProblemsView(QWidget):
         if box.clickedButton() is open_button and not QDesktopServices.openUrl(QUrl.fromLocalFile(path)):
             self.show_message("No hay un programa asociado a ese tipo de archivo. Ábrelo desde tu IDE.", error=True)
 
-    def show_message(self, text, error=False):
-        self.message.setObjectName("error" if error else "muted")
+    def show_message(self, text, error=False, success=False):
+        self.message.setObjectName("error" if error else "success" if success else "muted")
         self.message.style().polish(self.message)
         self.message.setText(text)
         self.message.show()

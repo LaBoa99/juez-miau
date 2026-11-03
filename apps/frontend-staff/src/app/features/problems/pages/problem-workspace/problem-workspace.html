@@ -9,8 +9,22 @@
         <p class="pw__muted">No se pudieron cargar los problemas.</p>
       } @else {
         @for (g of groups(); track g.category.id) {
+          @let open = isOpen(g.category.id);
           <div class="pw__group">
-            <div class="pw__group-name">{{ g.category.name }}</div>
+            <button
+              type="button"
+              class="pw__group-name"
+              [attr.aria-expanded]="open"
+              [attr.aria-controls]="'pw-cat-' + g.category.id"
+              (click)="toggle(g.category.id)"
+            >
+              <svg class="pw__chevron" [class.pw__chevron--open]="open" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M6 4l4 4-4 4" />
+              </svg>
+              <span class="pw__group-label">{{ g.category.name }}</span>
+              <span class="pw__group-count oj-mono">{{ g.problems.length }}</span>
+            </button>
+            <div class="pw__group-items" [id]="'pw-cat-' + g.category.id" [hidden]="!open">
             @for (p of g.problems; track p.id) {
               <button
                 type="button"
@@ -26,6 +40,7 @@
             } @empty {
               <p class="pw__empty">Sin problemas</p>
             }
+            </div>
           </div>
         }
       }

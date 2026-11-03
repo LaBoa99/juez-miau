@@ -1,6 +1,6 @@
 import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, Logger, NotFoundException, UnprocessableEntityException, type OnApplicationBootstrap } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { In, LessThan, MoreThan, Repository, type FindOptionsWhere } from 'typeorm'
+import { In, LessThan, MoreThan, Not, Repository, type FindOptionsWhere } from 'typeorm'
 import {
     ProblemStatus,
     SOCKET_EVENTS,
@@ -8,7 +8,9 @@ import {
     SubmissionStatus,
     Verdict,
     type IRejudgeResponse,
+    type ISubmissionCaseDetail,
     type ISubmissionHistoryEntry,
+    type ISubmissionReview,
     type ISubmission,
     type ISubmissionDetail,
     type IStaffSubmission,
@@ -30,7 +32,11 @@ import { SubmissionFiltersDto } from '../dto/submission-filters.dto.js'
 import { RejudgeProblemDto, RejudgeSubmissionDto } from '../dto/rejudge.dto.js'
 import { ReviewSubmissionDto } from '../dto/review-submission.dto.js'
 import { Submission } from '../entities/submission.entity.js'
+import { SubmissionCase } from '../entities/submission-case.entity.js'
 import { SubmissionHistory } from '../entities/submission-history.entity.js'
+import { SubmissionReview } from '../entities/submission-review.entity.js'
+import { StaffUser } from '../../staff/entities/staff-user.entity.js'
+import { TestCase } from '../../testsets/entities/test-case.entity.js'
 import { toStaffSubmissionDto, toSubmissionDto } from '../mappers/submission.mapper.js'
 import { MAX_SOURCE_BYTES, SUBMISSION_COOLDOWN_MS } from '../submissions.constants.js'
 import { SubmissionQueueService } from './submission-queue.service.js'
@@ -59,6 +65,7 @@ export class SubmissionsService implements OnApplicationBootstrap {
         private readonly flagsService: FlagsService,
         private readonly editionStaffService: EditionStaffService,
         private readonly realtime: RealtimeService,
+        private readonly blobsService: BlobsService,
     ) {}
 
     // Los envíos se guardan antes de encolarse: si Redis falló o la API se cayó en medio,
@@ -268,6 +275,70 @@ export class SubmissionsService implements OnApplicationBootstrap {
         )
         if(!result.affected){
             throw new ConflictException('submission #' + id + ' is not pending review')
+        }
+
+        await this.submissionRepository.manager.insert(SubmissionReview, {
+            submission_id: id,
+            verdict: changes.verdict,
+            reviewed_by: staffUserId,
+            comment: changes.review_comment,
+        })
+
+        Object.assign(submission, changes)
+        this.publish(submission)
+        return toStaffSubmissionDto(submission)
+    }
+
+    // Todas las revisiones del envío, la más reciente primero
+    async findReviews(staffUserId: number, id: number): Promise<ISubmissionReview[]> {
+        const submission = await this.getSubmission(id)
+        await this.editionStaffService.assertRole(staffUserId, submission.edition_id, ANY_EDITION_ROLE)
+        const reviews = await this.submissionRepository.manager.find(SubmissionReview, { where: { submission_id: id }, order: { id: 'DESC' } })
+        const names = new Map((await this.submissionRepository.manager.find(StaffUser, {
+            where: { id: In([...new Set(reviews.map((review) => review.reviewed_by))]) },
+            select: { id: true, name: true },
+        })).map((staff) => [staff.id, staff.name]))
+        return reviews.map((review) => ({
+            id: review.id,
+            verdict: review.verdict,
+            reviewedBy: review.reviewed_by,
+            reviewerName: names.get(review.reviewed_by) ?? '#' + review.reviewed_by,
+            comment: review.comment,
+            createdAt: review.created_at,
+        }))
+    }
+
+    // Entrada, salida esperada y salida del equipo de un caso. Solo juez/admin: incluye casos ocultos
+    async findCase(staffUserId: number, id: number, ordinal: number): Promise<ISubmissionCaseDetail> {
+        const submission = await this.getSubmission(id)
+        await this.editionStaffService.assertRole(staffUserId, submission.edition_id, JUDGE_ROLES)
+        const manager = this.submissionRepository.manager
+        const [submissionCase, testCase] = await Promise.all([
+            manager.findOne(SubmissionCase, { where: { submission_id: id, ordinal }, select: { id: true, output: true } }),
+            manager.findOne(TestCase, { where: { testset_id: submission.testset_id, ordinal }, select: { id: true, input_sha: true, output_sha: true } }),
+        ])
+        if(!submissionCase || !testCase) throw new NotFoundException('case not found #' + ordinal)
+        const [input, expected] = await Promise.all([
+            this.blobsService.getText(testCase.input_sha),
+            testCase.output_sha ? this.blobsService.getText(testCase.output_sha) : Promise.resolve(null),
+        ])
+        return { ordinal, input, expected, actual: submissionCase.output }
+    }
+
+    // Un juez manda a revisión un envío ya juzgado: queda PENDING_REVIEW y el equipo lo ve "En revisión"
+    // hasta que alguien lo acepte o rechace con review()
+    async sendToReview(staffUserId: number, id: number): Promise<IStaffSubmission> {
+        const submission = await this.getSubmission(id)
+        await this.editionStaffService.assertRole(staffUserId, submission.edition_id, JUDGE_ROLES)
+
+        const changes = { verdict: Verdict.PENDING_REVIEW, reviewed_by: null, reviewed_at: null, review_comment: null }
+        // Condicional: solo con veredicto final y sin un rejudge en medio
+        const result = await this.submissionRepository.update(
+            { id, status: SubmissionStatus.DONE, judge_round: submission.judge_round, verdict: Not(Verdict.PENDING_REVIEW) },
+            changes,
+        )
+        if(!result.affected){
+            throw new ConflictException('submission #' + id + ' cannot be sent to review')
         }
 
         Object.assign(submission, changes)

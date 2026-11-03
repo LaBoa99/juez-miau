@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 import { LoginStaff } from './login-staff/login-staff';
 import { Shell } from './core/layout/shell.component';
 import { Forbidden } from './core/layout/forbidden.component';
+import { Credits } from './core/layout/credits.component';
+import { NotFound } from './core/layout/not-found.component';
 import { authGuard, guestGuard } from './core/auth/auth.guards';
 import { superadminGuard } from './core/auth/role.guard';
 
@@ -47,8 +49,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/audit/audit.routes').then((m) => m.routes),
       },
       { path: '403', component: Forbidden },
+      { path: 'creditos', component: Credits },
       { path: '', redirectTo: 'ediciones', pathMatch: 'full' },
+      // Cualquier otra ruta: 404 dentro del shell (sin sesión, el authGuard manda al login)
+      { path: '**', component: NotFound },
     ],
   },
-  { path: '**', redirectTo: 'ediciones' },
 ];

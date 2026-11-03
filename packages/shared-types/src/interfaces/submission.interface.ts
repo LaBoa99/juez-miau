@@ -60,7 +60,29 @@ export interface ISubmissionCase {
     cpuMs: number
     wallMs: number
     memoryKb: number
+    // Código de salida del programa (null en casos juzgados antes de guardarlo)
+    exitCode: number | null
     message: string | null
+}
+
+// Detalle de un caso para el staff juez/admin (incluye casos ocultos)
+export interface ISubmissionCaseDetail {
+    ordinal: number
+    input: string
+    // null si el testset no tiene salida esperada (comparación por checker sin salida)
+    expected: string | null
+    // Salida canónica del programa; null si no terminó bien o el caso es anterior a guardarla
+    actual: string | null
+}
+
+// Una decisión de revisión manual (un envío puede revisarse más de una vez)
+export interface ISubmissionReview {
+    id: number
+    verdict: Verdict
+    reviewedBy: number
+    reviewerName: string
+    comment: string | null
+    createdAt: Date
 }
 
 // Lo que ve el staff
@@ -155,6 +177,8 @@ export const SOCKET_EVENTS = {
     FLAG_UPDATE: "flag:update",
     // Staff: pregunta nueva (IStaffClarification). Equipos: respuesta publicada (IClarification)
     CLARIFICATION_UPDATE: "clarification:update",
+    // Staff y equipos: aclaración eliminada o rechazada (IClarificationDeleted); se quita de la lista
+    CLARIFICATION_DELETE: "clarification:delete",
 } as const
 
 export interface IJoinEdition {

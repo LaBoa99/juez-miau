@@ -10,10 +10,12 @@ import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
+import { ContestCountdown } from '../../../../shared/ui/contest-countdown.component';
 import { msToClock, msToMin } from '../../../../shared/time';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
 import { EditionContext } from '../../../editions/pages/edition-layout/edition-context';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { ContestClockService } from '../../data/contest-clock.service';
 import { HealthService } from '../../data/health.service';
 
@@ -25,13 +27,16 @@ interface StatusView {
 @Component({
   selector: 'oj-contest-control',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PageHeader, Badge, ButtonDirective, Alert, EmptyState, ConfirmDialog, DatePipe, RouterLink],
+  imports: [PageHeader, Badge, ButtonDirective, Alert, EmptyState, ConfirmDialog, DatePipe, RouterLink, ContestCountdown],
   templateUrl: './contest-control.html',
   styleUrl: './contest-control.css',
 })
 export class ContestControl {
   private readonly route = inject(ActivatedRoute);
   private readonly clockService = inject(ContestClockService);
+  private readonly auth = inject(AuthService);
+  // Pausar y finalizar: solo superadmin en la interfaz (el backend también los permite al admin de la edición)
+  protected readonly canStopContest = computed(() => this.auth.isSuperadmin());
   private readonly healthService = inject(HealthService);
   private readonly rt = inject(RealtimeService);
   protected readonly ctx = inject(EditionContext);
@@ -155,6 +160,7 @@ export class ContestControl {
   }
 
   pause(): void {
+    if (!this.canStopContest()) return;
     this.run(this.clockService.pause(this.editionId));
   }
 
@@ -163,11 +169,13 @@ export class ContestControl {
   }
 
   askFinish(): void {
+    if (!this.canStopContest()) return;
     this.actionError.set(null);
     this.finishDialog().open();
   }
 
   finish(): void {
+    if (!this.canStopContest()) return;
     this.run(this.clockService.finish(this.editionId));
   }
 

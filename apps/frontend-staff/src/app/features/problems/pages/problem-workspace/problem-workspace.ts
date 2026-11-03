@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
@@ -52,6 +52,23 @@ export class ProblemWorkspace {
         .sort((a, b) => a.letter.localeCompare(b.letter)),
     }));
   });
+
+  // Categorías plegadas; la del problema abierto siempre se ve
+  private readonly collapsed = signal<ReadonlySet<number>>(new Set());
+  private readonly selectedCategory = computed(() => {
+    const id = Number(this.selected());
+    return this.bus.problems().find((p) => p.id === id)?.categoryId ?? null;
+  });
+
+  isOpen(categoryId: number): boolean {
+    return !this.collapsed().has(categoryId) || this.selectedCategory() === categoryId;
+  }
+
+  toggle(categoryId: number): void {
+    const next = new Set(this.collapsed());
+    this.isOpen(categoryId) ? next.add(categoryId) : next.delete(categoryId);
+    this.collapsed.set(next);
+  }
 
   private readonly confirm = viewChild.required(ConfirmDialog);
   private pendingPath: string | null = null;

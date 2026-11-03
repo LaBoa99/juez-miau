@@ -1,6 +1,7 @@
 /* You can add global styles to this file, and also import other style files */
 @import './app/shared/styles/tokens.css';
 @import './app/shared/styles/buttons.css';
+@import './app/shared/styles/tooltip.css';
 
 body {
   margin: 0;

@@ -3,8 +3,9 @@ import { ActivatedRoute } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { IEditionStaffListItem, IFlag } from '@concurso/shared-types';
+import { IEditionStaffListItem, IFlag, StaffRole } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Badge } from '../../../../shared/ui/badge.component';
@@ -13,6 +14,7 @@ import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { Segmented } from '../../../../shared/ui/segmented.component';
 import { FormField } from '../../../../shared/ui/form-field.component';
 import { Modal } from '../../../../shared/ui/modal.component';
+import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
@@ -20,6 +22,7 @@ import { EditionContext } from '../../../editions/pages/edition-layout/edition-c
 import { RoomsService } from '../../../editions/rooms/data/rooms.service';
 import { EditionStaffService } from '../../../editions/edition-staff/data/edition-staff.service';
 import { TeamsService } from '../../../teams/data/teams.service';
+import { StandingsService } from '../../../standings/data/standings.service';
 import { FlagsService } from '../../data/flags.service';
 import { FlagTone, flagLabel, flagMessage, flagTone } from '../../flag-display';
 
@@ -39,6 +42,7 @@ type Tab = 'open' | 'resolved';
     Segmented,
     FormField,
     Modal,
+    ConfirmDialog,
   ],
   templateUrl: './alerts-page.html',
   styleUrl: './alerts-page.css',
@@ -47,6 +51,7 @@ export class AlertsPage {
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(FlagsService);
   private readonly teamsService = inject(TeamsService);
+  private readonly standings = inject(StandingsService);
   private readonly roomsService = inject(RoomsService);
   private readonly staffService = inject(EditionStaffService);
   private readonly auth = inject(AuthService);
@@ -65,7 +70,7 @@ export class AlertsPage {
   protected readonly actionError = signal<string | null>(null);
 
   // Búsquedas auxiliares que la alerta no trae.
-  private readonly teamMap = signal<Map<number, { name: string; roomId: number | null }>>(new Map());
+  private readonly teamMap = signal<Map<number, { name: string; roomId: number | null; suspended: boolean }>>(new Map());
   private readonly staffMap = signal<Map<number, string>>(new Map());
   protected readonly rooms = signal<{ id: number; name: string }[]>([]);
   protected readonly myRoomId = signal<number | null>(null);
@@ -75,6 +80,8 @@ export class AlertsPage {
   protected readonly roomCtrl = this.fb.control<number | null>(null);
   protected readonly teamSearchCtrl = this.fb.nonNullable.control('');
   private readonly teamSearch = signal('');
+  // El select es un FormControl: su valor se lee como signal para que el filtro se recalcule
+  private readonly roomFilter = toSignal(this.roomCtrl.valueChanges, { initialValue: this.roomCtrl.value });
 
   // Modal "Levantar alerta" (siempre tipo MANUAL: el backend no acepta otro tipo).
   private readonly createModal = viewChild.required<Modal>('createModal');
@@ -104,7 +111,7 @@ export class AlertsPage {
 
   protected readonly filtered = computed(() => {
     const tab = this.tab();
-    const room = this.roomCtrl.value;
+    const room = this.roomFilter();
     const search = this.teamSearch().trim().toLowerCase();
     const tm = this.teamMap();
     return this.all().filter((f) => {
@@ -147,9 +154,9 @@ export class AlertsPage {
   }
 
   private loadLookups(): void {
-    this.teamsService.list(this.editionId, { page: 1, pageSize: 100 }).subscribe({
-      next: (res) =>
-        this.teamMap.set(new Map(res.items.map((t) => [t.id, { name: t.name, roomId: t.room?.id ?? null }]))),
+    this.teamsService.listAll(this.editionId).subscribe({
+      next: (teams) =>
+        this.teamMap.set(new Map(teams.map((t) => [t.id, { name: t.name, roomId: t.room?.id ?? null, suspended: t.suspended }]))),
       error: () => {},
     });
     const me = this.auth.user()?.id ?? null;
@@ -290,6 +297,37 @@ export class AlertsPage {
   message(f: IFlag): string {
     return flagMessage(f);
   }
+  // ─── Suspender (acción rápida; el backend la permite al admin de la edición) ───
+  protected readonly canSuspend = computed(
+    () => this.auth.isSuperadmin() || this.auth.roleInEdition(this.editionId) === StaffRole.ADMIN,
+  );
+  private readonly suspendDialog = viewChild.required<ConfirmDialog>('suspendDlg');
+  protected readonly suspendTarget = signal<{ id: number; name: string; suspend: boolean } | null>(null);
+
+  isSuspended(teamId: number): boolean {
+    return this.teamMap().get(teamId)?.suspended ?? false;
+  }
+
+  askSuspend(f: IFlag): void {
+    this.actionError.set(null);
+    this.suspendTarget.set({ id: f.teamId, name: this.teamName(f.teamId), suspend: !this.isSuspended(f.teamId) });
+    this.suspendDialog().open();
+  }
+
+  confirmSuspend(): void {
+    const t = this.suspendTarget();
+    if (!t) return;
+    this.standings.setSuspended(this.editionId, t.id, t.suspend).subscribe({
+      next: () => {
+        const map = new Map(this.teamMap());
+        const team = map.get(t.id);
+        if (team) map.set(t.id, { ...team, suspended: t.suspend });
+        this.teamMap.set(map);
+      },
+      error: (err) => this.actionError.set(backendMessage(err, 'No se pudo cambiar la suspensión del equipo.')),
+    });
+  }
+
   teamName(id: number): string {
     return this.teamMap().get(id)?.name ?? '#' + id;
   }

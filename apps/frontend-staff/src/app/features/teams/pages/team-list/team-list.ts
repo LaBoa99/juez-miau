@@ -3,11 +3,10 @@ import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } fr
 import { ActivatedRoute } from '@angular/router';
 import { debounceTime, distinctUntilChanged, forkJoin, map, of, switchMap, type Observable } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { EditionStatus, ICreateTeam, ITeamImportCredential, ITeamListItem, StaffRole } from '@concurso/shared-types';
+import { EditionStatus, ICreateTeam, IRoomListItem, ITeamImportCredential, ITeamListItem, StaffRole } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Badge } from '../../../../shared/ui/badge.component';
-import { SidePanel } from '../../../../shared/ui/side-panel.component';
 import { FormField } from '../../../../shared/ui/form-field.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
@@ -16,6 +15,8 @@ import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { EditionContext } from '../../../editions/pages/edition-layout/edition-context';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { TeamsService } from '../../data/teams.service';
+import { RoomsService } from '../../../editions/rooms/data/rooms.service';
+import { StandingsService } from '../../../standings/data/standings.service';
 import { TeamImport } from '../team-import/team-import';
 import { downloadCredentialsPdf } from '../../data/credentials-pdf';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
@@ -30,7 +31,6 @@ const PAGE_SIZE = 20;
     PageHeader,
     ButtonDirective,
     Badge,
-    SidePanel,
     FormField,
     Alert,
     ConfirmDialog,
@@ -47,6 +47,8 @@ export class TeamList {
   protected readonly ctx = inject(EditionContext);
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
+  private readonly roomsService = inject(RoomsService);
+  private readonly standings = inject(StandingsService);
 
   protected readonly editionId = findEditionId(this.route);
   protected readonly pageSize = PAGE_SIZE;
@@ -81,14 +83,18 @@ export class TeamList {
   protected readonly hasNext = computed(() => this.page() * PAGE_SIZE < this.total());
 
   // ─── Editar ───
-  protected readonly editOpen = signal(false);
+  private readonly editModal = viewChild.required<Modal>('editModal');
   protected readonly editSaving = signal(false);
   protected readonly editError = signal<string | null>(null);
   private editingId: number | null = null;
   protected readonly editForm = this.fb.group({
     name: ['', [Validators.required]],
+    roomId: [null as number | null],
     members: this.fb.array<FormGroup>([]),
   });
+  private readonly allRooms = signal<IRoomListItem[]>([]);
+  // Un salón con categoría solo admite equipos de esa categoría (igual que el backend)
+  protected readonly editRooms = signal<IRoomListItem[]>([]);
 
   // ─── Confirmación reutilizable ───
   private readonly confirm = viewChild.required(ConfirmDialog);
@@ -118,6 +124,7 @@ export class TeamList {
 
   constructor() {
     this.load();
+    this.roomsService.list(this.editionId).subscribe({ next: (rooms) => this.allRooms.set(rooms), error: () => {} });
     this.categoryCtrl.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
       this.page.set(1);
       this.load();
@@ -348,8 +355,9 @@ export class TeamList {
     this.editError.set(null);
     this.members().clear();
     for (const m of team.members) this.members().push(this.memberGroup(m));
-    this.editForm.patchValue({ name: team.name });
-    this.editOpen.set(true);
+    this.editForm.patchValue({ name: team.name, roomId: team.room?.id ?? null });
+    this.editRooms.set(this.allRooms().filter((r) => r.category_id == null || r.category_id === team.category?.id));
+    this.editModal().open();
   }
 
   addMember(): void {
@@ -373,10 +381,11 @@ export class TeamList {
     }));
     this.editSaving.set(true);
     this.editError.set(null);
-    this.service.update(this.editingId, { name: raw.name!, members }).subscribe({
+    const room = raw.roomId != null ? { room_id: raw.roomId } : {};
+    this.service.update(this.editingId, { name: raw.name!, members, ...room }).subscribe({
       next: () => {
         this.editSaving.set(false);
-        this.editOpen.set(false);
+        this.editModal().close();
         this.load();
       },
       error: (err) => {
@@ -403,6 +412,23 @@ export class TeamList {
           this.load();
         },
         error: (err) => this.actionError.set(message(err, 'No se pudo cerrar la sesión.')),
+      });
+    });
+  }
+
+  // Suspendido: se cierra su sesión, no puede entrar ni enviar y queda al final del marcador
+  askSuspend(team: ITeamListItem): void {
+    const suspend = !team.suspended;
+    const [title, msg, label] = suspend
+      ? ['Suspender equipo', `${team.name} saldrá de la app y no podrá entrar ni enviar. En el marcador queda tachado y sin lugar.`, 'Suspender']
+      : ['Reactivar equipo', `${team.name} podrá volver a entrar y enviar.`, 'Reactivar'];
+    this.openConfirm(title, msg, label, suspend, () => {
+      this.standings.setSuspended(this.editionId, team.id, suspend).subscribe({
+        next: () => {
+          this.flashSuccess(suspend ? `${team.name} quedó suspendido.` : `${team.name} fue reactivado.`);
+          this.load();
+        },
+        error: (err) => this.actionError.set(message(err, 'No se pudo cambiar la suspensión del equipo.')),
       });
     });
   }

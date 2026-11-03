@@ -1,6 +1,6 @@
 import { Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post } from '@nestjs/common'
 import { StaffRole, type IContestClock } from '@concurso/shared-types'
-import { ANY_EDITION_ROLE, Public, RequireEditionRole } from '../auth/decorators/access.decorators.js'
+import { ANY_EDITION_ROLE, Public, RequireEditionRole, SuperadminOnly } from '../auth/decorators/access.decorators.js'
 import { ContestClockService } from './contest-clock.service.js'
 
 @Controller()
@@ -47,5 +47,12 @@ export class ContestClockController {
     @HttpCode(HttpStatus.OK)
     finish(@Param('editionId', ParseIntPipe) editionId: number): Promise<IContestClock> {
         return this.clock.finish(editionId)
+    }
+
+    @Post('editions/:editionId/clock/reset')
+    @SuperadminOnly()
+    @HttpCode(HttpStatus.OK)
+    reset(@Param('editionId', ParseIntPipe) editionId: number): Promise<IContestClock> {
+        return this.clock.reset(editionId)
     }
 }

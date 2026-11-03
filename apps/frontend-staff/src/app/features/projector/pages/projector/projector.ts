@@ -6,9 +6,13 @@ import { EditionStatus, IContestClock, IStandings, IStandingsCategory } from '@c
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Segmented } from '../../../../shared/ui/segmented.component';
 import { StandingsCell } from '../../../../shared/ui/standings-cell.component';
-import { msToClock } from '../../../../shared/time';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { ProjectorService } from '../../data/projector.service';
+import { ContestCountdown } from '../../../../shared/ui/contest-countdown.component';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { RoomsService } from '../../../editions/rooms/data/rooms.service';
+import { TeamsService } from '../../../teams/data/teams.service';
+import { filterByRoom } from '../../../standings/room-filter';
 
 // Pantalla 17: proyector público (1920×1080). Fuera del shell, sin guards, sin token.
 // Carga por HTTP al entrar, se actualiza por socket (joinPublic) y, si se pierde la conexión,
@@ -16,7 +20,7 @@ import { ProjectorService } from '../../data/projector.service';
 @Component({
   selector: 'oj-projector',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonDirective, Segmented, StandingsCell],
+  imports: [ButtonDirective, Segmented, StandingsCell, ContestCountdown],
   templateUrl: './projector.html',
   styleUrl: './projector.css',
 })
@@ -25,25 +29,32 @@ export class Projector {
   private readonly service = inject(ProjectorService);
   private readonly rt = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
+  private readonly roomsService = inject(RoomsService);
+  private readonly teamsService = inject(TeamsService);
 
   private readonly editionId = toSignal(this.route.paramMap.pipe(map((p) => Number(p.get('editionId')))));
 
   protected readonly clock = signal<IContestClock | null>(null);
   protected readonly standings = signal<IStandings | null>(null);
-  protected readonly displayMs = signal(0);
   protected readonly loaded = signal(false);
   protected readonly unavailable = signal(false);
   protected readonly isFullscreen = signal(!!document.fullscreenElement);
   protected readonly paused = signal(false);
   protected readonly categorySeg = signal<string>('');
 
-  private anchorAt = 0;
   private started = false;
   private readonly reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   protected readonly finished = computed(() => this.clock()?.status === EditionStatus.FINISHED);
   protected readonly frozen = computed(() => this.clock()?.frozen ?? false);
-  protected readonly timeText = computed(() => msToClock(this.displayMs()));
+
+  // Filtro por salón: el marcador público no trae el salón; solo con sesión de staff en este
+  // navegador se puede cruzar con la lista de equipos (sin sesión se ve todo, como antes)
+  protected readonly rooms = signal<{ id: number; name: string; categoryId: number | null }[]>([]);
+  private readonly roomOf = signal<Map<number, number | null>>(new Map());
+  protected readonly roomId = signal<number | null>(null);
+  protected readonly roomName = computed(() => this.rooms().find((r) => r.id === this.roomId())?.name ?? null);
 
   protected readonly categories = computed(() => this.standings()?.categories ?? []);
   protected readonly categoryOptions = computed(() =>
@@ -51,7 +62,8 @@ export class Projector {
   );
   protected readonly current = computed<IStandingsCategory | null>(() => {
     const cats = this.categories();
-    return cats.find((c) => String(c.categoryId) === this.categorySeg()) ?? cats[0] ?? null;
+    const cat = cats.find((c) => String(c.categoryId) === this.categorySeg()) ?? cats[0] ?? null;
+    return cat && filterByRoom(cat, this.roomOf(), this.roomId());
   });
 
   constructor() {
@@ -71,7 +83,6 @@ export class Projector {
       }
     });
 
-    const tick = setInterval(() => this.displayMs.set(this.computeRemaining()), 1000);
     const rotate = setInterval(() => this.rotate(), 20_000);
     // Respaldo: mientras el socket no esté conectado, recarga por HTTP.
     const fallback = setInterval(() => {
@@ -83,7 +94,6 @@ export class Projector {
     document.addEventListener('fullscreenchange', onFs);
 
     this.destroyRef.onDestroy(() => {
-      clearInterval(tick);
       clearInterval(rotate);
       clearInterval(fallback);
       document.removeEventListener('fullscreenchange', onFs);
@@ -94,6 +104,16 @@ export class Projector {
 
   private init(id: number): void {
     this.fetch(id);
+    if (this.auth.isAuthenticated()) {
+      this.roomsService.list(id).subscribe({
+        next: (rooms) => this.rooms.set(rooms.map((r) => ({ id: r.id, name: r.name, categoryId: r.category_id ?? null }))),
+        error: () => {},
+      });
+      this.teamsService.listAll(id).subscribe({
+        next: (teams) => this.roomOf.set(new Map(teams.map((t) => [t.id, t.room?.id ?? null]))),
+        error: () => {},
+      });
+    }
     this.rt.joinPublic(id);
     this.rt
       .onClock()
@@ -124,17 +144,17 @@ export class Projector {
     this.clock.set(c);
     this.loaded.set(true);
     this.unavailable.set(c.status === EditionStatus.DRAFT);
-    this.anchorAt = Date.now();
-    this.displayMs.set(this.computeRemaining());
   }
 
-  // Tiempo restante: duración menos lo transcurrido (misma sincronización que el 16: mientras corre
-  // se suma el tiempo local desde la última señal del servidor; en pausa/terminado queda fijo).
-  private computeRemaining(): number {
-    const c = this.clock();
-    if (!c) return 0;
-    const elapsed = c.status === EditionStatus.RUNNING ? c.elapsedMs + (Date.now() - this.anchorAt) : c.elapsedMs;
-    return Math.max(0, c.durationMs - Math.min(elapsed, c.durationMs));
+  onRoom(value: string): void {
+    const id = value ? Number(value) : null;
+    this.roomId.set(id);
+    // Cada salón es un nivel: se fija su categoría y se detiene la rotación
+    const categoryId = this.rooms().find((r) => r.id === id)?.categoryId;
+    if (categoryId != null) {
+      this.categorySeg.set(String(categoryId));
+      this.paused.set(true);
+    }
   }
 
   private rotate(): void {

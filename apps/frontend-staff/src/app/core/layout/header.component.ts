@@ -3,15 +3,18 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ButtonDirective } from '../../shared/ui/button.directive';
 import { RealtimeService } from '../realtime/realtime.service';
 import { AuthService } from '../auth/auth.service';
+import { LiveClockService } from '../realtime/live-clock.service';
+import { ContestCountdown } from '../../shared/ui/contest-countdown.component';
+import { EditionStatus } from '@concurso/shared-types';
 
 @Component({
   selector: 'oj-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive, ButtonDirective],
+  imports: [RouterLink, RouterLinkActive, ButtonDirective, ContestCountdown],
   template: `
     <header>
       <div class="oj-hd__left">
-        <span class="oj-hd__brand">[OJ]</span>
+        <img class="oj-hd__brand" src="assets/logos/gatito.svg" alt="Juez Virtual" />
         <nav aria-label="Principal">
           <a class="oj-hd__link" routerLink="/ediciones" routerLinkActive="oj-hd__link--active">Ediciones</a>
           <a class="oj-hd__link" routerLink="/lenguajes" routerLinkActive="oj-hd__link--active">Lenguajes</a>
@@ -19,6 +22,7 @@ import { AuthService } from '../auth/auth.service';
             <a class="oj-hd__link" routerLink="/staff" routerLinkActive="oj-hd__link--active">Staff</a>
             <a class="oj-hd__link" routerLink="/auditoria" routerLinkActive="oj-hd__link--active">Auditoría</a>
           }
+          <a class="oj-hd__link" routerLink="/creditos" routerLinkActive="oj-hd__link--active">Créditos</a>
         </nav>
       </div>
       <div class="oj-hd__right">
@@ -28,6 +32,9 @@ import { AuthService } from '../auth/auth.service';
             <span class="oj-hd__dot" aria-hidden="true"></span>
             {{ live().label }}
           </span>
+        }
+        @if (runningClock(); as c) {
+          <oj-contest-countdown variant="compact" [clock]="c" />
         }
         <button ojButton variant="secondary" size="sm" (click)="logout.emit()">Cerrar sesión</button>
       </div>
@@ -51,10 +58,9 @@ import { AuthService } from '../auth/auth.service';
       gap: var(--oj-space-md);
     }
     .oj-hd__brand {
-      font-family: var(--oj-font-mono);
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--oj-text);
+      display: block;
+      width: 28px;
+      height: 28px;
     }
     nav {
       display: flex;
@@ -106,7 +112,14 @@ import { AuthService } from '../auth/auth.service';
 export class Header {
   protected readonly rt = inject(RealtimeService);
   protected readonly auth = inject(AuthService);
+  private readonly liveClock = inject(LiveClockService);
   readonly userName = input('Usuario');
+
+  // Tiempo restante junto a "En vivo" solo mientras el concurso corre o está en pausa
+  protected readonly runningClock = computed(() => {
+    const c = this.liveClock.clock();
+    return this.rt.active() && (c?.status === EditionStatus.RUNNING || c?.status === EditionStatus.PAUSED) ? c : null;
+  });
   readonly logout = output<void>();
 
   protected readonly live = computed(() => {

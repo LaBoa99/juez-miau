@@ -14,6 +14,7 @@ PRIMARY_HOVER = "#2a313d"
 ACCENT = "#006c4a"
 SELECTION = "#85f8c4"
 ERROR = "#ba1a1a"
+SUCCESS_BG = "#e6f6ef"
 
 def apply_theme(app):
     """Siempre claro, aunque el sistema use tema oscuro: Fusion + paleta propia + QSS."""
@@ -44,6 +45,7 @@ QMainWindow, QDialog, #detail, #login {{ background: {SURFACE}; }}
 QLabel#title {{ font-size: 15pt; font-weight: 600; }}
 QLabel#muted {{ color: {TEXT_MUTED}; }}
 QLabel#error {{ color: {ERROR}; }}
+QLabel#success {{ color: {ACCENT}; font-weight: 600; background: {SUCCESS_BG}; border: 1px solid {ACCENT}; border-radius: 4px; padding: 6px 8px; }}
 QLabel#section {{ font-weight: 600; }}
 
 #sidebarPanel {{ background: {PANEL}; border-right: 1px solid {BORDER}; }}

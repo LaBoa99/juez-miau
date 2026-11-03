@@ -65,7 +65,12 @@
       <tbody>
         @for (t of items(); track t.id) {
           <tr>
-            <td class="teams__name">{{ t.name }}</td>
+            <td class="teams__name">
+              {{ t.name }}
+              @if (t.suspended) {
+                <oj-badge tone="danger">Suspendido</oj-badge>
+              }
+            </td>
             <td class="teams__members">{{ t.members.length ? memberNames(t) : '—' }}</td>
             <td class="oj-mono">{{ t.username }}</td>
             <td>
@@ -75,7 +80,13 @@
                 —
               }
             </td>
-            <td>{{ t.room?.name ?? '—' }}</td>
+            <td>
+              @if (t.room) {
+                {{ t.room.name }}
+              } @else {
+                <oj-badge tone="warning">Sin salón</oj-badge>
+              }
+            </td>
             <td>
               <span class="teams__dot" [class.teams__dot--on]="t.online"></span>
               {{ t.online ? 'Conectado' : 'Sin sesión' }}
@@ -97,6 +108,11 @@
                 <button ojButton variant="secondary" size="sm" type="button" (click)="openEdit(t)">Editar</button>
                 <button ojButton variant="secondary" size="sm" type="button" (click)="askReset(t)">Nueva contraseña</button>
                 <button ojButton variant="secondary" size="sm" type="button" (click)="askCloseSession(t)">Cerrar sesión</button>
+                @if (canEdit()) {
+                  <button ojButton [variant]="t.suspended ? 'success' : 'warning'" size="sm" type="button" (click)="askSuspend(t)">
+                    {{ t.suspended ? 'Reactivar' : 'Suspender' }}
+                  </button>
+                }
                 <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDelete(t)">Eliminar</button>
               </div>
             </td>
@@ -115,8 +131,7 @@
   </div>
 }
 
-@if (editOpen()) {
-  <oj-side-panel class="teams__panel" title="Editar equipo" (closed)="editOpen.set(false)">
+<oj-modal #editModal title="Editar equipo" size="md">
     <form class="teams__form" [formGroup]="editForm" (ngSubmit)="submitEdit()">
       @if (editError()) {
         <oj-alert tone="error">{{ editError() }}</oj-alert>
@@ -124,10 +139,18 @@
       <oj-form-field label="Nombre" for="team-name">
         <input id="team-name" type="text" formControlName="name" />
       </oj-form-field>
+      <oj-form-field label="Salón" for="team-room">
+        <select id="team-room" formControlName="roomId">
+          <option [ngValue]="null" disabled>Sin salón</option>
+          @for (r of editRooms(); track r.id) {
+            <option [ngValue]="r.id">{{ r.name }}</option>
+          }
+        </select>
+      </oj-form-field>
 
       <div class="teams__members-edit" formArrayName="members">
         <span class="teams__members-title">Integrantes</span>
-        @for (m of members().controls; track $index) {
+        @for (m of members().controls; track m) {
           <div class="teams__member-row" [formGroupName]="$index">
             <input type="text" placeholder="Nombre" formControlName="name" aria-label="Nombre del integrante" />
             <input type="text" placeholder="Carrera" formControlName="career" aria-label="Carrera del integrante" />
@@ -141,17 +164,15 @@
         }
       </div>
 
-      <p class="teams__hint">El salón y la categoría se gestionan desde la edición, no aquí.</p>
-
-      <div class="teams__form-actions">
-        <button ojButton variant="secondary" type="button" (click)="editOpen.set(false)">Cancelar</button>
-        <button ojButton variant="primary" type="submit" [disabled]="editSaving()">
-          {{ editSaving() ? 'Guardando…' : 'Guardar' }}
-        </button>
-      </div>
+      <p class="teams__hint">La categoría no se cambia aquí.</p>
     </form>
-  </oj-side-panel>
-}
+  <div footer>
+    <button ojButton variant="secondary" type="button" (click)="editModal.close()">Cancelar</button>
+    <button ojButton variant="primary" type="button" [disabled]="editSaving()" (click)="submitEdit()">
+      {{ editSaving() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </div>
+</oj-modal>
 
 <oj-modal #addModal title="Agregar equipo" size="md">
   <form class="teams__form" [formGroup]="addForm" (ngSubmit)="submitAdd()">
@@ -174,7 +195,7 @@
 
     <div class="teams__members-edit" formArrayName="members">
       <span class="teams__members-title">Integrantes</span>
-      @for (m of addMembers().controls; track $index) {
+      @for (m of addMembers().controls; track m) {
         <div class="teams__member-row" [formGroupName]="$index">
           <input type="text" placeholder="Nombre" formControlName="name" aria-label="Nombre del integrante" />
           <input type="text" placeholder="Carrera" formControlName="career" aria-label="Carrera del integrante" />

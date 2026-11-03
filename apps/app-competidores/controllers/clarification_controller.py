@@ -16,6 +16,7 @@ class ClarificationController(QObject):
         self.clarifications = []
         window.clarifications.ask_requested.connect(self.ask)
         realtime.clarification_update.connect(self._on_update)
+        realtime.clarification_delete.connect(self._on_delete)
         realtime.connected.connect(self.load)
 
     @Slot()
@@ -59,6 +60,12 @@ class ClarificationController(QObject):
         if incoming["answer"] and (not previous or previous["answer"] != incoming["answer"]):
             mine = previous and previous.get("mine")
             self.notifier.notify("Respondieron tu pregunta" if mine else "Nueva clarificación", incoming["answer"][:200])
+
+    @Slot(dict)
+    def _on_delete(self, payload):
+        # Eliminada o rechazada por el staff; si es tuya y la rechazaron, enseguida llega su versión nueva
+        self.clarifications = [c for c in self.clarifications if c["id"] != payload["id"]]
+        self.window.clarifications.set_clarifications(self.clarifications)
 
     @Slot(object)
     def _failed(self, error):

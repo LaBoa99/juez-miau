@@ -14,7 +14,7 @@ from views.standings_view import StandingsView
 from views.style import ERROR, MD, SM
 
 CREDITS = (
-    "<p><b>App del concurso de programación</b></p>"
+    "<p><b>App del concurso de programación</b><br>Versión 1.0</p>"
     "<p>Desarrollado por:<br>Ing. Gael Rodríguez<br>Ing. Maribel Navarro</p>"
 )
 
@@ -28,7 +28,7 @@ STATUS = {
 
 
 class MainWindow(QMainWindow):
-    hidden_to_tray = Signal()
+    close_requested = Signal()
     server_requested = Signal()
     logout_requested = Signal()
 
@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
         self.show_login()
 
     def show_login(self):
-        self.setWindowTitle("Concurso · Iniciar sesión")
+        self.setWindowTitle("Juez Miau · Iniciar sesión")
         for label in (self.team_label, self.status_label, self.connection_label):
             label.hide()
         self.tabs.hide()
@@ -141,6 +141,7 @@ class MainWindow(QMainWindow):
     def show_credits(self):
         box = QMessageBox(self)
         box.setWindowTitle("Créditos")
+        box.setIconPixmap(QApplication.windowIcon().pixmap(160, 160))
         box.setText(CREDITS)
         box.addButton("Cerrar", QMessageBox.ButtonRole.AcceptRole)
         box.exec()
@@ -150,7 +151,7 @@ class MainWindow(QMainWindow):
         self._clear_message()
 
     def set_contest(self, view):
-        self.setWindowTitle(f"Concurso · {view['edition']['name']}")
+        self.setWindowTitle(f"Juez Miau · {view['edition']['name']}")
         self.set_status(view["clock"])
         self.problems.set_contest(view["problems"], view["languages"])
         self.clarifications.set_problems(view["problems"])
@@ -203,7 +204,7 @@ class MainWindow(QMainWindow):
         if self.pages.currentWidget() is self.login:
             QApplication.quit()
             return
-        # Con sesión, cerrar la ventana no cierra la app: sigue en la bandeja
+        # Con sesión se pide confirmar; si acepta, la app se cierra del todo (no queda en la bandeja,
+        # así se puede borrar el .exe y el juez ve que dejó de reportar)
         event.ignore()
-        self.hide()
-        self.hidden_to_tray.emit()
+        self.close_requested.emit()

@@ -1,3 +1,4 @@
+import { TooltipDirective } from '../../../../shared/ui/tooltip.directive';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
@@ -8,7 +9,9 @@ import {
   IStaffSubmission,
   IStaffSubmissionDetail,
   ISubmissionCase,
+  ISubmissionCaseDetail,
   ISubmissionHistoryEntry,
+  ISubmissionReview,
   StaffRole,
   SubmissionStatus,
   Verdict,
@@ -17,6 +20,7 @@ import { Badge } from '../../../../shared/ui/badge.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { Modal } from '../../../../shared/ui/modal.component';
+import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
 import { FormField } from '../../../../shared/ui/form-field.component';
 import { CodeBlock } from '../../../../shared/ui/code-block.component';
 import { VerdictPipe } from '../../../../shared/pipes/verdict.pipe';
@@ -27,11 +31,12 @@ import { ProblemsService } from '../../../problems/data/problems.service';
 import { TeamsService } from '../../../teams/data/teams.service';
 import { EditionLanguagesService } from '../../../editions/edition-languages/data/edition-languages.service';
 import { SubmissionsService } from '../../data/submissions.service';
+import { CaseLimits, caseReason, compileReason, firstDiffLine } from '../../utils/case-reason';
 
 @Component({
   selector: 'oj-submission-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
+  imports: [TooltipDirective, 
     ReactiveFormsModule,
     RouterLink,
     DatePipe,
@@ -39,6 +44,7 @@ import { SubmissionsService } from '../../data/submissions.service';
     ButtonDirective,
     Alert,
     Modal,
+    ConfirmDialog,
     FormField,
     CodeBlock,
     VerdictPipe,
@@ -68,6 +74,7 @@ export class SubmissionDetail {
   protected readonly loadError = signal(false);
   protected readonly notFound = signal(false);
   protected readonly history = signal<ISubmissionHistoryEntry[]>([]);
+  protected readonly reviews = signal<ISubmissionReview[]>([]);
   protected readonly progress = signal<{ judged: number; total: number } | null>(null);
   protected readonly actionError = signal<string | null>(null);
 
@@ -76,7 +83,7 @@ export class SubmissionDetail {
   private readonly langMap = signal<Map<string, { code: string; ext: string }>>(new Map());
 
   // Re-evaluar
-  private readonly rejudgeModal = viewChild.required(Modal);
+  private readonly rejudgeModal = viewChild.required<Modal>('rejudgeModal');
   protected readonly reasonCtrl = this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(500)]);
   protected readonly rejudgeSaving = signal(false);
   protected readonly rejudgeError = signal<string | null>(null);
@@ -85,6 +92,15 @@ export class SubmissionDetail {
   protected readonly canRejudge = computed(() => {
     const role = this.auth.roleInEdition(this.editionId);
     return this.auth.isSuperadmin() || role === StaffRole.ADMIN || role === StaffRole.JUDGE;
+  });
+
+  // Revisar manualmente: solo envíos ya juzgados que no estén ya en revisión
+  private readonly reviewDialog = viewChild.required(ConfirmDialog);
+  protected readonly reviewSaving = signal(false);
+  protected readonly reviewDone = signal(false);
+  protected readonly canSendToReview = computed(() => {
+    const d = this.detail();
+    return this.canRejudge() && d?.status === SubmissionStatus.DONE && d.verdict !== Verdict.PENDING_REVIEW;
   });
 
   protected readonly letter = computed(() => this.problem()?.letter ?? '');
@@ -106,6 +122,23 @@ export class SubmissionDetail {
   protected readonly firstFailed = computed<ISubmissionCase | null>(
     () => this.detail()?.cases.find((c) => c.verdict !== Verdict.AC) ?? null,
   );
+  // Límites del testset con el que se juzgó el envío (para TLE/MLE)
+  private readonly limits = computed<CaseLimits | null>(() => {
+    const t = this.problem()?.testsets.find((v) => v.id === this.detail()?.testsetId);
+    return t ? { timeLimitMs: t.timeLimitMs, memoryLimitMb: t.memoryLimitMb } : null;
+  });
+  protected readonly compileReason = computed(() => compileReason(this.detail()?.compileLog ?? null));
+
+  // Detalle de un caso (modal). Solo juez/admin: el backend lo valida igual
+  private readonly caseModal = viewChild.required<Modal>('caseModal');
+  protected readonly openCase = signal<ISubmissionCase | null>(null);
+  protected readonly caseData = signal<ISubmissionCaseDetail | null>(null);
+  protected readonly caseLoading = signal(false);
+  protected readonly caseError = signal<string | null>(null);
+  protected readonly diffLine = computed(() => {
+    const d = this.caseData();
+    return d?.expected != null && d.actual != null ? firstDiffLine(d.expected, d.actual) : null;
+  });
 
   constructor() {
     this.load();
@@ -139,10 +172,21 @@ export class SubmissionDetail {
         err?.status === 404 ? this.notFound.set(true) : this.loadError.set(true);
       },
     });
+    this.loadHistory();
+    this.loadReviews();
+  }
+
+  // La más reciente arriba
+  private loadHistory(): void {
     this.service.history(this.id).subscribe({
-      next: (h) => this.history.set([...h].sort((a, b) => a.judgeRound - b.judgeRound)),
+      next: (h) => this.history.set([...h].sort((a, b) => b.judgeRound - a.judgeRound)),
       error: () => {},
     });
+  }
+
+  private loadReviews(): void {
+    if (!this.canRejudge()) return;
+    this.service.reviews(this.id).subscribe({ next: (r) => this.reviews.set(r), error: () => {} });
   }
 
   private loadRefs(d: IStaffSubmissionDetail): void {
@@ -155,6 +199,10 @@ export class SubmissionDetail {
     const cur = this.detail();
     if (!cur) return;
     this.detail.set({ ...cur, ...s, source: cur.source });
+    // Antes solo se pedía al entrar: una re-evaluación o una revisión nueva no aparecían.
+    // Se vuelve a pedir la lista completa (se acumula, no se reemplaza por la última).
+    if (s.judgeRound !== cur.judgeRound) this.loadHistory();
+    if (s.reviewedAt && String(s.reviewedAt) !== String(cur.reviewedAt)) this.loadReviews();
     if (s.status !== SubmissionStatus.JUDGING) this.progress.set(null);
   }
 
@@ -164,6 +212,40 @@ export class SubmissionDetail {
 
   caseTone(c: ISubmissionCase): 'ac' | 'bad' {
     return c.verdict === Verdict.AC ? 'ac' : 'bad';
+  }
+
+  reason(c: ISubmissionCase) {
+    return caseReason(c, this.limits());
+  }
+
+  memoryMb(kb: number): string {
+    return (Math.round((kb / 1024) * 10) / 10) + ' MB';
+  }
+
+  lines(text: string | null): string[] {
+    return text == null ? [] : text.split('\n');
+  }
+
+  showCase(c: ISubmissionCase): void {
+    this.openCase.set(c);
+    this.caseData.set(null);
+    this.caseError.set(null);
+    this.caseLoading.set(true);
+    this.caseModal().open();
+    this.service.caseDetail(this.id, c.ordinal).subscribe({
+      next: (d) => {
+        this.caseData.set(d);
+        this.caseLoading.set(false);
+      },
+      error: (err) => {
+        this.caseLoading.set(false);
+        this.caseError.set(backendMessage(err, 'No se pudo cargar el detalle del caso.'));
+      },
+    });
+  }
+
+  closeCase(): void {
+    this.caseModal().close();
   }
 
   originLabel(e: ISubmissionHistoryEntry): string {
@@ -183,6 +265,27 @@ export class SubmissionDetail {
     a.download = `envio-${d.id}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  askReview(): void {
+    this.actionError.set(null);
+    this.reviewDone.set(false);
+    this.reviewDialog().open();
+  }
+
+  sendToReview(): void {
+    this.reviewSaving.set(true);
+    this.service.sendToReview(this.id).subscribe({
+      next: (s) => {
+        this.reviewSaving.set(false);
+        this.applyUpdate(s);
+        this.reviewDone.set(true);
+      },
+      error: (err) => {
+        this.reviewSaving.set(false);
+        this.actionError.set(backendMessage(err, 'No se pudo mandar a revisión manual.'));
+      },
+    });
   }
 
   openRejudge(): void {

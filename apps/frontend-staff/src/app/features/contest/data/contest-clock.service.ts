@@ -28,4 +28,9 @@ export class ContestClockService {
   finish(editionId: number): Observable<IContestClock> {
     return this.http.post<IContestClock>(`${API}/editions/${editionId}/clock/finish`, {});
   }
+
+  // Solo superadmin: regresa la edición a borrador y borra envíos, aclaraciones, alertas y sesiones
+  reset(editionId: number): Observable<IContestClock> {
+    return this.http.post<IContestClock>(`${API}/editions/${editionId}/clock/reset`, {});
+  }
 }

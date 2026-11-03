@@ -111,10 +111,17 @@
   }
 }
 
-.sub__more {
-  display: flex;
-  justify-content: center;
-  margin-top: var(--oj-space-md);
+.sub__card-label {
+  align-self: flex-start;
+}
+.sub__card-hint {
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+.sub__count {
+  margin: 0 0 var(--oj-space-sm);
+  font-size: 12px;
+  color: var(--oj-text-muted);
 }
 .sub__muted {
   margin: 0;

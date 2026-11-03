@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, signal, viewChild } from '@angular/core';
+import { TooltipDirective } from '../../../../shared/ui/tooltip.directive';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ITestRun, SubmissionStatus } from '@concurso/shared-types';
+import { ITestRun, SubmissionStatus, Verdict } from '@concurso/shared-types';
 import { Modal } from '../../../../shared/ui/modal.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { Badge } from '../../../../shared/ui/badge.component';
@@ -19,7 +20,7 @@ const POLL_MS = 1000;
 @Component({
   selector: 'oj-test-run-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, Modal, Alert, Badge, ButtonDirective, FileDrop, FormField, VerdictPipe],
+  imports: [TooltipDirective, ReactiveFormsModule, Modal, Alert, Badge, ButtonDirective, FileDrop, FormField, VerdictPipe],
   templateUrl: './test-run-modal.html',
   styleUrl: './test-run-modal.css',
 })
@@ -28,6 +29,8 @@ export class TestRunModal {
 
   readonly testsetId = input.required<number>();
   readonly languages = input.required<{ id: string; code: string }[]>();
+  // Verificar o probar la oficial terminó con todos los casos bien
+  readonly passed = output<'ref' | 'verify'>();
 
   private readonly modal = viewChild.required(Modal);
   // ref: probar la oficial · custom: probar otra · verify: ver las salidas antes de construir
@@ -139,6 +142,8 @@ export class TestRunModal {
         next: (run) => {
           this.run.set(run);
           if (run.status === 'done' || run.status === 'failed') this.stopPoll();
+          const mode = this.mode();
+          if (run.status === 'done' && run.verdict === Verdict.AC && mode !== 'custom') this.passed.emit(mode);
           if (run.status === 'failed') {
             console.error('[test-run]', run.error);
             this.error.set('La prueba falló por un error del sistema. Intenta de nuevo.');

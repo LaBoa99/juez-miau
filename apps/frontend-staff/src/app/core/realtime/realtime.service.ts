@@ -5,6 +5,8 @@ import {
   SOCKET_EVENTS,
   type IContestClock,
   type IFlag,
+  type IStaffClarification,
+  type IClarificationDeleted,
   type IJoinEdition,
   type IStaffSubmission,
   type IStandings,
@@ -23,8 +25,10 @@ export class RealtimeService {
   private readonly auth = inject(AuthService);
 
   private socket: Socket | null = null;
-  // Salas a re-unir tras reconectar: claves "staff:<id>" / "public:<id>".
-  private readonly joined = new Set<string>();
+  // Salas a re-unir tras reconectar ("staff:<id>" / "public:<id>") y cuántas pantallas las usan:
+  // el layout de la edición y la página abierta piden la misma sala, y salir de la página no debe
+  // sacar al layout (antes se borraba y, al reconectar, ya no se volvía a unir: se perdían alertas).
+  private readonly joined = new Map<string, number>();
 
   private readonly _connectionState = signal<ConnectionState>('disconnected');
   readonly connectionState = this._connectionState.asReadonly();
@@ -37,6 +41,8 @@ export class RealtimeService {
   private readonly submission$ = new Subject<ISubmission | IStaffSubmission>();
   private readonly progress$ = new Subject<ISubmissionProgress>();
   private readonly flag$ = new Subject<IFlag>();
+  private readonly clarification$ = new Subject<IStaffClarification>();
+  private readonly clarificationDelete$ = new Subject<IClarificationDeleted>();
 
   constructor() {
     // Al cerrar sesión (logout o expiración) se cierra la conexión.
@@ -66,27 +72,49 @@ export class RealtimeService {
     this.ensure();
     return this.flag$.asObservable();
   }
+  // Pregunta nueva o respondida (el staff recibe la versión con el equipo)
+  onClarification(): Observable<IStaffClarification> {
+    this.ensure();
+    return this.clarification$.asObservable();
+  }
+  // Aclaración eliminada (o rechazada: luego llega su versión actualizada por onClarification)
+  onClarificationDelete(): Observable<IClarificationDeleted> {
+    this.ensure();
+    return this.clarificationDelete$.asObservable();
+  }
 
   // ─── Salas ───
   joinEdition(editionId: number): void {
     this.ensure();
-    this.joined.add('staff:' + editionId);
+    this.retain('staff:' + editionId);
     this._active.set(true);
     this.emitJoin('staff', editionId);
   }
 
   joinPublic(editionId: number): void {
     this.ensure();
-    this.joined.add('public:' + editionId);
+    this.retain('public:' + editionId);
     this._active.set(true);
     this.emitJoin('public', editionId);
   }
 
-  // Dejar de seguir una edición (no cierra la conexión).
+  // Una pantalla deja de seguir la edición (no cierra la conexión). La sala se suelta cuando ya
+  // nadie la usa; el servidor no tiene evento de salida, así que el socket sigue en ella hasta
+  // reconectar (inofensivo: los componentes ya no escuchan).
   leave(editionId: number): void {
-    this.joined.delete('staff:' + editionId);
-    this.joined.delete('public:' + editionId);
+    this.release('staff:' + editionId);
+    this.release('public:' + editionId);
     if (this.joined.size === 0) this._active.set(false);
+  }
+
+  private retain(key: string): void {
+    this.joined.set(key, (this.joined.get(key) ?? 0) + 1);
+  }
+
+  private release(key: string): void {
+    const n = this.joined.get(key);
+    if (n === undefined) return;
+    n <= 1 ? this.joined.delete(key) : this.joined.set(key, n - 1);
   }
 
   disconnect(): void {
@@ -119,13 +147,18 @@ export class RealtimeService {
     socket.on(SOCKET_EVENTS.SUBMISSION_UPDATE, (p: ISubmission | IStaffSubmission) => this.submission$.next(p));
     socket.on(SOCKET_EVENTS.SUBMISSION_PROGRESS, (p: ISubmissionProgress) => this.progress$.next(p));
     socket.on(SOCKET_EVENTS.FLAG_UPDATE, (p: IFlag) => this.flag$.next(p));
+    // El staff también está en la sala pública y recibe la versión anónima (sin equipo): se ignora
+    socket.on(SOCKET_EVENTS.CLARIFICATION_UPDATE, (p: IStaffClarification) => {
+      if (p.teamId != null) this.clarification$.next(p);
+    });
+    socket.on(SOCKET_EVENTS.CLARIFICATION_DELETE, (p: IClarificationDeleted) => this.clarificationDelete$.next(p));
 
     this.socket = socket;
     return socket;
   }
 
   private rejoin(): void {
-    for (const key of this.joined) {
+    for (const key of this.joined.keys()) {
       const [mode, id] = key.split(':');
       this.emitJoin(mode as 'staff' | 'public', Number(id));
     }

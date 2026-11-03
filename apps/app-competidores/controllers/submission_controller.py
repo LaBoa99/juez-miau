@@ -17,6 +17,7 @@ class SubmissionController(QObject):
         self.notifier = notifier
         self.submissions = {}
         self.progress = {}
+        self._awaiting = None  # envío cuyo aviso "Envío recibido" sigue en pantalla
 
         view = window.problems
         view.submit_requested.connect(self.submit)
@@ -49,7 +50,9 @@ class SubmissionController(QObject):
     @Slot(object)
     def _submitted(self, submission):
         self.window.problems.set_submitting(False)
-        self.window.problems.show_message("Envío recibido. Te avisamos cuando tenga veredicto.")
+        self.window.problems.show_message("✓ Envío recibido. Te avisamos cuando tenga veredicto.", success=True)
+        self.notifier.notify(f"Problema {self._letter(submission)}", "Envío recibido")
+        self._awaiting = submission["id"]
         self._on_update(submission)
 
     @Slot(object)
@@ -77,6 +80,10 @@ class SubmissionController(QObject):
         self.submissions[submission["id"]] = submission
         if is_final(submission):
             self.progress.pop(submission["id"], None)
+            if submission["id"] == self._awaiting:
+                # Ya tiene veredicto: el aviso de "recibido" sobra
+                self._awaiting = None
+                self.window.problems.message.hide()
             changed = not previous or (previous["status"], previous["verdict"]) != (submission["status"], submission["verdict"])
             if changed:
                 self.notifier.notify(f"Problema {self._letter(submission)}", verdict_text(submission))

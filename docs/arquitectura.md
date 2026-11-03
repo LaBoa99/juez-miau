@@ -52,7 +52,7 @@ Es un **monorepo pnpm** con tres aplicaciones y un paquete de tipos compartidos:
    **testsets** (entidades `Testset`, `TestCase`, `Generator`, `RefSolution`) definen entradas,
    salidas esperadas y la solución oficial. El diseño completo de generación y evaluación está en
    [design/judge-evaluation.md](design/judge-evaluation.md).
-5. **Durante el concurso** (diseñado, aún no implementado como módulo): el equipo envía código →
+5. **Durante el concurso**: el equipo envía código →
    la API lo guarda y lo encola en **BullMQ/Redis** → un **worker** lo compila y ejecuta en Docker,
    un contenedor por núcleo → emite el **veredicto** (`AC`, `WA`, `TLE`, `RE`, `CE`, `PENDING_REVIEW`)
    → se notifica por **WebSocket** y se actualiza el marcador. Ver §6 de
@@ -62,8 +62,8 @@ Es un **monorepo pnpm** con tres aplicaciones y un paquete de tipos compartidos:
 
 Los equipos tienen **una sola sesión activa a la vez** (entidad `team_session`, con índice único
 parcial sobre `team_id` donde `ended_at IS NULL`). El login de equipo cerrará la sesión previa
-(`end_reason` `replaced`) y puede generar una alerta si cambia la máquina. *El login de equipo está
-pendiente de implementar* (ver §3).
+(`end_reason` `replaced`) y genera una alerta si cambia la máquina. Al reemplazar o cerrar la sesión,
+el gateway de tiempo real desconecta los sockets que seguían abiertos con la sesión vieja.
 
 ### Convenciones de la API
 
@@ -80,16 +80,20 @@ pendiente de implementar* (ver §3).
 
 | Módulo | Estado | Notas |
 |---|---|---|
-| `auth` | **Implementado (parcial)** | Login/refresh/logout/me de **staff** completos (JWT + cookie refresh, guards). **Login de equipo y `me` de equipo = TODO** (`NotImplementedException`). |
+| `auth` | **Implementado** | Login/refresh/logout/me de staff (JWT + cookie refresh) y de equipo (una sesión por equipo, `session_id` en el JWT). Guards globales por rol. |
 | `staff` | **Implementado** | Usuarios de staff (`StaffUser`), superadmin, activo/inactivo. |
 | `editions` | **Implementado** | Ediciones + subdominios: `categories`, `rooms`, `room-observers`, `room-proyectors`, `edition-staff`, `edition-teams` (import CSV), `edition-languages`, `edition-problems`. |
 | `teams` | **Implementado** | Equipos, miembros (`team-members`) y sesiones (`team-sessions`). |
 | `languages` | **Implementado** | Catálogo de lenguajes (imagen Docker, comandos, `time_multiplier`). |
 | `problems` | **Implementado** | CRUD de problemas + filtros + tests e2e. |
-| `testsets` | **Entidades definidas** | `Testset`, `TestCase`, `Generator`, `RefSolution` (sin controlador/servicio aún). |
+| `testsets` | **Implementado** | Firma, generación de casos, build con la solución de referencia y corridas de prueba. |
 | `utils` | **Implementado** | `CsvService`, `PasswordService`, validadores, `CoolNames`. |
 | `database/seeds` | **Implementado** | Seeders base (superadmin, lenguajes) y dev (ediciones, equipos, etc.). |
-| `submissions`, `judging-events`, `standings`, `contest-clock`, `proctoring`, `integrity`, `flags`, `audit`, `exports`, `public`, `realtime`, `health` | **Declarados / stub** | `@Module({})` vacíos; funcionalidad aún por construir (ver "Pendiente" en los docs de diseño). |
+| `judge`, `submissions`, `judging-events` | **Implementado** | Worker en Docker, cola BullMQ, veredictos, revisión manual y rejudge. |
+| `contest`, `contest-clock`, `standings`, `clarifications` | **Implementado** | Vista del equipo, reloj (iniciar/pausar/terminar), marcador ICPC con congelamiento y aclaraciones. |
+| `realtime`, `health` | **Implementado** | Socket.io en `/ws` y `GET /health` (BD, Redis, jueces y cola). |
+| `integrity`, `flags`, `audit`, `exports` | **Implementado** | Heartbeat anti-trampa, alertas, bitácora y exportaciones. |
+| `proctoring`, `public` | **Stub** | `@Module({})` vacíos; sin uso por ahora. |
 
 ---
 
@@ -133,10 +137,8 @@ Puntos de entrada: `src/main.ts` (API). El **worker** de evaluación (`src/worke
 | Build / dev | Angular CLI (`@angular/build`): `ng serve` (dev), `ng build` |
 | Proxy | Las llamadas a `/api` se redirigen al backend (proxy de desarrollo) |
 
-**Estado actual del frontend:** está en fase inicial. El componente raíz `App` (`src/app/app.ts`) es
-el scaffold por defecto de Angular (título en un `signal` + `RouterOutlet`); `src/app/app.html`
-contiene una **plantilla de login de staff** (marcado + estilos) todavía **sin lógica conectada**
-(el `AuthService` previo se eliminó al reestructurar). Rutas y servicios de datos están por construir.
+**Estado actual del frontend:** completo para la versión 1 (ver la tabla de estado en
+[frontend-plan.md](frontend-plan.md)). La app de los equipos es `apps/app-competidores` (PySide6).
 
 ---
 
@@ -151,7 +153,10 @@ en [design/server-specs.md](design/server-specs.md).
 | Java | `eclipse-temurin:21-jdk` | ~2.5 |
 | C# | `mcr.microsoft.com/dotnet/sdk:8.0` | ~1.5 |
 | JavaScript / TypeScript | `node:24-slim` | 1.5 |
-| Python | `python:3.12-slim` | 2.0 — *en diseño, sin seeder aún* |
+| Python | `python:3.12-slim` | 3 — *falta calibrar con el hardware del concurso* |
+
+Las imágenes se definen en `deploy/docker-compose.yml` (`JUDGE_IMAGE_*`): el compose las descarga
+antes de arrancar el worker y el seeder sincroniza `image_ref` de los lenguajes base.
 
 ---
 
@@ -166,11 +171,11 @@ pnpm install
 # 2. Tipos compartidos (back y front dependen de ellos)
 pnpm --filter @concurso/shared-types build   # o en watch: pnpm dev:types
 
-# 3. Infraestructura del backend (Postgres + Redis)
-docker compose -f apps/backend/docker-compose.yml up -d
+# 3. Infraestructura del backend (Postgres + Redis), del único compose del proyecto
+docker compose -f deploy/docker-compose.yml up -d postgres redis
 
-# 4. Configurar el backend
-cp apps/backend/.env.example apps/backend/.env   # y ajustar secretos/BD
+# 4. Configurar el backend (mismas contraseñas de BD y Redis que deploy/.env)
+cp apps/backend/.env.example apps/backend/.env
 
 # 5. Levantar (en terminales separadas)
 pnpm --filter backend start:dev        # API NestJS → http://localhost:3000/api/v1

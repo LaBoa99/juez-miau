@@ -1,8 +1,9 @@
+import { TooltipDirective } from '../../../../shared/ui/tooltip.directive';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import {
   IProblemListItem,
@@ -26,13 +27,12 @@ import { TeamsService } from '../../../teams/data/teams.service';
 import { EditionLanguagesService } from '../../../editions/edition-languages/data/edition-languages.service';
 import { SubmissionsService } from '../../data/submissions.service';
 
-const PAGE_LIMIT = 50;
 type VerdictSeg = 'all' | 'ac' | 'bad' | 'limit' | 'pending';
 
 @Component({
   selector: 'oj-submission-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
+  imports: [TooltipDirective, 
     ReactiveFormsModule,
     RouterLink,
     PageHeader,
@@ -68,8 +68,6 @@ export class SubmissionList {
   protected readonly newIds = signal<ReadonlySet<number>>(new Set());
   protected readonly loading = signal(false);
   protected readonly error = signal(false);
-  protected readonly loadingMore = signal(false);
-  protected readonly hasMore = signal(false);
   protected readonly actionError = signal<string | null>(null);
   protected readonly csvBusy = signal(false);
 
@@ -84,17 +82,44 @@ export class SubmissionList {
   protected readonly categoryCtrl = this.fb.control<number | null>(null);
   protected readonly problemCtrl = this.fb.control<number | null>(null);
   protected readonly teamCtrl = this.fb.nonNullable.control('');
+  protected readonly cards = [
+    { key: 'queued', label: 'En cola', hint: 'Esperando turno para evaluarse.' },
+    { key: 'judging', label: 'Evaluando', hint: 'Se están corriendo ahora.' },
+    { key: 'accepted', label: 'Aceptados', hint: 'Con veredicto AC.' },
+    { key: 'total', label: 'Total', hint: 'Todos los envíos recibidos en la edición.' },
+  ] as const;
   protected readonly verdictSeg = signal<VerdictSeg>('all');
-  protected readonly verdictOptions = [
-    { value: 'all', label: 'Todos' },
-    { value: 'ac', label: 'AC' },
-    { value: 'bad', label: 'WA · CE · RE' },
-    { value: 'limit', label: 'TLE · MLE' },
-    { value: 'pending', label: 'Pendientes' },
-  ];
+  private readonly verdictBase = [
+    { value: 'all', label: 'Todos', hint: 'Todos los envíos, con cualquier veredicto.' },
+    { value: 'ac', label: 'AC', hint: 'Aceptado: pasó todos los casos.' },
+    {
+      value: 'bad',
+      label: 'WA · CE · RE',
+      hint: 'WA: respuesta incorrecta. CE: error de compilación. RE: error de ejecución.',
+    },
+    { value: 'limit', label: 'TLE · MLE', hint: 'TLE: tiempo excedido. MLE: memoria excedida.' },
+    { value: 'pending', label: 'Pendientes', hint: 'En cola, evaluándose o esperando la revisión de un juez.' },
+  ] as const;
+  // Cada opción con su número, contado sobre la misma lista que el indicador Total
+  protected readonly verdictOptions = computed(() => {
+    const list = this.all();
+    return this.verdictBase.map((o) => ({
+      ...o,
+      label: `${o.label} (${list.filter((s) => this.matchesSeg(s, o.value)).length})`,
+    }));
+  });
+  // Los selects son FormControl: su valor se lee como signal para que la tabla se recalcule al cambiarlos
+  private readonly categoryFilter = toSignal(this.categoryCtrl.valueChanges, { initialValue: this.categoryCtrl.value });
+  private readonly problemFilter = toSignal(this.problemCtrl.valueChanges, { initialValue: this.problemCtrl.value });
   // Reacciona a la búsqueda por equipo con debounce (signal para que el computed la lea).
   private readonly teamSearch = signal('');
 
+  // Hay algún filtro activo: el total se muestra como "N de M envíos"
+  protected readonly filtering = computed(
+    () => this.categoryFilter() != null || this.problemFilter() != null || this.verdictSeg() !== 'all' || this.teamSearch().trim() !== '',
+  );
+
+  // Una sola fuente: la lista completa de la edición (nunca la página visible)
   protected readonly counters = computed(() => {
     const list = this.all();
     let queued = 0;
@@ -109,8 +134,8 @@ export class SubmissionList {
   });
 
   protected readonly filtered = computed(() => {
-    const cat = this.categoryCtrl.value;
-    const prob = this.problemCtrl.value;
+    const cat = this.categoryFilter();
+    const prob = this.problemFilter();
     const seg = this.verdictSeg();
     const search = this.teamSearch().trim().toLowerCase();
     const pm = this.problemMap();
@@ -144,10 +169,10 @@ export class SubmissionList {
   private load(): void {
     this.loading.set(true);
     this.error.set(false);
-    this.service.listForEdition(this.editionId, { limit: PAGE_LIMIT }).subscribe({
+    this.service.listAllForEdition(this.editionId).subscribe({
       next: (rows) => {
-        this.all.set([...rows].sort((a, b) => b.id - a.id));
-        this.hasMore.set(rows.length === PAGE_LIMIT);
+        // Lo que llegó por socket mientras cargaba se conserva (merge por id)
+        this.merge(rows);
         this.loading.set(false);
       },
       error: () => {
@@ -157,32 +182,14 @@ export class SubmissionList {
     });
   }
 
-  loadMore(): void {
-    const oldest = this.all().at(-1)?.id;
-    if (oldest === undefined) return;
-    this.loadingMore.set(true);
-    this.service.listForEdition(this.editionId, { before: oldest, limit: PAGE_LIMIT }).subscribe({
-      next: (rows) => {
-        this.merge(rows);
-        this.hasMore.set(rows.length === PAGE_LIMIT);
-        this.loadingMore.set(false);
-      },
-      error: (err) => {
-        this.loadingMore.set(false);
-        this.actionError.set(backendMessage(err, 'No se pudieron cargar más envíos.'));
-      },
-    });
-  }
-
   private loadLookups(): void {
     this.problemsService.list(this.editionId).subscribe({
       next: (ps) => this.problemMap.set(new Map(ps.map((p) => [p.id, p]))),
       error: () => {},
     });
-    // Una página de equipos (suficiente para la mayoría de ediciones); si hay más, el id cae a "#id".
-    this.teamsService.list(this.editionId, { page: 1, pageSize: 100 }).subscribe({
-      next: (res) =>
-        this.teamMap.set(new Map(res.items.map((t) => [t.id, { name: t.name, category: t.category?.name ?? '' }]))),
+    this.teamsService.listAll(this.editionId).subscribe({
+      next: (teams) =>
+        this.teamMap.set(new Map(teams.map((t) => [t.id, { name: t.name, category: t.category?.name ?? '' }]))),
       error: () => {},
     });
     this.languagesService.catalog().subscribe({

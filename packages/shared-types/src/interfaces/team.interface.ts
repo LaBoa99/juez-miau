@@ -14,6 +14,7 @@ export interface ICreateTeamMember {
 
 export interface IUpdateTeam {
     name ?: string
+    room_id ?: number
     members ?: IUpdateTeamMember[]
 }
 
@@ -37,6 +38,8 @@ export interface ITeamListItem {
     room: ITeamRoomRef | null
     members: ITeamMemberListItem[]
     online: boolean
+    // Suspendido por el staff: no puede entrar ni enviar y queda al final del marcador
+    suspended: boolean
 }
 
 export interface ITeamsPage {

@@ -1,5 +1,5 @@
 import { Body, Controller, ForbiddenException, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, Query, Req } from '@nestjs/common'
-import { StaffRole, type IRejudgeResponse, type ISubmission, type ISubmissionDetail, type ISubmissionHistoryEntry, type IStaffSubmission, type IStaffSubmissionDetail } from '@concurso/shared-types'
+import { StaffRole, type IRejudgeResponse, type ISubmission, type ISubmissionDetail, type ISubmissionCaseDetail, type ISubmissionHistoryEntry, type ISubmissionReview, type IStaffSubmission, type IStaffSubmissionDetail } from '@concurso/shared-types'
 import { AllowTeam, ANY_EDITION_ROLE, RequireEditionRole } from '../../auth/decorators/access.decorators.js'
 import { AccessTokenType } from '../../auth/factories/access-token-payload.factory.js'
 import type { AuthenticatedRequest } from '../../auth/guards/jwt-auth.guard.js'
@@ -71,6 +71,21 @@ export class SubmissionsController {
         return this.submissionsService.findHistory(req.user.sub, id)
     }
 
+    @Get('submissions/:id/reviews')
+    findReviews(@Req() req: AuthenticatedRequest, @Param('id', ParseIntPipe) id: number): Promise<ISubmissionReview[]> {
+        return this.submissionsService.findReviews(req.user.sub, id)
+    }
+
+    // Solo juez/admin (lo valida el servicio): entrada y salidas de un caso, aunque sea oculto
+    @Get('submissions/:id/cases/:ordinal')
+    findCase(
+        @Req() req: AuthenticatedRequest,
+        @Param('id', ParseIntPipe) id: number,
+        @Param('ordinal', ParseIntPipe) ordinal: number,
+    ): Promise<ISubmissionCaseDetail> {
+        return this.submissionsService.findCase(req.user.sub, id, ordinal)
+    }
+
     @Get('editions/:editionId/review-queue')
     @RequireEditionRole([StaffRole.ADMIN, StaffRole.JUDGE])
     findPendingReview(@Param('editionId', ParseIntPipe) editionId: number): Promise<IStaffSubmission[]> {
@@ -81,6 +96,13 @@ export class SubmissionsController {
     @HttpCode(HttpStatus.OK)
     review(@Req() req: AuthenticatedRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: ReviewSubmissionDto): Promise<IStaffSubmission> {
         return this.submissionsService.review(req.user.sub, id, dto)
+    }
+
+    // Manda a revisión manual un envío ya juzgado (queda PENDING_REVIEW)
+    @Post('submissions/:id/manual-review')
+    @HttpCode(HttpStatus.OK)
+    sendToReview(@Req() req: AuthenticatedRequest, @Param('id', ParseIntPipe) id: number): Promise<IStaffSubmission> {
+        return this.submissionsService.sendToReview(req.user.sub, id)
     }
 
     private teamId(req: AuthenticatedRequest): number {

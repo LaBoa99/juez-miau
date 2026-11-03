@@ -58,8 +58,8 @@ a la más antigua, con la hora en que se enviaron y se respondieron; el número 
 Las respuestas las ven todos los equipos de tu categoría, sin tu nombre; revísalas de vez en cuando.
 
 ## 7. Durante el concurso
-- **Deja la app abierta todo el concurso.** Si cierras la ventana, sigue activa en el ícono de la bandeja;
-  para salir del todo usa *Salir* en ese ícono.
+- **Deja la app abierta todo el concurso.** Si cierras la ventana, la app se cierra por completo y deja de
+  estar conectada con el juez (el staff lo ve).
 - En la pestaña **Marcador** ves la tabla de tu categoría (tu equipo va resaltado). En cada problema:
   `42′` = resuelto en el minuto 42, `(+2)` = rechazos antes de resolverlo, `−3` = rechazos sin resolverlo.
   La leyenda está arriba de la tabla. Los equipos suspendidos por el staff aparecen tachados, al final y sin lugar.

@@ -25,24 +25,36 @@
   </oj-alert>
 }
 
+<div class="st__top">
+  @if (clock(); as c) {
+    <oj-contest-countdown class="st__countdown" [clock]="c" />
+  }
+  @if (rooms().length) {
+    <div class="st__filter">
+      <label for="st-room">Salón</label>
+      <select id="st-room" [value]="roomId() ?? ''" (change)="onRoom($any($event.target).value)">
+        <option value="">Todos los salones</option>
+        @for (r of rooms(); track r.id) {
+          <option [value]="r.id">{{ r.name }}</option>
+        }
+      </select>
+    </div>
+  }
+</div>
+
 @if (loading()) {
   <p class="st__loading">Cargando…</p>
 } @else if (error()) {
   <oj-alert tone="error">No se pudo cargar el marcador.</oj-alert>
 } @else if (!hasRows()) {
   <oj-empty-state message="El marcador aparecerá cuando empiece el concurso." />
+} @else if (roomId() != null && roomEmpty()) {
+  <oj-empty-state message="Ningún equipo tiene asignado este salón. Asígnalo en Equipos → Editar." />
 } @else {
-  @if (categoryOptions().length > 1) {
-    <oj-segmented
-      class="st__cats"
-      size="sm"
-      [options]="categoryOptions()"
-      [value]="categorySeg()"
-      (valueChange)="categorySeg.set($event ?? '')"
-    />
-  }
-
-  @if (current(); as cat) {
+  @for (cat of shown(); track cat.categoryId) {
+    @if (shown().length > 1 || roomId() == null) {
+      <h2 class="st__cat-title">{{ cat.name }}</h2>
+    }
     <div class="oj-table-wrap">
       <table class="oj-table st__table">
         <thead>
@@ -52,20 +64,38 @@
             @for (p of cat.problems; track p.id) {
               <th class="st__prob" [title]="p.title">{{ p.letter }}</th>
             }
-            <th class="st__num">Resueltos</th>
-            <th class="st__num">Penalización</th>
+            <th aria-label="Acciones"></th>
           </tr>
         </thead>
         <tbody>
           @for (row of cat.rows; track row.teamId) {
-            <tr>
-              <td class="st__rank oj-mono">{{ row.rank }}</td>
-              <td class="st__team">{{ row.teamName }}</td>
+            <tr [class.st__suspended]="row.suspended">
+              <td class="st__rank oj-mono">{{ row.rank ?? '—' }}</td>
+              <td class="st__team">
+                {{ row.teamName }}
+                @if (row.suspended) {
+                  <span class="st__tag">Suspendido</span>
+                }
+              </td>
               @for (p of cat.problems; track p.id; let i = $index) {
-                <td class="st__prob"><oj-standings-cell [cell]="row.cells[i]" /></td>
+                <td class="st__prob"><oj-standings-cell [cell]="row.cells[i]" [letter]="p.letter" /></td>
               }
-              <td class="st__num st__solved oj-mono">{{ row.solved }}</td>
-              <td class="st__num oj-mono">{{ row.penalty }}</td>
+              <td class="st__num">
+                <button
+                  ojButton
+                  size="sm"
+                  [variant]="row.suspended ? 'secondary' : 'danger-outline'"
+                  type="button"
+                  [disabled]="suspending() === row.teamId"
+                  (click)="toggleSuspended(row.teamId, !row.suspended)"
+                >
+                  {{ row.suspended ? 'Reactivar' : 'Suspender' }}
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="cat.problems.length + 3" class="st__none">Ningún equipo de este salón en la categoría.</td>
             </tr>
           }
         </tbody>
@@ -73,7 +103,4 @@
     </div>
   }
 
-  <p class="st__note">
-    La penalización es el minuto de cada AC más 20 por cada rechazo previo; los errores de compilación no cuentan.
-  </p>
 }

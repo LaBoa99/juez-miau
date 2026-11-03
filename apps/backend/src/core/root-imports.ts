@@ -21,6 +21,7 @@ export const bullImport = BullModule.forRootAsync({
             host: config.getOrThrow<string>('REDIS_HOST'),
             port: Number(config.getOrThrow<string>('REDIS_PORT')),
             password: config.get<string>('REDIS_PASSWORD') || undefined,
+            db: Number(config.get<string>('REDIS_DB') ?? 0),
             maxRetriesPerRequest: null,
         }),
     }),

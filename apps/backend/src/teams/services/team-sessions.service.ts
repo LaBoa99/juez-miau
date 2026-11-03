@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { randomUUID } from "crypto";
 import { TeamSession } from "../entities/team-session.entity.js";
 import { Repository } from "typeorm";
+import { Subject } from "rxjs";
 
 export interface StartedTeamSession {
     session: TeamSession
@@ -10,8 +11,17 @@ export interface StartedTeamSession {
     replaced: Pick<TeamSession, 'machine_id' | 'started_at'> | null
 }
 
+// Sesión vigente de un equipo después de un login (id nuevo) o de cerrarla (null)
+export interface TeamSessionChange {
+    teamId: number
+    activeSessionId: string | null
+}
+
 @Injectable()
 export class TeamSessionsService {
+
+    // El gateway de tiempo real escucha esto para desconectar los sockets de sesiones viejas
+    readonly changes = new Subject<TeamSessionChange>()
 
     constructor(
         @InjectRepository(TeamSession)
@@ -48,7 +58,9 @@ export class TeamSessionsService {
             network_baseline: null,
         })
 
-        return { session: await this._teamSessionRepository.save(session), replaced }
+        const saved = await this._teamSessionRepository.save(session)
+        this.changes.next({ teamId, activeSessionId: saved.session_id })
+        return { session: saved, replaced }
     }
 
     async assertActive(teamId: number, sessionId: string | undefined): Promise<void> {
@@ -72,5 +84,6 @@ export class TeamSessionsService {
         teamSession.ended_at = new Date()
         teamSession.end_reason = end_reason
         await this._teamSessionRepository.save(teamSession)
+        this.changes.next({ teamId, activeSessionId: null })
     }
 }

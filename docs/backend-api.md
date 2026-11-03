@@ -317,7 +317,14 @@ Tipos: `ICreateSubmission`, `ISubmission`, `ISubmissionDetail`, `IStaffSubmissio
 | POST | `/problems/:problemId/rejudge` | staff (juez) | `{ reason, verdicts? }` | `IRejudgeResponse` | 202 |
 | GET | `/submissions/:id/history` | staff (juez; servicio) | — | `ISubmissionHistoryEntry[]` | 404 |
 | GET | `/editions/:editionId/review-queue` | `RequireEditionRole([ADMIN,JUDGE])` | — | `IStaffSubmission[]` | — |
-| POST | `/submissions/:id/review` | staff (juez; servicio) | `{ accept (bool), comment? (≤1000) }` | `IStaffSubmission` | 200 |
+| POST | `/submissions/:id/review` | staff (juez; servicio) | `{ accept (bool), comment? (≤1000) }` | `IStaffSubmission` (con el veredicto nuevo) | 200; 409 ya no está pendiente |
+| POST | `/submissions/:id/manual-review` | staff (juez; servicio) | — | `IStaffSubmission` (queda `PENDING_REVIEW`) | 200; 409 no se puede mandar a revisión |
+| GET | `/submissions/:id/reviews` | staff (cualquier rol; servicio) | — | `ISubmissionReview[]` (la más reciente primero) | 404 |
+| GET | `/submissions/:id/cases/:ordinal` | staff (juez/admin; servicio) | — | `ISubmissionCaseDetail` | 403 otros roles; 404 |
+
+**`ISubmissionCase`**: `{ ordinal, verdict, cpuMs, wallMs, memoryKb, exitCode, message }`. `message`: stderr del programa (RE/TLE/MLE) o un texto fijo del juez en WA (`rejected by the checker`, `the program ended without returning a result`, `the result is not valid JSON…`, `result…: expected <tipo>`); `null` en un WA por comparación normal. `exitCode` es `null` en casos juzgados antes de guardarlo.
+**`ISubmissionCaseDetail`**: `{ ordinal, input, expected (null si no hay salida esperada), actual (salida canónica del equipo, ≤64 KB; null si no terminó bien o es anterior a guardarla) }`. Incluye casos ocultos: solo ADMIN/JUDGE.
+**`ISubmissionReview`**: `{ id, verdict, reviewedBy, reviewerName, comment, createdAt }`. Cada `POST …/review` agrega una; el envío solo guarda la última en `reviewedBy/reviewedAt`.
 
 **`ISubmission`** (equipo): `{ id, problemId, languageId, status, verdict, contestMs, maxTimeMs, maxMemoryKb, compileLog, reviewComment, createdAt, judgedAt }`. **`IStaffSubmission`** añade `teamId, testsetId, judgeRound, reviewedBy, reviewedAt, cases: ISubmissionCase[]`. Los `*Detail` añaden `source`.
 
@@ -331,7 +338,8 @@ Tipos: `ICreateSubmission`, `ISubmission`, `ISubmissionDetail`, `IStaffSubmissio
 
 Revisión manual. **No tiene controlador propio**: usa las rutas de `## submissions`:
 - `GET /editions/:editionId/review-queue` (`RequireEditionRole([ADMIN,JUDGE])`) → `IStaffSubmission[]` pendientes (`PENDING_REVIEW`).
-- `POST /submissions/:id/review` → `{ accept: boolean, comment?: string }` (`IReviewSubmission`). `accept:true` → `AC`; `false` → `WA` (cuenta como rechazo en la penalización). `comment` lo ve el equipo (`reviewComment`).
+- `POST /submissions/:id/review` → `{ accept: boolean, comment?: string }` (`IReviewSubmission`). `accept:true` → `AC`; `false` → `WA` (cuenta como rechazo en la penalización). `comment` lo ve el equipo (`reviewComment`). Cada decisión queda en `GET /submissions/:id/reviews`.
+- `POST /submissions/:id/manual-review` → manda a revisión un envío ya juzgado.
 
 Un envío entra a revisión cuando su testset tiene `manualReview: true` (ver `## testsets`).
 

@@ -35,14 +35,54 @@ oj-alert,
   text-align: right;
   white-space: nowrap;
 }
-/* Resueltos: mono 15px 700. */
-.st__solved {
-  font-size: 15px;
-  font-weight: 700;
+
+
+.st__suspended .st__team {
+  text-decoration: line-through;
+  color: var(--oj-text-muted);
 }
 
-.st__note {
-  margin: var(--oj-space-sm) 0 0;
-  font-size: 12px;
+.st__tag {
+  /* inline-block: no hereda el tachado del nombre */
+  display: inline-block;
+  margin-left: var(--oj-space-sm);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--oj-danger);
+}
+
+.st__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--oj-space-lg);
+  margin-bottom: var(--oj-space-md);
+}
+.st__countdown {
+  flex: 0 0 280px;
+}
+.st__filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-xs);
+  min-width: 220px;
+}
+.st__filter label {
+  font-size: var(--oj-text-label);
+  font-weight: var(--oj-text-label-weight);
   color: var(--oj-text-muted);
+}
+.st__none {
+  text-align: center;
+  color: var(--oj-text-muted);
+}
+
+.st__cat-title {
+  margin: var(--oj-space-lg) 0 var(--oj-space-sm);
+  font-size: var(--oj-text-md);
+  font-weight: var(--oj-text-md-weight);
+}
+.st__cat-title:first-of-type {
+  margin-top: 0;
 }

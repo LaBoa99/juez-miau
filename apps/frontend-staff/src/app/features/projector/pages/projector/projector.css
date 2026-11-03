@@ -46,8 +46,9 @@
   min-width: 0;
 }
 .pj__oj {
-  font-size: 20px;
-  font-weight: 700;
+  display: block;
+  width: 56px;
+  height: 56px;
 }
 .pj__name {
   margin: 0;
@@ -58,24 +59,17 @@
   white-space: nowrap;
 }
 .pj__clock {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  white-space: nowrap;
+  flex: 0 0 420px;
 }
-.pj__time {
-  font-size: 72px;
+.pj__final,
+.pj__subtitle {
+  margin: 0 0 24px;
+  font-size: 36px;
   font-weight: 700;
-  line-height: 1;
 }
-.pj__time-label {
-  margin-top: 4px;
-  font-size: 18px;
+.pj__subtitle {
+  font-size: 28px;
   color: var(--oj-text-muted);
-}
-.pj__final {
-  font-size: 44px;
-  font-weight: 700;
 }
 
 /* ─── Banda de congelamiento ─── */
@@ -104,6 +98,16 @@
   align-items: center;
   gap: 24px;
 }
+.pj__room {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  color: var(--oj-text-muted);
+}
+.pj__room select {
+  min-width: 240px;
+}
 .pj__hint {
   font-size: 18px;
   color: var(--oj-text-muted);
@@ -126,15 +130,4 @@
 .pj__prob {
   text-align: center;
   white-space: nowrap;
-}
-.pj__num {
-  text-align: right;
-  white-space: nowrap;
-}
-.pj__solved {
-  font-size: 32px;
-  font-weight: 700;
-}
-.pj__penalty {
-  font-size: 24px;
 }

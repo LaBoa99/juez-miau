@@ -29,6 +29,13 @@ export class SubmissionCase {
     @Column({ type: 'int' })
     declare memory_kb: number
 
+    @Column({ type: 'int', nullable: true })
+    declare exit_code: number | null
+
+    // Salida canónica del programa (recortada); solo la ve el staff juez/admin
+    @Column({ type: 'text', nullable: true })
+    declare output: string | null
+
     // Por qué falló (stderr del RE, tipo de resultado incorrecto...). Solo lo ve el staff
     @Column({ type: 'text', nullable: true })
     declare message: string | null

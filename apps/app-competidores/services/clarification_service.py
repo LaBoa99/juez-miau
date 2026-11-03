@@ -26,7 +26,8 @@ def merge(clarifications, incoming, visible_problem_ids):
     if incoming["problemId"] is not None and incoming["problemId"] not in visible_problem_ids:
         return clarifications, None, False
     previous = next((c for c in clarifications if c["id"] == incoming["id"]), None)
-    merged = {**incoming, "mine": bool(previous and previous.get("mine"))}
+    # El evento público no trae `mine`; el que va solo al equipo (p. ej. al rechazarla) sí
+    merged = {**incoming, "mine": incoming.get("mine", bool(previous and previous.get("mine")))}
     rest = [c for c in clarifications if c["id"] != incoming["id"]]
     return sorted(rest + [merged], key=lambda c: c["id"], reverse=True), previous, True
 

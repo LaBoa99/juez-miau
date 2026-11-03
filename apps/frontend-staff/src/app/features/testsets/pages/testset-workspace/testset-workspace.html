@@ -108,6 +108,9 @@
               definida
             }
           </p>
+          @if (isCurrent() && p.refSolution) {
+            <oj-code-block [code]="p.refSolution.source" />
+          }
         }
         @if (editable()) {
           <ng-container *ngTemplateOutlet="sourceForm" />
@@ -418,7 +421,7 @@
           </li>
 
           <!-- 2. Revisar los casos antes de fijarlos -->
-          <li class="tw__pipe-item">
+          <li class="tw__pipe-item" [class.tw__pipe-item--done]="passed().verify === t.id">
             <h4 class="tw__pipe-title">Verificar casos</h4>
             <p class="tw__muted">Corre la solución oficial sobre cada caso sin guardar nada, para revisar entradas y salidas antes de construir.</p>
             @if (genMessage()) {
@@ -461,7 +464,7 @@
           </li>
 
           <!-- 4. Probar como si fuera un envío -->
-          <li class="tw__pipe-item">
+          <li class="tw__pipe-item" [class.tw__pipe-item--done]="passed().ref === t.id">
             <h4 class="tw__pipe-title">Probar</h4>
             <p class="tw__muted">Juzga la solución oficial u otra como si fuera un envío (no cuenta para el marcador).</p>
             <div class="oj-actions">
@@ -618,7 +621,7 @@
   </div>
 </oj-modal>
 
-<oj-test-run-modal #testRun [testsetId]="testset()?.id ?? 0" [languages]="enabledLanguages()" />
+<oj-test-run-modal #testRun [testsetId]="testset()?.id ?? 0" [languages]="enabledLanguages()" (passed)="markPassed($event)" />
 
 <!-- Nueva versión -->
 <oj-modal #newVersionModal title="Nueva versión" size="sm">

@@ -9,7 +9,7 @@ import {
   ITeamsPage,
   IUpdateTeam,
 } from '@concurso/shared-types';
-import { Observable } from 'rxjs';
+import { EMPTY, Observable, expand, map, reduce } from 'rxjs';
 
 const API = '/api';
 
@@ -34,6 +34,15 @@ export class TeamsService {
     if (filters.categoryId) params = params.set('categoryId', filters.categoryId);
     if (filters.search?.trim()) params = params.set('search', filters.search.trim());
     return this.http.get<ITeamsPage>(`${API}/editions/${editionId}/teams`, { params });
+  }
+
+  // Todos los equipos de la edición (el backend pagina de 100 en 100)
+  listAll(editionId: number): Observable<ITeamsPage['items']> {
+    const page = (n: number) => this.list(editionId, { page: n, pageSize: 100 }).pipe(map((res) => ({ n, res })));
+    return page(1).pipe(
+      expand(({ n, res }) => (n * 100 < res.total && res.items.length ? page(n + 1) : EMPTY)),
+      reduce((all, { res }) => all.concat(res.items), [] as ITeamsPage['items']),
+    );
   }
 
   // Alta rápida de un equipo (usuario y contraseña los genera el backend).

@@ -33,6 +33,9 @@ export class Clarification {
     @Column({ type: 'timestamptz', nullable: true })
     declare answered_at: Date | null
 
+    @Column({ type: 'timestamptz', nullable: true })
+    declare rejected_at: Date | null
+
     @CreateDateColumn({ type: 'timestamptz' })
     declare created_at: Date
 

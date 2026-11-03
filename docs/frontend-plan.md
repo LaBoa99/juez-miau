@@ -140,8 +140,8 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
   lista carga una ventana reciente (`limit` 50, "Cargar más" con `before`) y los filtros (categoría, problema, equipo,
   segmento Todos/AC/WA·CE·RE/TLE·MLE/Pendientes) se aplican en el cliente. Los eventos del socket alimentan la misma
   lista maestra, así el filtro y el tiempo real conviven sin recargar.
-- **Contadores** (En cola / Evaluando / Aceptados / Total) se calculan sobre la ventana cargada (no hay endpoint de
-  conteo global); con "Cargar más" se amplían.
+- **Contadores** (En cola / Evaluando / Aceptados / Total) y los números del segmentado ("AC (32)") salen de la lista
+  completa de la edición (`listAllForEdition`). Debajo: "N envíos en total" sin filtros, "N de M envíos" con filtros.
 - `IStaffSubmission` trae ids (teamId/problemId/languageId), no nombres: se resuelven con
   problemas (`/editions/:id/problems`), equipos (una página de 100 de `/editions/:id/teams`; si hay más, cae a "#id") y
   catálogo de lenguajes. Documentado el tope de 100 equipos.
@@ -156,10 +156,15 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
   catálogo de lenguajes. `TeamsService.get(id)` nuevo para el nombre del equipo (`GET /teams/:id`).
 - Re-evaluar: `oj-modal` con motivo (≤500). Se muestra **solo** si el rol en la edición es ADMIN/JUDGE o superadmin
   (`AuthService.roleInEdition`); el backend lo valida igual.
-- **Limitaciones del backend asumidas**: `ISubmissionCase` trae solo `message` (no "esperado/obtenido" por separado) →
-  la caja roja muestra el `message` del primer caso con error (y el log de compilación en `oj-code-block` si es CE). El
-  detalle no expone hash del código → se muestra solo el tamaño. El historial trae `rejudgedBy` como id (no nombre) →
-  "Re-evaluación manual · #id".
+- **Motivo del fallo** (`features/submissions/utils/case-reason.ts`): TLE/MLE "usó X de Y" con los límites del
+  testset; WA "La salida no coincide…" (+ primera línea distinta en el modal); RE "El programa terminó con error." +
+  resumen sin stack trace o código de salida; CE "El código no compila." + primera línea con error. Sin dato:
+  "Motivo no disponible · {veredicto}". Los textos fijos del juez se traducen con `judgeMessage` (core/http).
+- **Detalle de caso**: solo ADMIN/JUDGE/superadmin; cada número de caso abre un `oj-modal` con entrada, esperada y del
+  equipo lado a lado (primera línea distinta resaltada), tiempo y memoria (`GET /submissions/:id/cases/:ordinal`).
+- **Historial** (más reciente arriba) y **Revisiones manuales** (`GET /submissions/:id/reviews`) se vuelven a pedir al
+  llegar un `submission:update` con `judgeRound` o `reviewedAt` distintos. El detalle no expone hash del código → se
+  muestra solo el tamaño. El historial trae `rejudgedBy` como id (no nombre) → "Re-evaluación manual · #id".
 - Tiempo real: `submission:update` fusiona el envío conservando el `source`; `submission:progress` llena "caso x/y".
 
 ### Marcador de staff (18)
@@ -313,9 +318,10 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 | 19 | Proyector | hecho (nombre de la edición añadido al reloj público; ver decisiones) |
 | 20 | Revisión manual | hecho (veredicto solo AC/WA: el backend solo acepta accept/reject — ver decisiones) |
 | 21 | Alertas | hecho (mensaje sencillo armado en el cliente desde `details`; contador rojo en la barra; vista de observador solo anotada — ver decisiones) |
-| 22 | Auditoría | pendiente |
-| 23 | Páginas de error | pendiente |
-| Final | Antes del deploy | pendiente |
+| 22 | Auditoría | hecho |
+| 23 | Páginas de error | hecho (404 dentro del shell y /403; los 404 de un recurso se muestran en su página) |
+| 24 | Créditos | hecho (logo y autores; igual que en la app de competidores) |
+| Final | Antes del deploy | hecho (guards, navegación por rol, sin mocks ni /dev en prod); falta probar el acceso en el simulacro |
 
 (Ajustar esta tabla al estado real del proyecto.)
 
@@ -378,7 +384,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 
 ### 18 · Marcador de staff
 - shared/ui/standings-cell (oj-standings-cell) normal | grande: "+N · min" verde, "−N" rojo, "? N" ámbar.
-- Segmentado por categoría; tabla #, Equipo, problemas, Resueltos, Penalización; aviso si el público está congelado;
+- Segmentado por categoría; tabla #, Equipo y problemas (sin Resueltos ni Penalización; el orden lo da el backend); aviso si el público está congelado;
   "Abrir proyector" y "Descargar CSV"; standings:update.
 
 ### 19 · Proyector

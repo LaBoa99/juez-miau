@@ -34,6 +34,19 @@ x-backend-env: &backend-env
   SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
   SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
   TZ: ${TZ:-America/Mexico_City}
+  # El seeder sincroniza image_ref de los lenguajes base con estas imágenes
+  JUDGE_IMAGE_GCC: ${JUDGE_IMAGE_GCC:-gcc:14}
+  JUDGE_IMAGE_DOTNET: ${JUDGE_IMAGE_DOTNET:-mcr.microsoft.com/dotnet/sdk:8.0}
+  JUDGE_IMAGE_JAVA: ${JUDGE_IMAGE_JAVA:-eclipse-temurin:21-jdk}
+  JUDGE_IMAGE_NODE: ${JUDGE_IMAGE_NODE:-node:24-slim}
+  JUDGE_IMAGE_PYTHON: ${JUDGE_IMAGE_PYTHON:-python:3.12-slim}
+
+# Imágenes en las que corren los envíos. Estos servicios solo existen para que "docker compose up"
+# las descargue antes de arrancar el worker: terminan al instante (Exited 0)
+x-judge-image: &judge-image
+  entrypoint: ["true"]
+  network_mode: none
+  restart: "no"
 
 services:
   postgres:
@@ -46,6 +59,9 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_DATABASE}
       TZ: ${TZ:-America/Mexico_City}
+    # Solo en localhost: para el backend en modo desarrollo (pnpm start:dev). No se alcanza desde la red
+    ports:
+      - "127.0.0.1:${DB_LOCAL_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -61,6 +77,8 @@ services:
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
     environment:
       REDISCLI_AUTH: ${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:${REDIS_LOCAL_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -110,19 +128,45 @@ services:
       # CPUs lógicas para juzgar, una por núcleo físico (lscpu -e). Vacío = las últimas WORKER_CONCURRENCY
       JUDGE_CPUS: ${JUDGE_CPUS:-}
       DOCKER_TMP_DIR: ${SUBMISSIONS_DIR}
-    # El usuario "node" de la imagen necesita el grupo docker del host para usar el socket
-    group_add:
-      - "${DOCKER_GID}"
+    # Arranca como root solo para crear la carpeta de envíos y tomar el grupo de docker.sock;
+    # docker-entrypoint.sh baja a "node" (uid 1000) antes de arrancar el worker
+    user: root
     volumes:
       # Equivale a root en el host: por eso solo el worker lo tiene y no publica puertos
       - /var/run/docker.sock:/var/run/docker.sock
       # Misma ruta dentro y fuera: los contenedores de los envíos los crea el Docker del host,
       # que resuelve los bind mounts con rutas del host, no del contenedor del worker
       - ${SUBMISSIONS_DIR}:${SUBMISSIONS_DIR}
-    # Arranca cuando la API ya aplicó las migraciones
+    # Arranca cuando la API ya aplicó las migraciones y las imágenes del juez están descargadas
     depends_on:
       api:
         condition: service_healthy
+      judge-gcc:
+        condition: service_completed_successfully
+      judge-dotnet:
+        condition: service_completed_successfully
+      judge-java:
+        condition: service_completed_successfully
+      judge-node:
+        condition: service_completed_successfully
+      judge-python:
+        condition: service_completed_successfully
+
+  judge-gcc:
+    <<: *judge-image
+    image: ${JUDGE_IMAGE_GCC:-gcc:14}
+  judge-dotnet:
+    <<: *judge-image
+    image: ${JUDGE_IMAGE_DOTNET:-mcr.microsoft.com/dotnet/sdk:8.0}
+  judge-java:
+    <<: *judge-image
+    image: ${JUDGE_IMAGE_JAVA:-eclipse-temurin:21-jdk}
+  judge-node:
+    <<: *judge-image
+    image: ${JUDGE_IMAGE_NODE:-node:24-slim}
+  judge-python:
+    <<: *judge-image
+    image: ${JUDGE_IMAGE_PYTHON:-python:3.12-slim}
 
   # Entrada pública: panel de staff (Angular) + proxy a la API. Ver deploy/Caddyfile
   web:

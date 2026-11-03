@@ -35,7 +35,8 @@ jobs:
         run: python -m pytest -q
 
       - name: Compilar .exe
-        run: pyinstaller --onefile --windowed --noconfirm --name app-competidores app.py
+        # assets va dentro del .exe (ícono de la ventana y la bandeja); --icon es el del ejecutable
+        run: pyinstaller --onefile --windowed --noconfirm --name app-competidores --icon assets/gatito.ico --add-data "assets;assets" app.py
 
       - name: Tamaño del .exe
         shell: pwsh

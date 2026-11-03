@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, Req } from '@nestjs/common'
+import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, Req } from '@nestjs/common'
 import { StaffRole, type IClarification, type IStaffClarification } from '@concurso/shared-types'
 import { AllowTeam, ANY_EDITION_ROLE, RequireEditionRole } from '../auth/decorators/access.decorators.js'
 import { AccessTokenType } from '../auth/factories/access-token-payload.factory.js'
@@ -41,5 +41,26 @@ export class ClarificationsController {
         @Body() dto: AnswerClarificationDto,
     ): Promise<IStaffClarification> {
         return this.clarificationsService.answer(editionId, id, req.user.sub, dto)
+    }
+
+    @Post('editions/:editionId/clarifications/:id/reject')
+    @RequireEditionRole([StaffRole.ADMIN, StaffRole.JUDGE])
+    @HttpCode(HttpStatus.OK)
+    reject(
+        @Param('editionId', ParseIntPipe) editionId: number,
+        @Param('id', ParseIntPipe) id: number,
+        @Req() req: AuthenticatedRequest,
+    ): Promise<IStaffClarification> {
+        return this.clarificationsService.reject(editionId, id, req.user.sub)
+    }
+
+    @Delete('editions/:editionId/clarifications/:id')
+    @RequireEditionRole([StaffRole.ADMIN, StaffRole.JUDGE])
+    @HttpCode(HttpStatus.NO_CONTENT)
+    remove(
+        @Param('editionId', ParseIntPipe) editionId: number,
+        @Param('id', ParseIntPipe) id: number,
+    ): Promise<void> {
+        return this.clarificationsService.remove(editionId, id)
     }
 }

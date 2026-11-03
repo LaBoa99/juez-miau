@@ -14,6 +14,8 @@ import { EditionStatusPipe } from '../../../../shared/pipes/edition-status.pipe'
 import { msToMin, minToMs } from '../../../../shared/time';
 import { EditionsService } from '../../data/editions.service';
 import { EditionContext } from '../edition-layout/edition-context';
+import { ContestClockService } from '../../../contest/data/contest-clock.service';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { backendMessage, translateBackendError } from '../../../../core/http/backend-error.mapper';
 
 @Component({
@@ -102,7 +104,36 @@ export class EditionDetail {
   protected readonly canSubmitSchedule = computed(() => !this.isDraft() || this.allReqsOk());
 
   // ─── Eliminar ───
-  private readonly deleteDialog = viewChild.required(ConfirmDialog);
+  private readonly deleteDialog = viewChild.required<ConfirmDialog>('deleteDlg');
+
+  // ─── Reconfigurar (solo superadmin, concurso terminado) ───
+  private readonly clockService = inject(ContestClockService);
+  private readonly auth = inject(AuthService);
+  protected readonly canReset = computed(
+    () => this.auth.isSuperadmin() && this.edition()?.status === EditionStatus.FINISHED,
+  );
+  private readonly resetDialog = viewChild.required<ConfirmDialog>('resetDlg');
+  protected readonly resetting = signal(false);
+  protected readonly resetError = signal<string | null>(null);
+
+  confirmReset(): void {
+    this.resetError.set(null);
+    this.resetDialog().open();
+  }
+
+  reset(): void {
+    this.resetting.set(true);
+    this.clockService.reset(this.id).subscribe({
+      next: () => {
+        this.resetting.set(false);
+        this.ctx.reload();
+      },
+      error: (err) => {
+        this.resetting.set(false);
+        this.resetError.set(this.message(err, 'No se pudo reconfigurar la edición.'));
+      },
+    });
+  }
 
   openEdit(): void {
     const e = this.edition();
@@ -157,7 +188,7 @@ export class EditionDetail {
         error: () => this.problemsOk.set(false),
       });
       this.service.teams(this.id).subscribe({
-        next: (ts) => this.teamsOk.set(ts.length > 0),
+        next: (page) => this.teamsOk.set(page.total > 0),
         error: () => this.teamsOk.set(false),
       });
     }

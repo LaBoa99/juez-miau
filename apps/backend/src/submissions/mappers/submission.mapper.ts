@@ -36,6 +36,7 @@ export function toStaffSubmissionDto(submission: Submission): IStaffSubmission {
                 cpuMs: submissionCase.cpu_ms,
                 wallMs: submissionCase.wall_ms,
                 memoryKb: submissionCase.memory_kb,
+                exitCode: submissionCase.exit_code ?? null,
                 message: submissionCase.message,
             })),
     }

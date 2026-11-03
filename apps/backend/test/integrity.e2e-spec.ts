@@ -97,7 +97,7 @@ describe('Integridad: alertas, heartbeat, auditoría y exportaciones (e2e)', () 
       api().post('/api/v1/contest/heartbeat').set(bearer(teamToken)).send({ processes }).expect(200);
 
     const res = await heartbeat(['C:\\Program Files\\Google\\Chrome.EXE', 'code', 'explorer.exe']);
-    expect(res.body).toEqual({ nextHeartbeatMs: 30_000 });
+    expect(res.body).toEqual({ nextHeartbeatMs: 10_000 });
     await heartbeat(['chrome.exe', 'discord']);
 
     const forbidden = (await flags()).filter((flag) => flag.type === FlagType.FORBIDDEN_PROCESS);

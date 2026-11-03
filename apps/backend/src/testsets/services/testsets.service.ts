@@ -24,7 +24,6 @@ import type { Queue } from 'bullmq';
 import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { BlobsService } from '../../blobs/services/blobs.service.js';
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js';
-import { Edition } from '../../editions/entities/edition.entity.js';
 import { Problem } from '../../problems/entities/problem.entity.js';
 import { toProblemDto } from '../../problems/mappers/problem.mapper.js';
 import { Testset } from '../entities/testset.entity.js';
@@ -287,7 +286,7 @@ export class TestsetsService {
     async setRefSolution(testsetId: number, dto: SetRefSolutionDto, staffUserId: number): Promise<IProblemSource> {
         const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
-        await this.assertLanguageEnabled(problem, dto.languageId)
+        await this.assertLanguageUsable(dto.languageId)
         const source = Buffer.from(dto.source, 'utf8')
 
         return this.dataSource.transaction(async (manager) => {
@@ -311,7 +310,7 @@ export class TestsetsService {
     async setChecker(testsetId: number, dto: SetCheckerDto, staffUserId: number): Promise<IProblemSource> {
         const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
-        await this.assertLanguageEnabled(problem, dto.languageId)
+        await this.assertLanguageUsable(dto.languageId)
         const collisions = checkerNameCollisions(this.requireSignature(problem))
         if(collisions.length > 0) throw unprocessable(collisions)
         const source = Buffer.from(dto.source, 'utf8')
@@ -349,7 +348,7 @@ export class TestsetsService {
         const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
         this.requireSignature(problem)
-        await this.assertLanguageEnabled(problem, dto.languageId)
+        await this.assertLanguageUsable(dto.languageId)
 
         const names = dto.groups.map((group) => group.name)
         if(new Set(names).size !== names.length) throw unprocessable(['generator group names must be unique'])
@@ -392,18 +391,12 @@ export class TestsetsService {
         })
     }
 
-    private async assertLanguageEnabled(problem: Problem, languageId: string): Promise<void> {
-        const enabled = await this.dataSource.getRepository(Edition)
-            .createQueryBuilder('edition')
-            .innerJoin('edition.languages', 'language')
-            .where('edition.id = :editionId', { editionId: problem.edition_id })
-            .andWhere('language.id = :languageId', { languageId })
-            .andWhere('language.active = true')
-            .getExists()
-        if(!enabled){
-            throw unprocessable(['language ' + languageId + ' is not active or not enabled in edition #' + problem.edition_id])
-        }
-        if(!hasDriver((await this.dataSource.getRepository(Language).findOneByOrFail({ id: languageId })).code)){
+    // Programas del staff (solución oficial, checker, generador, pruebas): cualquier lenguaje activo
+    // con driver, sin importar cuáles se habilitaron para los concursantes de la edición
+    private async assertLanguageUsable(languageId: string): Promise<void> {
+        const language = await this.dataSource.getRepository(Language).findOneBy({ id: languageId, active: true })
+        if(!language) throw unprocessable(['language ' + languageId + ' is not active'])
+        if(!hasDriver(language.code)){
             throw unprocessable(['language ' + languageId + ' has no driver for function problems'])
         }
     }
@@ -482,7 +475,7 @@ export class TestsetsService {
             source = ref.source.toString('utf8')
         } else {
             if(!dto.languageId || !dto.source) throw unprocessable(['languageId and source are required'])
-            await this.assertLanguageEnabled(problem, dto.languageId)
+            await this.assertLanguageUsable(dto.languageId)
             languageId = dto.languageId
             source = dto.source
         }

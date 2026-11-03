@@ -38,7 +38,7 @@ subtitle=""
       <section class="rev__panel">
         <header class="rev__panel-head">
           <h2 class="rev__panel-title">Envío <span class="oj-mono">#{{ s.id }}</span></h2>
-          <oj-badge tone="warning" [dashed]="true">REVISIÓN</oj-badge>
+          <oj-badge tone="warning" [dashed]="true" ojTooltip="En revisión: pasó los casos y espera la revisión de un juez.">REVISIÓN</oj-badge>
           <a [routerLink]="['/ediciones', editionId, 'envios', s.id]" class="rev__detail-link">Ver detalle completo</a>
         </header>
 
@@ -53,7 +53,7 @@ subtitle=""
           <strong>Por qué está en revisión:</strong> {{ reason }}
         </div>
 
-        <form class="rev__decision" (ngSubmit)="openConfirm()">
+        <form class="rev__decision" (submit)="$event.preventDefault(); openConfirm()">
           <h3 class="rev__decision-title">Decisión del juez</h3>
 
           @if (actionError()) {

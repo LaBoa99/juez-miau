@@ -16,10 +16,9 @@ class SessionController(QObject):
         self.window = window
         self.login_view = window.login
         self.notifier = notifier
-        self._tray_hint_shown = False
 
         self.login_view.submitted.connect(self.login)
-        window.hidden_to_tray.connect(self._on_hidden)
+        window.close_requested.connect(self._quit)
         window.logout_requested.connect(self.logout)
         notifier.open_requested.connect(self._open)
         notifier.quit_requested.connect(self._quit)
@@ -64,12 +63,6 @@ class SessionController(QObject):
         self._open()
         self.login_view.show_error(message)
         self.notifier.notify("Sesión terminada", message)
-
-    @Slot()
-    def _on_hidden(self):
-        if not self._tray_hint_shown:
-            self._tray_hint_shown = True
-            self.notifier.notify("La app sigue activa", "Ábrela desde el ícono de la bandeja.")
 
     @Slot()
     def _open(self):

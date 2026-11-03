@@ -11,15 +11,12 @@
 } @else {
   <header class="pj__head">
     <div class="pj__title">
-      <span class="pj__oj oj-mono">[OJ]</span>
+      <img class="pj__oj" src="assets/logos/gatito.svg" alt="Juez Virtual" />
       <h1 class="pj__name">{{ clock()?.editionName }}</h1>
     </div>
     <div class="pj__clock">
-      @if (finished()) {
-        <span class="pj__final">Resultados finales</span>
-      } @else {
-        <span class="pj__time oj-mono">{{ timeText() }}</span>
-        <span class="pj__time-label">tiempo restante</span>
+      @if (clock(); as c) {
+        <oj-contest-countdown variant="projector" [clock]="c" />
       }
     </div>
   </header>
@@ -32,6 +29,11 @@
   }
 
   <section class="pj__body">
+    @if (finished()) {
+      <h2 class="pj__final">Resultados finales{{ current() ? ' · ' + current()!.name : '' }}{{ roomName() ? ' · ' + roomName() : '' }}</h2>
+    } @else if (current(); as cat) {
+      <h2 class="pj__subtitle">{{ cat.name }}{{ roomName() ? ' · ' + roomName() : '' }}</h2>
+    }
     @if (categoryOptions().length > 1) {
       <div class="pj__controls">
         <oj-segmented
@@ -41,6 +43,17 @@
           (valueChange)="categorySeg.set($event ?? '')"
         />
         <div class="pj__rotate">
+          @if (rooms().length) {
+            <label class="pj__room">
+              <span>Salón</span>
+              <select [value]="roomId() ?? ''" (change)="onRoom($any($event.target).value)">
+                <option value="">Todos los salones</option>
+                @for (r of rooms(); track r.id) {
+                  <option [value]="r.id">{{ r.name }}</option>
+                }
+              </select>
+            </label>
+          }
           <span class="pj__hint">Cambia de categoría cada 20 s</span>
           <button ojButton variant="secondary" type="button" (click)="paused.set(!paused())">
             {{ paused() ? 'Reanudar rotación' : 'Pausar rotación' }}
@@ -59,20 +72,16 @@
               @for (p of cat.problems; track p.id) {
                 <th class="pj__prob" [title]="p.title">{{ p.letter }}</th>
               }
-              <th class="pj__num">Resueltos</th>
-              <th class="pj__num">Penalización</th>
             </tr>
           </thead>
           <tbody>
             @for (row of cat.rows; track row.teamId) {
               <tr>
-                <td class="pj__rank oj-mono">{{ row.rank }}</td>
+                <td class="pj__rank oj-mono">{{ row.rank ?? '—' }}</td>
                 <td class="pj__team">{{ row.teamName }}</td>
                 @for (p of cat.problems; track p.id; let i = $index) {
-                  <td class="pj__prob"><oj-standings-cell size="grande" [cell]="row.cells[i]" /></td>
+                  <td class="pj__prob"><oj-standings-cell size="grande" [cell]="row.cells[i]" [letter]="p.letter" /></td>
                 }
-                <td class="pj__num pj__solved oj-mono">{{ row.solved }}</td>
-                <td class="pj__num pj__penalty oj-mono">{{ row.penalty }}</td>
               </tr>
             }
           </tbody>

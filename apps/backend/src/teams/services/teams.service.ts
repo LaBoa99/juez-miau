@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Team } from '../entities/team.entity.js';
 import { Brackets, DataSource, EntityManager, In, Repository } from 'typeorm';
@@ -143,12 +143,21 @@ export class TeamsService {
     async update(id: number, body: UpdateTeamDto) {
         const team = await this.getById(id)
 
+        // El salón es el nivel del equipo: debe ser de su edición y, si el salón tiene categoría, de la misma
+        if(body.room_id !== undefined){
+            const room = await this._dataSource.getRepository(Room).findOneBy({ id: body.room_id, edition_id: team.edition_id })
+            if(!room) throw new NotFoundException('room #' + body.room_id + ' not found in this edition')
+            if(room.category_id !== null && room.category_id !== team.category_id){
+                throw new BadRequestException('room #' + room.id + ' belongs to another category')
+            }
+        }
+
         const queryRunner = this._dataSource.createQueryRunner()
         await queryRunner.connect()
         await queryRunner.startTransaction()
 
         try {
-            Object.assign(team, { name: body.name ?? team.name })
+            Object.assign(team, { name: body.name ?? team.name, room_id: body.room_id ?? team.room_id })
             await queryRunner.manager.save(team)
 
             // update members
@@ -162,9 +171,6 @@ export class TeamsService {
 
                 await Promise.all(memberPromises)
             }
-
-            // las udpate de category y room se deberian hacer en el menu de la edicion...
-
 
             await queryRunner.commitTransaction()
             return await this.getById(id)

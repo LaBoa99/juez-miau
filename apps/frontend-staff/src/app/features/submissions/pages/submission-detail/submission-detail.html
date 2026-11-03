@@ -13,19 +13,28 @@
   <header class="sd__header">
     <div class="sd__header-left">
       <h1 class="sd__title">Envío <span class="oj-mono">#{{ d.id }}</span></h1>
-      <oj-badge [tone]="v.tone" [dashed]="v.dashed">{{ v.label }}</oj-badge>
+      <oj-badge [tone]="v.tone" [dashed]="v.dashed" [ojTooltip]="v.hint">{{ v.label }}</oj-badge>
       @if (d.status === SubmissionStatus.JUDGING && progress(); as p) {
         <span class="sd__progress oj-mono">caso {{ p.judged }}/{{ p.total }}</span>
       }
     </div>
     <div class="oj-actions">
       <button ojButton variant="secondary" type="button" (click)="downloadCode()">Descargar código</button>
-      @if (canRejudge()) {
+      @if (canSendToReview()) {
+        <button ojButton variant="warning" type="button" [disabled]="reviewSaving()" (click)="askReview()">
+          {{ reviewSaving() ? 'Enviando…' : 'Revisar manualmente' }}
+        </button>
+      }
+      <!-- Re-evaluar queda solo para fallas del sistema (status ERROR), que no tienen veredicto -->
+      @if (canRejudge() && d.status === SubmissionStatus.ERROR) {
         <button ojButton variant="success" type="button" (click)="openRejudge()">Re-evaluar</button>
       }
     </div>
   </header>
 
+  @if (reviewDone()) {
+    <oj-alert tone="success">El envío pasó a revisión manual. Resuélvelo en la pestaña Revisión.</oj-alert>
+  }
   @if (rejudgeDone()) {
     <oj-alert tone="success">El envío se mandó de nuevo a la cola.</oj-alert>
   }
@@ -48,19 +57,38 @@
     <section class="sd__box">
       <h3 class="sd__box-title">Resultado por caso</h3>
 
-      @if (d.verdict === Verdict.CE && d.compileLog) {
-        <p class="sd__muted">Error de compilación:</p>
-        <oj-code-block [code]="d.compileLog" />
+      @if (d.verdict === Verdict.CE) {
+        <div class="sd__fail">
+          <div class="sd__fail-head">{{ compileReason().text }}</div>
+          @if (compileReason().detail; as line) {
+            <pre class="sd__mono-block">{{ line }}</pre>
+          }
+        </div>
+        @if (d.compileLog) {
+          <oj-code-block [code]="d.compileLog" />
+        }
       } @else {
         @if (d.cases.length) {
           <div class="sd__cases">
             @for (c of d.cases; track c.ordinal) {
-              <span
-                class="sd__case"
-                [class.sd__case--ac]="caseTone(c) === 'ac'"
-                [class.sd__case--bad]="caseTone(c) === 'bad'"
-                [title]="'Caso ' + c.ordinal + ' · ' + c.verdict"
-              >{{ c.ordinal }}</span>
+              @if (canRejudge()) {
+                <button
+                  type="button"
+                  class="sd__case"
+                  [class.sd__case--ac]="caseTone(c) === 'ac'"
+                  [class.sd__case--bad]="caseTone(c) === 'bad'"
+                  [attr.aria-label]="'Ver detalle del caso ' + c.ordinal"
+                  [title]="'Caso ' + c.ordinal + ' · ' + c.verdict"
+                  (click)="showCase(c)"
+                >{{ c.ordinal }}</button>
+              } @else {
+                <span
+                  class="sd__case"
+                  [class.sd__case--ac]="caseTone(c) === 'ac'"
+                  [class.sd__case--bad]="caseTone(c) === 'bad'"
+                  [title]="'Caso ' + c.ordinal + ' · ' + c.verdict"
+                >{{ c.ordinal }}</span>
+              }
             }
           </div>
           <div class="sd__legend">
@@ -73,11 +101,11 @@
 
         @if (firstFailed(); as f) {
           <div class="sd__fail">
+            @let r = reason(f);
             <div class="sd__fail-head">Primer caso con error — caso {{ f.ordinal }} · {{ f.verdict }}</div>
-            @if (f.message) {
-              <pre class="sd__mono-block">{{ f.message }}</pre>
-            } @else {
-              <p class="sd__muted">El juez no devolvió más detalle de este caso.</p>
+            <p class="sd__fail-text">{{ r.text }}</p>
+            @if (r.detail) {
+              <pre class="sd__mono-block">{{ r.detail }}</pre>
             }
           </div>
         }
@@ -89,6 +117,36 @@
       <oj-code-block [code]="d.source" />
     </section>
   </div>
+
+  <!-- Revisiones manuales (todas, la más reciente arriba) -->
+  @if (reviews().length) {
+    <section class="sd__box">
+      <h3 class="sd__box-title">Revisiones manuales</h3>
+      <div class="oj-table-wrap">
+        <table class="oj-table">
+          <thead>
+            <tr>
+              <th>Cuándo</th>
+              <th>Revisó</th>
+              <th>Veredicto</th>
+              <th>Nota</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of reviews(); track r.id) {
+              @let rv = r.verdict | verdict: SubmissionStatus.DONE;
+              <tr>
+                <td class="oj-mono">{{ r.createdAt | date: 'yyyy-MM-dd HH:mm' }}</td>
+                <td>{{ r.reviewerName }}</td>
+                <td><oj-badge [tone]="rv.tone" [dashed]="rv.dashed" [ojTooltip]="rv.hint">{{ rv.label }}</oj-badge></td>
+                <td class="sd__reason">{{ r.comment || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
 
   <!-- Historial -->
   <section class="sd__box">
@@ -114,7 +172,7 @@
                 <td class="oj-mono">{{ e.createdAt | date: 'yyyy-MM-dd HH:mm' }}</td>
                 <td>{{ originLabel(e) }}</td>
                 <td class="oj-mono">#{{ e.testsetId }}</td>
-                <td><oj-badge [tone]="ev.tone" [dashed]="ev.dashed">{{ ev.label }}</oj-badge></td>
+                <td><oj-badge [tone]="ev.tone" [dashed]="ev.dashed" [ojTooltip]="ev.hint">{{ ev.label }}</oj-badge></td>
                 <td class="sd__reason">{{ e.reason || '—' }}</td>
               </tr>
             }
@@ -124,12 +182,76 @@
     }
   </section>
 
+  <oj-confirm-dialog
+    title="Revisar manualmente"
+    message="El envío pasará a revisión manual. El equipo verá el estado 'En revisión'."
+    confirmLabel="Mandar a revisión"
+    (confirmed)="sendToReview()"
+  />
+
   <!-- Modal Re-evaluar -->
-  <oj-modal title="Re-evaluar envío" size="sm">
+  <!-- Modal detalle de caso -->
+  <oj-modal #caseModal [title]="'Caso ' + (openCase()?.ordinal ?? '')" size="lg">
+    @if (openCase(); as c) {
+      @let cv = c.verdict | verdict: SubmissionStatus.DONE;
+      @let cr = reason(c);
+      <div class="sd__case-detail">
+        <div class="sd__case-head">
+          <oj-badge [tone]="cv.tone" [dashed]="cv.dashed" [ojTooltip]="cv.hint">{{ cv.label }}</oj-badge>
+          <span class="sd__muted oj-mono">{{ c.cpuMs }} ms · {{ memoryMb(c.memoryKb) }}</span>
+        </div>
+        @if (c.verdict !== Verdict.AC) {
+          <p class="sd__fail-text">
+            {{ cr.text }}
+            @if (c.verdict === Verdict.WA && diffLine() !== null) {
+              Primera diferencia en la línea {{ diffLine()! + 1 }}.
+            }
+          </p>
+          @if (cr.detail) {
+            <pre class="sd__mono-block">{{ cr.detail }}</pre>
+          }
+        }
+
+        @if (caseError()) {
+          <oj-alert tone="error">{{ caseError() }}</oj-alert>
+        } @else if (caseLoading()) {
+          <p class="sd__muted">Cargando…</p>
+        } @else if (caseData(); as cd) {
+          <div class="sd__io">
+            <span class="sd__io-label">Entrada</span>
+            <pre class="sd__mono-block">{{ cd.input }}</pre>
+          </div>
+          <div class="sd__compare">
+            <div class="sd__io">
+              <span class="sd__io-label">Salida esperada</span>
+              @if (cd.expected != null) {
+                <pre class="sd__mono-block">@for (l of lines(cd.expected); track $index) {<span class="sd__line" [class.sd__line--diff]="$index === diffLine()">{{ l }}</span>}</pre>
+              } @else {
+                <p class="sd__muted">Este caso no tiene salida esperada (lo decide el checker).</p>
+              }
+            </div>
+            <div class="sd__io">
+              <span class="sd__io-label">Salida del equipo</span>
+              @if (cd.actual != null) {
+                <pre class="sd__mono-block">@for (l of lines(cd.actual); track $index) {<span class="sd__line" [class.sd__line--diff]="$index === diffLine()">{{ l }}</span>}</pre>
+              } @else {
+                <p class="sd__muted">El programa no produjo una salida válida.</p>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+    <div footer>
+      <button ojButton variant="secondary" type="button" (click)="closeCase()">Cerrar</button>
+    </div>
+  </oj-modal>
+
+  <oj-modal #rejudgeModal title="Re-evaluar envío" size="sm">
     @if (rejudgeError()) {
       <oj-alert tone="error">{{ rejudgeError() }}</oj-alert>
     }
-    <form id="sd-rejudge-form" (ngSubmit)="submitRejudge()" class="sd__modal-form">
+    <form id="sd-rejudge-form" (submit)="$event.preventDefault(); submitRejudge()" class="sd__modal-form">
       <oj-form-field label="Motivo de la re-evaluación" for="sd-reason" hint="Queda en el historial del envío.">
         <input id="sd-reason" type="text" [formControl]="reasonCtrl" />
       </oj-form-field>

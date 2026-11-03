@@ -121,3 +121,9 @@ deploy/images/
 .DS_Store
 Thumbs.db
 desktop.ini
+.impeccable/
+
+# Pruebas de carga: credenciales generadas
+equipos-prueba/credenciales-*
+equipos-prueba/edicion.json
+equipos-prueba/reporte.md

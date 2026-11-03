@@ -9,16 +9,19 @@ de cada concurso (2 veces al año, 2–4 h) y desmontarse después. Requisitos d
 Navegadores ───────► web (Caddy) ──┬── /            panel de staff (Angular, estáticos)
 App de escritorio ─┘               ├── /api/*       ─► api (NestJS) ─► postgres
 de los equipos                     └── /socket.io/* ─►                └► redis ◄─ worker ─► docker.sock
-                                                                                   (juez, perfil "judge")
+                                                                                   (juez)
 ```
 
 | Servicio | Qué es | Puertos |
 |---|---|---|
 | `web` | Caddy: sirve `apps/frontend-staff` y hace proxy a la API | 80, 443 publicados |
 | `api` | Backend NestJS. Al arrancar corre el seeder (`SEED_PROFILE`) | interno |
-| `worker` | Juez. Mismo código que la API, arranca `dist/worker.js`. **Aún no existe**: está en el perfil `judge` | ninguno |
-| `postgres` | Base de datos | interno |
-| `redis` | Cola de envíos (BullMQ) | interno |
+| `worker` | Juez. Mismo código que la API, arranca `dist/worker.js` | ninguno |
+| `postgres` | Base de datos | solo `127.0.0.1:5432` (desarrollo) |
+| `redis` | Cola de envíos (BullMQ) | solo `127.0.0.1:6379` (desarrollo) |
+| `judge-*` | Imágenes de los lenguajes. Solo sirven para que `up` las descargue; terminan en `Exited (0)` | ninguno |
+
+Este es el **único** docker-compose del proyecto: sirve para el concurso y para desarrollo.
 
 **Frontend:** el panel llama a la API con rutas relativas `/api/...` (mismo origen), no con una URL
 fija. Caddy las adapta al prefijo `/api/v1` del backend y reescribe el path de la cookie de sesión.
@@ -36,7 +39,7 @@ se conecta a `PUBLIC_URL`/`api/v1`.
 ## Instalación
 
 ```bash
-git clone <repo> && cd mi-concurso-monorepo/deploy
+git clone <repo> && cd juez-miau/deploy
 cp .env.example .env
 # Editar .env: PUBLIC_URL, contraseñas y secretos (openssl rand -hex 32)
 docker compose up -d --build
@@ -45,48 +48,37 @@ docker compose ps              # todo "Up"; postgres y redis "(healthy)"
 
 Entrar a `PUBLIC_URL` con `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
 
-### Ejecutar localmente solo el panel, la API y sus dependencias
+No hay más pasos: el worker crea solo la carpeta de envíos (`SUBMISSIONS_DIR`), toma el grupo
+de `docker.sock` y `up` descarga las imágenes de los lenguajes antes de arrancarlo.
 
-El Compose completo también sirve para probar el panel y el backend localmente. Desde la raíz:
+### Desarrollo local con el mismo compose
+
+Para probar todo como en el concurso, en `deploy/.env` pon `PUBLIC_URL=http://localhost:8080`,
+`HTTP_PORT=8080`, `COOKIE_SECURE=false` y `SEED_PROFILE=base` (o `dev`), con contraseñas locales,
+y `docker compose up -d --build`. Abre `http://localhost:8080`.
+
+Para trabajar en el backend con recarga en caliente, levanta solo la base de datos y Redis
+(quedan en `127.0.0.1`, no se ven desde la red):
 
 ```bash
-cp deploy/.env.example deploy/.env
+docker compose -f deploy/docker-compose.yml up -d postgres redis
+cd apps/backend && pnpm start:dev
 ```
 
-En `deploy/.env`, configura `PUBLIC_URL=http://localhost:8080`, `HTTP_PORT=8080`,
-`SITE_ADDRESS=:80`, `COOKIE_SECURE=false`, `DB_SYNCHRONIZE=false` y `SEED_PROFILE=base`.
-Define valores locales para las contraseñas y secretos (`DB_PASSWORD`, `REDIS_PASSWORD`,
-`JWT_SECRET`, `PASSWORD_ADMIN_MASTERKEY`, `TEAM_SALT` y `SEED_ADMIN_PASSWORD`); no uses los
-marcadores `cambia_esto`.
-
-Después levanta los servicios necesarios:
+`apps/backend/.env` debe usar `DB_USERNAME`, `DB_PASSWORD` y `REDIS_PASSWORD` iguales a los de
+`deploy/.env`. Para no mezclar datos, usa otra base (`DB_DATABASE=concurso_dev`; se crea con
+`docker compose exec postgres sh -c 'createdb -U "$POSTGRES_USER" concurso_dev'`). No corras un
+worker local mientras el del compose esté arriba: comparten la cola de Redis y se repartirían
+los envíos.
 
 ```bash
-docker compose -f deploy/docker-compose.yml up -d --build postgres redis api web
-docker compose -f deploy/docker-compose.yml ps
-```
-
-Abre `http://localhost:8080`. El superadmin inicial usa `SEED_ADMIN_EMAIL` y
-`SEED_ADMIN_PASSWORD` de `deploy/.env`. Esta configuración usa volúmenes propios de Compose, por
-lo que no comparte la base de datos de `apps/backend/docker-compose.yml`. El worker de evaluación
-no se inicia con este comando; para juzgar envíos se necesita configurarlo aparte con acceso al
-Docker del host.
-
-Para ver errores de API y web:
-
-```bash
-docker compose -f deploy/docker-compose.yml logs -f api web
-```
-
-Para detener los servicios sin borrar sus datos:
-
-```bash
-docker compose -f deploy/docker-compose.yml down
+docker compose -f deploy/docker-compose.yml logs -f api web   # errores de API y web
+docker compose -f deploy/docker-compose.yml down              # detener sin borrar datos
 ```
 
 **Sin internet en el laboratorio:** en una máquina con internet, `docker compose build` y
-`scripts/images.sh save`; copiar la carpeta del repo (con `images/`) y en la máquina del
-concurso `scripts/images.sh load` y después `docker compose up -d` (sin `--build`).
+`scripts/images.sh save` (guarda las del sistema y las del juez, según el compose); copiar la
+carpeta del repo (con `images/`) y en la máquina del concurso `scripts/images.sh load` y después `docker compose up -d` (sin `--build`).
 
 ## Ciclo por semestre
 
@@ -94,7 +86,6 @@ concurso `scripts/images.sh load` y después `docker compose up -d` (sin `--buil
 |---|---|---|
 | 2–3 semanas antes | Levantar en cualquier máquina para que los jueces capturen problemas | `docker compose up -d --build` |
 | 1 semana antes | Respaldar la captura y llevarla a la máquina del concurso | `scripts/backup.sh captura` → copiar el `.dump` → `scripts/restore.sh <archivo>` |
-| | Descargar las imágenes del juez | `scripts/images.sh pull` |
 | | Probar el juez en esa máquina | `node ../scripts/judge-bench/bench.mjs --only ac --cpus 1` |
 | | Simulacro: un envío por lenguaje y problema | |
 | Día del concurso | Llegar 1 h antes: `docker compose ps`, red, hora del sistema | |
@@ -119,20 +110,32 @@ cookie de refresh.
 
 ## El juez
 
-El servicio `worker` (`apps/backend/src/worker.ts`) arranca junto con los demás. Antes del primer
-`docker compose up`:
+El servicio `worker` (`apps/backend/src/worker.ts`) arranca junto con los demás, ya sin pasos a mano:
 
-1. `sudo mkdir -p /var/lib/concurso/submissions && sudo chown 1000:1000 /var/lib/concurso/submissions`
-   (UID del usuario `node` de la imagen; ruta = `SUBMISSIONS_DIR`)
-2. `DOCKER_GID` = `getent group docker | cut -d: -f3`
-3. `JUDGE_CPUS` con una CPU lógica por núcleo físico que se reserve para juzgar (`lscpu -e`), y
-   `WORKER_CONCURRENCY` con la misma cantidad
-4. Descargar las imágenes de los lenguajes (~4.4 GB):
-   `for i in gcc:14 eclipse-temurin:21-jdk python:3.12-slim node:24-slim mcr.microsoft.com/dotnet/sdk:8.0; do docker pull $i; done`
+- Arranca como root solo para crear `SUBMISSIONS_DIR` (dueño uid 1000) y leer el grupo de
+  `docker.sock`; después `docker-entrypoint.sh` baja al usuario `node` con ese grupo.
+- Las imágenes de los lenguajes (~4.4 GB) están declaradas como servicios `judge-*`; el worker
+  espera a que `up` las descargue. Así ningún envío las descarga a mitad de la compilación (eso
+  daba CE falsos por el límite de 60 s, o CE en todo el lenguaje sin internet).
+- Las versiones se cambian en `.env` (`JUDGE_IMAGE_GCC`, `JUDGE_IMAGE_PYTHON`, …; ver
+  `.env.example`). Al arrancar, la API actualiza la imagen de los 7 lenguajes base en la BD.
+  Un lenguaje creado desde el panel con otra imagen hay que agregarlo también al compose.
+- Ajusta `JUDGE_CPUS` con una CPU lógica por núcleo físico que se reserve para juzgar
+  (`lscpu -e`), y `WORKER_CONCURRENCY` con la misma cantidad.
 
 El worker monta `docker.sock`, que equivale a root en el host: por eso no publica puertos ni
 comparte proceso con la API. Los requisitos de ejecución (variables de .NET, detección de MLE,
 límites) están en [server-specs.md](../docs/design/server-specs.md#requisitos-que-el-worker-debe-cumplir).
+
+## Pendiente con el hardware nuevo
+
+Se hace en la máquina donde correrá el concurso, porque los tiempos dependen del hardware:
+
+1. **Calibrar `time_multiplier`** (sobre todo Python, hoy en 3 sin medir) con
+   `node scripts/judge-bench/bench.mjs` y ajustar los lenguajes en el panel o en el seeder.
+2. **Simulacro completo**: app de competidores en las máquinas del laboratorio, panel de staff
+   y proyector; un AC, un WA y un TLE por lenguaje; entrar como superadmin, admin, juez,
+   observador y sin sesión; reemplazar la sesión de un equipo en otra máquina.
 
 ## Actualizar el código
 

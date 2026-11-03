@@ -55,7 +55,7 @@ def test_401_stops_and_reports_session_lost():
 def test_removable_drives_by_platform():
     parts = [Part("C:\\", "C:\\", "rw,fixed"), Part("E:\\", "E:\\", "rw,removable"),
              Part("/dev/sdb1", "/run/media/ana/USB", "rw"), Part("/dev/sda1", "/", "rw")]
-    assert removable_drives(parts, "win32") == ["E:\\"]
+    assert removable_drives(parts, "win32", is_external=lambda d: False, system_drive="C:") == ["E:\\"]
     assert removable_drives(parts, "linux") == ["/run/media/ana/USB"]
 
 
@@ -69,3 +69,19 @@ def test_heartbeat_payload_shape():
     payload = heartbeat_payload()
     assert {"processes", "usbStorage", "networkInterfaces"} <= payload.keys()
     assert "monitors" not in payload or isinstance(payload["monitors"], int)
+
+
+def test_running_processes_on_windows_keeps_only_windowed_pids():
+    import os
+
+    import psutil
+
+    me = psutil.Process(os.getpid()).name()
+    assert running_processes(platform="win32", window_pids={os.getpid()}) == [me]
+    assert running_processes(platform="win32", window_pids=set()) == []
+
+
+def test_windows_counts_usb_disks_reported_as_fixed_but_never_the_system_drive():
+    parts = [Part("C:\\", "C:\\", "rw,fixed"), Part("D:\\", "D:\\", "rw,fixed"), Part("F:\\", "F:\\", "rw,fixed")]
+    usb = {"F:\\", "C:\\"}  # aunque el sistema estuviera en USB, no se reporta
+    assert removable_drives(parts, "win32", is_external=lambda d: d in usb, system_drive="C:") == ["F:\\"]

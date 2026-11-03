@@ -19,6 +19,7 @@ export function toClarificationDto(c: Clarification, teamId?: number): IClarific
         answer: c.answer,
         createdAt: c.created_at,
         answeredAt: c.answered_at,
+        rejectedAt: c.rejected_at,
         ...(teamId !== undefined ? { mine: c.team_id === teamId } : {}),
     }
 }
@@ -66,7 +67,7 @@ export class ClarificationsService {
         const rows = await this.clarificationRepository.createQueryBuilder('c')
             .leftJoin('c.problem', 'p')
             .where('c.edition_id = :edition', { edition: team.edition_id })
-            .andWhere('(c.team_id = :team OR c.answered_at IS NOT NULL)', { team: team.id })
+            .andWhere('(c.team_id = :team OR (c.answered_at IS NOT NULL AND c.rejected_at IS NULL))', { team: team.id })
             .andWhere('(c.problem_id IS NULL OR p.category_id = :category)', { category: team.category_id })
             .orderBy('c.id', 'DESC')
             .getMany()
@@ -88,6 +89,7 @@ export class ClarificationsService {
         clarification.answer = dto.answer
         clarification.answered_by = userId
         clarification.answered_at = new Date()
+        clarification.rejected_at = null // responder una rechazada la vuelve a publicar
         await this.clarificationRepository.save(clarification)
 
         const staff = toStaffClarificationDto(clarification)
@@ -95,5 +97,34 @@ export class ClarificationsService {
         // Sin el equipo que preguntó; cada cliente descarta las de problemas de otra categoría
         this.realtime.toPublic(editionId, SOCKET_EVENTS.CLARIFICATION_UPDATE, toClarificationDto(clarification))
         return staff
+    }
+
+    // Contenido indebido o que revela una respuesta: deja de ser pública. Solo la ve el equipo que preguntó
+    async reject(editionId: number, id: number, userId: number): Promise<IStaffClarification> {
+        const clarification = await this.findForStaff(editionId, id)
+        clarification.rejected_at = new Date()
+        clarification.answered_by = userId
+        await this.clarificationRepository.save(clarification)
+
+        // Primero todos la quitan (la sala pública incluye al staff); luego el staff y el equipo que
+        // preguntó la vuelven a recibir, ya marcada como rechazada
+        const staff = toStaffClarificationDto(clarification)
+        this.realtime.toPublic(editionId, SOCKET_EVENTS.CLARIFICATION_DELETE, { id })
+        this.realtime.toStaff(editionId, SOCKET_EVENTS.CLARIFICATION_UPDATE, staff)
+        this.realtime.toTeam(clarification.team_id, SOCKET_EVENTS.CLARIFICATION_UPDATE, toClarificationDto(clarification, clarification.team_id))
+        return staff
+    }
+
+    async remove(editionId: number, id: number): Promise<void> {
+        const clarification = await this.findForStaff(editionId, id)
+        await this.clarificationRepository.delete({ id: clarification.id })
+        // La sala pública incluye al staff y a todos los equipos de la edición
+        this.realtime.toPublic(editionId, SOCKET_EVENTS.CLARIFICATION_DELETE, { id })
+    }
+
+    private async findForStaff(editionId: number, id: number): Promise<Clarification> {
+        const clarification = await this.clarificationRepository.findOne({ where: { id, edition_id: editionId }, relations: { team: true } })
+        if(!clarification) throw new NotFoundException('clarification not found #' + id)
+        return clarification
     }
 }

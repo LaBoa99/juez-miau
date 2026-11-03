@@ -1,7 +1,7 @@
 # Panel de staff — Juez Virtual (Angular)
 
 ## Contexto
-- App Angular del monorepo mi-concurso-monorepo. Carpeta: apps/frontend-staff
+- App Angular del monorepo juez-miau. Carpeta: apps/frontend-staff
 - Backend NestJS con prefijo /api/v1. El proxy de desarrollo mapea /api -> /api/v1.
 - Tipos compartidos en @concurso/shared-types. Todo DTO nuevo se agrega ahí, copiando la forma del backend.
 - Diseño: ver docs/design/DESIGN.md. Resumen: Inter + JetBrains Mono, bordes 1px, radio 4px, SIN sombras.
@@ -46,27 +46,14 @@ Si hace falta un componente nuevo, propónlo y espera confirmación antes de cre
 ## Idioma
 - Textos de la interfaz en español.
 
-## Antes del deploy
-Pendientes de seguridad/permisos que hoy están preparados pero NO activados:
-
-- **Reactivar los guards de sesión**: quitar el atajo de `src/app/app.routes.ts` que desactiva `authGuard`/`guestGuard`
-  (comentario `shortcut:`) y volver a poner `canActivate: [authGuard]` en el Shell (`''`) y `[guestGuard]` en `login`.
-- **Backend debe exponer `is_superadmin`** en `/auth/me` y en el login de staff. Hoy no lo hace, así que
-  `AuthService.isSuperadmin()` siempre es `false` y el gating de superadmin no funciona hasta que llegue ese flag.
-- **Aplicar `superadminGuard`** (`core/auth/role.guard.ts`) en las rutas que en el backend son superadmin-only:
-  - `/staff` → superadmin-only completo (`StaffController` es `@SuperadminOnly()` a nivel de clase).
-  - `/ediciones` y `/lenguajes` son **mixtos**: su listado/lectura está abierto a cualquier staff autenticado, así que
-    NO se gatea la ruta entera. Las acciones superadmin-only van a nivel de UI/acción, no de ruta:
-    crear edición (`POST /editions`) y crear/editar lenguaje (`POST`/`PATCH /languages`). Editar dentro de una edición
-    (schedule, borrar, subrecursos) es rol `ADMIN` de esa edición (usar `roleInEdition(editionId)`), con bypass de superadmin.
-- **Header: mostrar solo los enlaces usables**: ocultar "Staff" si el usuario no es superadmin.
-- **Barra de la edición por rol — vista de observador**: un OBSERVER solo debe ver Envíos, Marcador y Alertas
-  (filtrar `sections` en `edition-layout` según `roleInEdition(editionId)`). Preparado pero NO aplicado hasta
-  activar la navegación por rol (va junto con los guards diferidos).
-- **Auditoría (`/auditoria`) es superadmin-only en el backend** (`AuditController` es `@SuperadminOnly()`): aplicar
-  `superadminGuard` (`core/auth/role.guard.ts`) a la ruta `auditoria` en `app.routes.ts` y ocultar su enlace del header
-  si el usuario no es superadmin (igual que "Staff"). Hoy la ruta está abierta mientras los guards siguen diferidos.
-- **Probar el acceso** con: (a) un superadmin, (b) un staff sin ese rol, (c) sin sesión → cada uno debe ver/redirigir como corresponde.
+## Acceso por rol (aplicado)
+- `authGuard` en el Shell y `guestGuard` en `login`; `superadminGuard` (`core/auth/role.guard.ts`) en `/staff` y
+  `/auditoria`, cuyos enlaces del header solo ve el superadmin. El backend manda `is_superadmin` en `/auth/me` y el login.
+- `/ediciones` y `/lenguajes` son mixtos: las acciones superadmin-only se ocultan en la UI, no en la ruta. Dentro de una
+  edición manda `roleInEdition(editionId)` (con bypass de superadmin); un OBSERVER solo ve Envíos, Marcador y Alertas.
+- Rutas desconocidas dentro del shell muestran la 404 (`core/layout/not-found.component.ts`); `/403` es `Forbidden`.
+- Pendiente: probar el acceso (superadmin, admin, juez, observador y sin sesión) en el simulacro con el hardware nuevo
+  (ver `deploy/README.md`).
 
 ## Revisión visual antes de terminar un paso
 Cada paso debe revisar esta lista y reportar el resultado (qué se revisó y qué se corrigió):
