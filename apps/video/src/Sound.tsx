@@ -1,7 +1,7 @@
 import { Audio } from "@remotion/media";
 import React from "react";
-import { Sequence, interpolate, staticFile } from "remotion";
-import { DURATION, countdownMarks, ev, voice } from "./plan";
+import { Sequence, staticFile } from "remotion";
+import { countdownMarks, ev, voice } from "./plan";
 
 type Sfx = [number, string, number];
 
@@ -67,21 +67,8 @@ const hit: Record<string, number> = {
   miau: 20, papel: 16, confeti: 3, lupa: 15,
 };
 
-const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
-
-// La música baja ~14 dB bajo la voz: empieza a bajar 1 s antes de la frase y sube 1.2 s después.
-const musicVolume = (f: number) => {
-  const talking = Math.max(
-    0,
-    ...voice.map((l) => interpolate(f, [l.at - 30, l.at, l.at + l.frames, l.at + l.frames + 36], [0, 1, 1, 0], clamp)),
-  );
-  const fade = interpolate(f, [0, 30, DURATION - 60, DURATION], [0, 1, 1, 0], clamp);
-  return fade * (1 - 0.8 * talking);
-};
-
 export const Sound: React.FC = () => (
   <>
-    <Audio src={staticFile("musica/night-on-the-docks.mp3")} volume={musicVolume} />
     {voice.map((l) => (
       <Sequence key={l.id} from={l.at} durationInFrames={l.frames + 5} name={`Voz ${l.id}`} layout="none">
         <Audio src={staticFile(`voz/${l.id}.mp3`)} />

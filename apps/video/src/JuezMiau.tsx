@@ -266,9 +266,6 @@ const Closing: React.FC = () => {
         <span style={{ fontFamily: font.mono, fontSize: 25, fontWeight: 700, whiteSpace: "nowrap", marginRight: 20 }}>laboa99.github.io/juez-miau</span>
         <Img src={staticFile("logo-cuvalles.svg")} style={{ height: 54 }} />
       </div>
-      <div style={{ fontFamily: font.mono, fontSize: 16, color: c.labelDim, marginTop: 18 }}>
-        Música: “Night on the Docks – Sax”, Kevin MacLeod (incompetech.com), CC BY 4.0
-      </div>
     </div>
   );
 };

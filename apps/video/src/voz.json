@@ -2,9 +2,9 @@
   {
     "id": "01",
     "at": 12,
-    "text": "Concurso de programación. 40 equipos. Un solo juez. Ese soy yo.",
-    "say": "Concurso de programación. Cuarenta equipos. Un solo juez... Ese soy yo.",
-    "frames": 188,
+    "text": "Concurso de programación. Un solo juez. Ese soy yo.",
+    "say": "Concurso de programación. Un solo juez... Ese soy yo.",
+    "frames": 140,
     "words": [
       [
         2,
@@ -20,34 +20,26 @@
       ],
       [
         61,
-        "Cuarenta"
-      ],
-      [
-        74,
-        "equipos"
-      ],
-      [
-        109,
         "Un"
       ],
       [
-        115,
+        67,
         "solo"
       ],
       [
-        124,
+        76,
         "juez"
       ],
       [
-        153,
+        105,
         "Ese"
       ],
       [
-        162,
+        114,
         "soy"
       ],
       [
-        170,
+        123,
         "yo"
       ]
     ]
