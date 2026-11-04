@@ -35,7 +35,7 @@ evalúa en Docker y el **marcador** se actualiza en tiempo real.
 | <img src="site/assets/icons/box.svg" width="22"> | **Juez en contenedores** | Compila y ejecuta cada envío en Docker, con límites de tiempo y memoria y un núcleo de CPU reservado por caso. |
 | <img src="site/assets/icons/trophy.svg" width="22"> | **Marcador en vivo** | Resueltos y penalización se recalculan con cada veredicto y llegan al instante por WebSocket. |
 | <img src="site/assets/icons/presentation.svg" width="22"> | **Modo proyector** | Vista pública del marcador y el reloj para la pantalla grande. |
-| <img src="site/assets/icons/message-question.svg" width="22"> | **Aclaraciones** | Los equipos preguntan sobre un problema y los jueces responden a uno o a todos. |
+| <img src="site/assets/icons/message-question.svg" width="22"> | **Aclaraciones** | Los equipos preguntan sobre un problema y la respuesta se publica para todos los equipos. |
 | <img src="site/assets/icons/shield-check.svg" width="22"> | **Integridad del equipo** | Latidos de la app, procesos, monitores y USB; alertas para el staff y suspensión de equipos. |
 | <img src="site/assets/icons/monitor.svg" width="22"> | **App de escritorio** | Un solo `.exe` para Windows: problemas, envíos y veredictos como notificación nativa. |
 | <img src="site/assets/icons/timer.svg" width="22"> | **Reloj del concurso** | Inicio, pausa y congelamiento del marcador, sincronizados en todas las pantallas. |

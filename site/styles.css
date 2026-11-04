@@ -237,6 +237,8 @@ code { font: 500 0.88em var(--mono); }
 .chapter__head { display: grid; gap: var(--s4); margin-bottom: var(--s7); }
 .chapter__head h2 { font-size: clamp(2.4rem, 5vw, 4.25rem); max-width: 16ch; }
 .chapter__head p { max-width: 60ch; font-size: 1.0625rem; color: var(--ink-2); }
+.reel { margin: 0; display: grid; gap: var(--s3); }
+.reel video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #000; border: 0.6rem solid var(--label); box-shadow: 0 1.5rem 3rem rgb(var(--shadow) / 0.35); }
 
 /* Cinta impresa que abre cada capítulo */
 .tape { position: relative; margin: 0 -2rem var(--s7); padding: 0.55rem 0; rotate: -1.2deg; overflow: hidden; white-space: nowrap;

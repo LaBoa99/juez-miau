@@ -1,0 +1,586 @@
+[
+  {
+    "id": "01",
+    "at": 12,
+    "text": "Concurso de programación. 40 equipos. Un solo juez. Ese soy yo.",
+    "say": "Concurso de programación. Cuarenta equipos. Un solo juez... Ese soy yo.",
+    "frames": 188,
+    "words": [
+      [
+        2,
+        "Concurso"
+      ],
+      [
+        19,
+        "de"
+      ],
+      [
+        23,
+        "programación"
+      ],
+      [
+        61,
+        "Cuarenta"
+      ],
+      [
+        74,
+        "equipos"
+      ],
+      [
+        109,
+        "Un"
+      ],
+      [
+        115,
+        "solo"
+      ],
+      [
+        124,
+        "juez"
+      ],
+      [
+        153,
+        "Ese"
+      ],
+      [
+        162,
+        "soy"
+      ],
+      [
+        170,
+        "yo"
+      ]
+    ]
+  },
+  {
+    "id": "02",
+    "at": 255,
+    "text": "Antes del caos, el staff arma la escena: edición, salones, equipos, problemas y lenguajes. En minutos, no en días.",
+    "say": "Antes del caos, el estáf arma la escena: edición, salones, equipos, problemas y lenguajes. En minutos... no en días.",
+    "frames": 273,
+    "words": [
+      [
+        2,
+        "Antes"
+      ],
+      [
+        11,
+        "del"
+      ],
+      [
+        16,
+        "caos"
+      ],
+      [
+        37,
+        "el"
+      ],
+      [
+        41,
+        "estáf"
+      ],
+      [
+        53,
+        "arma"
+      ],
+      [
+        60,
+        "la"
+      ],
+      [
+        63,
+        "escena"
+      ],
+      [
+        82,
+        "edición"
+      ],
+      [
+        106,
+        "salones"
+      ],
+      [
+        131,
+        "equipos"
+      ],
+      [
+        154,
+        "problemas"
+      ],
+      [
+        172,
+        "y"
+      ],
+      [
+        173,
+        "lenguajes"
+      ],
+      [
+        212,
+        "En"
+      ],
+      [
+        216,
+        "minutos"
+      ],
+      [
+        239,
+        "no"
+      ],
+      [
+        246,
+        "en"
+      ],
+      [
+        250,
+        "días"
+      ]
+    ]
+  },
+  {
+    "id": "03",
+    "at": 588,
+    "text": "Cada equipo recibe sus credenciales y una app. Un .exe, y listo.",
+    "say": "Cada equipo recibe sus credenciales y una app. Un ejecutable, y listo.",
+    "frames": 149,
+    "sync": {
+      "word": "credenciales",
+      "frame": 625
+    },
+    "words": [
+      [
+        2,
+        "Cada"
+      ],
+      [
+        9,
+        "equipo"
+      ],
+      [
+        20,
+        "recibe"
+      ],
+      [
+        31,
+        "sus"
+      ],
+      [
+        37,
+        "credenciales"
+      ],
+      [
+        59,
+        "y"
+      ],
+      [
+        61,
+        "una"
+      ],
+      [
+        69,
+        "app"
+      ],
+      [
+        90,
+        "Un"
+      ],
+      [
+        95,
+        "ejecutable"
+      ],
+      [
+        123,
+        "y"
+      ],
+      [
+        126,
+        "listo"
+      ]
+    ]
+  },
+  {
+    "id": "04",
+    "at": 798,
+    "text": "Tres, dos, uno… ¡a programar!",
+    "say": "Tres... dos... uno... ¡a programar!",
+    "frames": 79,
+    "sync": {
+      "word": "programar",
+      "frame": 850
+    },
+    "words": [
+      [
+        2,
+        "Tres"
+      ],
+      [
+        19,
+        "dos"
+      ],
+      [
+        35,
+        "uno"
+      ],
+      [
+        49,
+        "a"
+      ],
+      [
+        52,
+        "programar"
+      ]
+    ]
+  },
+  {
+    "id": "05",
+    "at": 920,
+    "text": "Primer envío de Los Segfault: Wrong Answer. Clásico.",
+    "say": "Primer envío de Los Ségfolt: Rong Ánser... Clásico.",
+    "frames": 118,
+    "sync": {
+      "word": "Ánser",
+      "frame": 980
+    },
+    "words": [
+      [
+        2,
+        "Primer"
+      ],
+      [
+        11,
+        "envío"
+      ],
+      [
+        22,
+        "de"
+      ],
+      [
+        25,
+        "Los"
+      ],
+      [
+        30,
+        "Ségfolt"
+      ],
+      [
+        51,
+        "Rong"
+      ],
+      [
+        60,
+        "Ánser"
+      ],
+      [
+        90,
+        "Clásico"
+      ]
+    ]
+  },
+  {
+    "id": "06",
+    "at": 1133,
+    "text": "¿Dudas con el enunciado? Preguntan. El staff responde y todos ven la respuesta.",
+    "say": "¿Dudas con el enunciado? Preguntan. El estáf responde, y todos ven la respuesta.",
+    "frames": 187,
+    "sync": {
+      "word": "Preguntan",
+      "frame": 1190
+    },
+    "words": [
+      [
+        2,
+        "Dudas"
+      ],
+      [
+        14,
+        "con"
+      ],
+      [
+        18,
+        "el"
+      ],
+      [
+        22,
+        "enunciado"
+      ],
+      [
+        57,
+        "Preguntan"
+      ],
+      [
+        95,
+        "El"
+      ],
+      [
+        100,
+        "estáf"
+      ],
+      [
+        111,
+        "responde"
+      ],
+      [
+        136,
+        "y"
+      ],
+      [
+        141,
+        "todos"
+      ],
+      [
+        152,
+        "ven"
+      ],
+      [
+        158,
+        "la"
+      ],
+      [
+        160,
+        "respuesta"
+      ]
+    ]
+  },
+  {
+    "id": "07",
+    "at": 1422,
+    "text": "Segundo intento: Accepted. El marcador se entera antes que ellos.",
+    "say": "Segundo intento: Acséptid. El marcador se entera antes que ellos.",
+    "frames": 147,
+    "sync": {
+      "word": "Acséptid",
+      "frame": 1462
+    },
+    "words": [
+      [
+        2,
+        "Segundo"
+      ],
+      [
+        16,
+        "intento"
+      ],
+      [
+        40,
+        "Acséptid"
+      ],
+      [
+        76,
+        "El"
+      ],
+      [
+        80,
+        "marcador"
+      ],
+      [
+        95,
+        "se"
+      ],
+      [
+        97,
+        "entera"
+      ],
+      [
+        110,
+        "antes"
+      ],
+      [
+        119,
+        "que"
+      ],
+      [
+        126,
+        "ellos"
+      ]
+    ]
+  },
+  {
+    "id": "08",
+    "at": 1613,
+    "text": "Y entonces… alguien conecta una USB. Yo lo veo. El staff lo ve. Nadie más.",
+    "say": "Y entonces... alguien conecta una USB. Yo lo veo. El estáf lo ve. Nadie más.",
+    "frames": 215,
+    "sync": {
+      "word": "USB",
+      "frame": 1675
+    },
+    "words": [
+      [
+        2,
+        "Y"
+      ],
+      [
+        6,
+        "entonces"
+      ],
+      [
+        29,
+        "alguien"
+      ],
+      [
+        40,
+        "conecta"
+      ],
+      [
+        54,
+        "una"
+      ],
+      [
+        62,
+        "USB"
+      ],
+      [
+        96,
+        "Yo"
+      ],
+      [
+        103,
+        "lo"
+      ],
+      [
+        107,
+        "veo"
+      ],
+      [
+        135,
+        "El"
+      ],
+      [
+        140,
+        "estáf"
+      ],
+      [
+        151,
+        "lo"
+      ],
+      [
+        156,
+        "ve"
+      ],
+      [
+        180,
+        "Nadie"
+      ],
+      [
+        193,
+        "más"
+      ]
+    ],
+    "top": true
+  },
+  {
+    "id": "09",
+    "at": 2013,
+    "text": "Última hora: el marcador se congela. Nadie sabe quién va ganando… hasta ahora.",
+    "say": "Última hora: el marcador se congela. Nadie sabe quién va ganando... hasta ahora.",
+    "frames": 169,
+    "sync": {
+      "word": "congela",
+      "frame": 2068
+    },
+    "words": [
+      [
+        2,
+        "Última"
+      ],
+      [
+        16,
+        "hora"
+      ],
+      [
+        32,
+        "el"
+      ],
+      [
+        36,
+        "marcador"
+      ],
+      [
+        51,
+        "se"
+      ],
+      [
+        55,
+        "congela"
+      ],
+      [
+        88,
+        "Nadie"
+      ],
+      [
+        100,
+        "sabe"
+      ],
+      [
+        109,
+        "quién"
+      ],
+      [
+        117,
+        "va"
+      ],
+      [
+        121,
+        "ganando"
+      ],
+      [
+        141,
+        "hasta"
+      ],
+      [
+        148,
+        "ahora"
+      ]
+    ]
+  },
+  {
+    "id": "10",
+    "at": 2500,
+    "text": "Rápido, parejo y sin trampas. Caja sellada. Juez Miau.",
+    "say": "Rápido, parejo y sin trampas. Caja sellada... Juez Miau.",
+    "caption": false,
+    "frames": 160,
+    "sync": {
+      "word": "sellada",
+      "frame": 2595
+    },
+    "words": [
+      [
+        2,
+        "Rápido"
+      ],
+      [
+        26,
+        "parejo"
+      ],
+      [
+        41,
+        "y"
+      ],
+      [
+        44,
+        "sin"
+      ],
+      [
+        51,
+        "trampas"
+      ],
+      [
+        86,
+        "Caja"
+      ],
+      [
+        95,
+        "sellada"
+      ],
+      [
+        130,
+        "Juez"
+      ],
+      [
+        140,
+        "Miau"
+      ]
+    ]
+  }
+]
