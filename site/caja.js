@@ -171,10 +171,25 @@
     }, 0.6);
   } else if (seal) seal.classList.add('is-in');
 
+  // Botón para copiar los comandos de una terminal (solo las líneas con "$", sin el prompt).
+  for (const pre of document.querySelectorAll('.term[data-copy]')) {
+    const text = pre.textContent.split('\n').filter((l) => l.startsWith('$ ')).map((l) => l.slice(2)).join('\n');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy';
+    btn.textContent = 'Copiar';
+    btn.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(text); btn.textContent = '¡Copiado!'; }
+      catch { btn.textContent = 'No se pudo copiar'; }
+      setTimeout(() => { btn.textContent = 'Copiar'; }, 1600);
+    });
+    pre.parentElement.append(btn);
+  }
+
   // Terminal: el comando se teclea y los servicios aparecen uno por uno.
   onSight(document.querySelector('[data-type]'), async (pre) => {
     const [first, ...rest] = pre.innerHTML.split('\n');
-    const cmd = 'docker compose up -d --build';
+    const cmd = pre.dataset.type;
     const prompt = first.slice(0, first.indexOf(cmd));
     pre.innerHTML = `${prompt}<span class="caret"></span>`;
     await wait(500);

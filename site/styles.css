@@ -375,6 +375,11 @@ code { font: 500 0.88em var(--mono); }
 .term { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
 .term .dim { color: #A39A8A; }
 .term .v { border-width: 1px; }
+.term-wrap:has(.copy) .term { padding-top: 2.6rem; }
+.copy { position: absolute; top: 0.5rem; right: 0.5rem; padding: 0.3rem 0.65rem; border: 1px solid #A39A8A; border-radius: 3px; background: transparent;
+  color: var(--term-ink); font: 600 0.75rem/1.2 var(--mono); cursor: pointer; }
+.copy:hover { background: rgb(255 255 255 / 0.08); }
+.assembly .term-wrap + p { margin-top: var(--s2); }
 .offline { display: flex; align-items: flex-start; gap: 0.6rem; color: var(--ink-2); margin-bottom: var(--s5); }
 .offline .ico { margin-top: 0.2rem; }
 

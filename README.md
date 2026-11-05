@@ -69,11 +69,22 @@ de los equipos                     └── /socket.io/* ─►                
 
 ## Inicio rápido
 
-<img src="site/assets/icons/server.svg" width="18"> **Montar el concurso** (detalles en [deploy/README.md](deploy/README.md)):
+<img src="site/assets/icons/server.svg" width="18"> **Montar el concurso** (detalles en [deploy/README.md](deploy/README.md)).
+Necesita Linux con Docker 24+ y Docker Compose v2.
+
+Con el instalador, sin el código (usa las imágenes de ghcr.io; pregunta la dirección del panel y el correo
+del superadmin, genera los secretos, arranca y muestra la contraseña):
 
 ```bash
-cd deploy
-cp .env.example .env       # PUBLIC_URL, contraseñas y secretos
+mkdir concurso && cd concurso
+curl -fsSL https://raw.githubusercontent.com/LaBoa99/juez-miau/main/deploy/instalar.sh | sh
+```
+
+Desde el repositorio, construyendo con el código local:
+
+```bash
+git clone https://github.com/LaBoa99/juez-miau && cd juez-miau/deploy
+cp .env.example .env       # cambia lo marcado con cambia_esto
 docker compose up -d --build
 ```
 

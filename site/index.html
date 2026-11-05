@@ -295,22 +295,27 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
             </ul>
           </li>
           <li>
-            <h3>Clona y configura</h3>
-            <div class="term-wrap taped"><pre class="term"><span class="dim">$</span> git clone https://github.com/LaBoa99/juez-miau
+            <h3>Instálalo</h3>
+            <p><b>Con el instalador.</b> No necesita el código: baja las imágenes ya hechas, te pregunta la dirección del panel y el correo del superadmin, genera los secretos y arranca.</p>
+            <div class="term-wrap taped"><pre class="term" data-copy><span class="dim">$</span> mkdir concurso &amp;&amp; cd concurso
+<span class="dim">$</span> curl -fsSL https://raw.githubusercontent.com/LaBoa99/juez-miau/main/deploy/instalar.sh | sh</pre></div>
+            <p><b>Desde el repositorio.</b> Construye con el código local. En <code>.env</code> cambia lo marcado con <code>cambia_esto</code> antes de levantarlo.</p>
+            <div class="term-wrap taped"><pre class="term" data-copy><span class="dim">$</span> git clone https://github.com/LaBoa99/juez-miau
 <span class="dim">$</span> cd juez-miau/deploy
-<span class="dim">$</span> cp .env.example .env</pre></div>
-            <p>En <code>.env</code> pon la dirección pública, las contraseñas y los secretos.</p>
+<span class="dim">$</span> cp .env.example .env
+<span class="dim">$</span> docker compose up -d --build</pre></div>
           </li>
           <li>
-            <h3>Levántalo</h3>
-            <div class="term-wrap taped"><pre class="term" data-type><span class="dim">$</span> docker compose up -d --build
+            <h3>Revisa que esté arriba</h3>
+            <div class="term-wrap taped"><pre class="term" data-copy data-type="docker compose ps"><span class="dim">$</span> docker compose ps
 web      <i class="v v--ac">Up</i>   api    <i class="v v--ac">Up</i>
 worker   <i class="v v--ac">Up</i>   redis  <i class="v v--ac">Up</i>
 postgres <i class="v v--ac">Up</i></pre></div>
+            <p>La primera vez el juez tarda unos minutos en bajar las imágenes de los lenguajes.</p>
           </li>
           <li>
             <h3>Entra al panel</h3>
-            <p>Abre la dirección pública con el usuario administrador del <code>.env</code> y crea tu primera edición. Reparte la app de escritorio en las máquinas de los equipos.</p>
+            <p>Abre la dirección del panel con el superadmin (el instalador te muestra su contraseña; también está en el <code>.env</code>) y crea tu primera edición. Reparte la app de escritorio en las máquinas de los equipos.</p>
           </li>
         </ol>
         <p class="offline"><span class="ico" style="--i:url(assets/icons/wifi-off.svg)"></span>¿Tu laboratorio no tiene internet? Prepara las imágenes en otra máquina y cópialas; la guía explica cómo.</p>
