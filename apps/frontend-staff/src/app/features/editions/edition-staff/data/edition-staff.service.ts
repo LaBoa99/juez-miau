@@ -23,6 +23,10 @@ export class EditionStaffService {
     return this.http.post<IEditionStaff>(`${API}/editions/${editionId}/staff`, body);
   }
 
+  updateRole(editionId: number, staffUserId: number, role: StaffRole): Observable<IEditionStaff> {
+    return this.http.patch<IEditionStaff>(`${API}/editions/${editionId}/staff/${staffUserId}`, { role });
+  }
+
   remove(editionId: number, staffUserId: number): Observable<void> {
     return this.http.delete<void>(`${API}/editions/${editionId}/staff/${staffUserId}`);
   }

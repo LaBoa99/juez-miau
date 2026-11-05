@@ -4,7 +4,6 @@ import { ActivatedRoute } from '@angular/router';
 import { IEditionStaff, IStaffListItem, StaffRole } from '@concurso/shared-types';
 import { ButtonDirective } from '../../../shared/ui/button.directive';
 import { FormField } from '../../../shared/ui/form-field.component';
-import { Badge } from '../../../shared/ui/badge.component';
 import { Alert } from '../../../shared/ui/alert.component';
 import { EmptyState } from '../../../shared/ui/empty-state.component';
 import { EditionStaffService } from './data/edition-staff.service';
@@ -14,7 +13,7 @@ import { findEditionId, message } from '../tab-utils';
 @Component({
   selector: 'oj-edition-staff-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, ButtonDirective, FormField, Badge, Alert, EmptyState],
+  imports: [ReactiveFormsModule, ButtonDirective, FormField, Alert, EmptyState],
   templateUrl: './edition-staff-tab.html',
   styleUrl: '../tab.css',
 })
@@ -88,6 +87,17 @@ export class EditionStaffTab {
       error: (err) => {
         this.saving.set(false);
         this.formError.set(message(err, 'No se pudo asignar.'));
+      },
+    });
+  }
+
+  changeRole(row: IEditionStaff, role: StaffRole): void {
+    this.formError.set(null);
+    this.service.updateRole(this.editionId, row.staff_user_id, role).subscribe({
+      next: () => this.load(),
+      error: (err) => {
+        this.formError.set(message(err, 'No se pudo cambiar el rol.'));
+        this.load(); // regresa el select al rol guardado
       },
     });
   }

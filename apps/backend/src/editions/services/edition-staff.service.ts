@@ -117,6 +117,15 @@ export class EditionStaffService {
         return this.editionStaffRepository.save(editionStaffMember)
     }
 
+    async updateRole(editionId: number, staffUserId: number, role: StaffRole): Promise<EditionStaff> {
+        const assignment = await this.editionStaffRepository.findOneBy({ edition_id: editionId, staff_user_id: staffUserId })
+        if(!assignment){
+            throw new NotFoundException('staff user #' + staffUserId + ' is not assigned to edition #' + editionId)
+        }
+        assignment.role = role
+        return this.editionStaffRepository.save(assignment)
+    }
+
     async remove(editionId: number, staffUserId: number): Promise<void> {
         const result = await this.editionStaffRepository.delete({
             edition_id: editionId,

@@ -13,10 +13,11 @@ MESSAGES = {
 
 
 class ApiError(Exception):
-    def __init__(self, status, message):
+    def __init__(self, status, message, detail=None):
         super().__init__(message)
         self.status = status
         self.message = message
+        self.detail = detail  # mensaje original del servidor, si lo hubo
 
 
 class ApiClient:
@@ -40,7 +41,8 @@ class ApiClient:
             raise ApiError(0, MESSAGES[0])
         if res.ok:
             return res.json() if res.content else None
-        raise ApiError(res.status_code, MESSAGES.get(res.status_code) or _server_message(res))
+        detail = _server_message(res)
+        raise ApiError(res.status_code, MESSAGES.get(res.status_code) or detail, detail)
 
     def get(self, path):
         return self.request("GET", path)

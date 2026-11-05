@@ -183,13 +183,12 @@ export class TeamsService {
         }
     }
 
-    // El username solo es único dentro de su edición; el login lo busca en las ediciones
-    // programadas o en curso (al programar una edición se valida que no choque con otra activa)
+    // El username solo es único dentro de su edición: trae los de todas las ediciones (con su
+    // estado) y el login decide; al programar una edición se valida que no choque con otra activa
     async findForLogin(username: string): Promise<Team[]> {
         return this._teamRepository.createQueryBuilder('team')
-            .innerJoin('team.edition', 'edition')
+            .innerJoinAndSelect('team.edition', 'edition')
             .where('team.username = :username', { username })
-            .andWhere('edition.status IN (:...statuses)', { statuses: ACTIVE_EDITION_STATUSES })
             .getMany()
     }
 

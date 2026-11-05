@@ -5,11 +5,11 @@ import type { Team } from '../../teams/entities/team.entity.js'
 import { StaffService } from '../../staff/services/staff.service.js'
 import { PasswordService } from '../../utils/services/password.service.js'
 import { TeamSessionsService } from '../../teams/services/team-sessions.service.js'
-import { TeamsService } from '../../teams/services/teams.service.js'
+import { ACTIVE_EDITION_STATUSES, TeamsService } from '../../teams/services/teams.service.js'
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js'
 import { RefreshTokensService } from './refresh-tokens.service.js'
 import { FlagsService } from '../../flags/flags.service.js'
-import { FlagType } from '@concurso/shared-types'
+import { EditionStatus, FlagType } from '@concurso/shared-types'
 import { StaffLoginDto } from '../dto/staff-login.dto.js'
 import { TeamLoginDto } from '../dto/team-login.dto.js'
 import { AccessTokenPayloadFactory, AccessTokenType, type AccessTokenPayload } from '../factories/access-token-payload.factory.js'
@@ -54,12 +54,22 @@ export class AuthService {
 
     async teamLogin(dto: TeamLoginDto) {
         // Puede haber el mismo username en ediciones distintas; vale el que coincida con la contraseña
+        // y esté en una edición activa. El aviso de edición cerrada solo sale con la contraseña
+        // correcta, para no revelar qué usuarios existen.
         let team = null
+        let closed = null
         for (const candidate of await this.teamsService.findForLogin(dto.username)) {
-            if (await this.passwordService.comparePassword(dto.password, candidate.password_hash)) {
+            if (!(await this.passwordService.comparePassword(dto.password, candidate.password_hash))) continue
+            if (ACTIVE_EDITION_STATUSES.includes(candidate.edition.status)) {
                 team = candidate
                 break
             }
+            closed ??= candidate
+        }
+        if (!team && closed) {
+            throw new ForbiddenException(closed.edition.status === EditionStatus.FINISHED
+                ? 'La edición ya terminó'
+                : 'La edición todavía no está abierta')
         }
         if (!team) {
             throw new UnauthorizedException('Credenciales inválidas')

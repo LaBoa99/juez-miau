@@ -12,13 +12,12 @@ import { TeamsService } from '../../../teams/data/teams.service';
 import { ToastService } from '../../../../core/notifications/toast.service';
 import { LiveClockService } from '../../../../core/realtime/live-clock.service';
 import { ContestClockService } from '../../../contest/data/contest-clock.service';
-import { ToastStack } from '../../../../shared/ui/toast-stack.component';
 import { flagToastText, flagTone } from '../../../flags/flag-display';
 
 @Component({
   selector: 'oj-edition-layout',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, ToastStack],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet],
   providers: [EditionContext],
   templateUrl: './edition-layout.html',
   styleUrl: './edition-layout.css',
@@ -32,7 +31,7 @@ export class EditionLayout {
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly teams = inject(TeamsService);
-  protected readonly toast = inject(ToastService);
+  private readonly toast = inject(ToastService);
   private readonly liveClock = inject(LiveClockService);
   private readonly clockService = inject(ContestClockService);
   protected readonly ctx = inject(EditionContext);

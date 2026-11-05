@@ -23,7 +23,17 @@
           @for (r of rows(); track r.staff_user_id) {
             <tr>
               <td>{{ staffName(r.staff_user_id) }}</td>
-              <td><oj-badge tone="neutral">{{ r.role }}</oj-badge></td>
+              <td>
+                <select
+                  [attr.aria-label]="'Rol de ' + staffName(r.staff_user_id)"
+                  [value]="r.role"
+                  (change)="changeRole(r, $any($event.target).value)"
+                >
+                  @for (role of roles; track role) {
+                    <option [value]="role">{{ role }}</option>
+                  }
+                </select>
+              </td>
               <td>
                 <div class="tab__row-actions">
                   <button ojButton variant="danger-outline" size="sm" type="button" (click)="remove(r)">Quitar</button>

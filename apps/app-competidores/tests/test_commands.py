@@ -66,3 +66,9 @@ def test_login_403_means_suspended_team():
     with pytest.raises(ApiError) as error:
         LoginCommand(FakeAuth(ApiError(403, "Tu equipo fue suspendido por el staff")), "a", "b").execute()
     assert "suspendido" in error.value.message
+
+
+def test_login_403_shows_server_detail():
+    with pytest.raises(ApiError) as error:
+        LoginCommand(FakeAuth(ApiError(403, "x", "La edición todavía no está abierta")), "a", "b").execute()
+    assert error.value.message == "La edición todavía no está abierta"

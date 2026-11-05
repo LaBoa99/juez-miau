@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
 import type { IEditionStaff } from '@concurso/shared-types';
 import { EditionStaffService } from '../services/edition-staff.service.js';
 import { CreateEditionStaffDto } from '../dto/create-edition-staff.dto.js';
+import { UpdateEditionStaffDto } from '../dto/update-edition-staff.dto.js';
 import type { EditionStaff } from '../entities/edition-staff.entity.js';
 import { RequireEditionRole, ANY_EDITION_ROLE } from '../../auth/decorators/access.decorators.js';
 import { StaffRole } from '@concurso/shared-types';
@@ -28,6 +29,16 @@ export class EditionStaffController {
         @Body() dto: CreateEditionStaffDto,
     ): Promise<IEditionStaff> {
         return this.editionStaffService.assign(editionId, dto);
+    }
+
+    @Patch(':staffUserId')
+    @RequireEditionRole([StaffRole.ADMIN])
+    updateStaffRole(
+        @Param('editionId', ParseIntPipe) editionId: number,
+        @Param('staffUserId', ParseIntPipe) staffUserId: number,
+        @Body() dto: UpdateEditionStaffDto,
+    ): Promise<IEditionStaff> {
+        return this.editionStaffService.updateRole(editionId, staffUserId, dto.role);
     }
 
     @Delete(':staffUserId')
