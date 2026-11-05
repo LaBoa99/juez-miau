@@ -1,8 +1,7 @@
 # Despliegue del concurso
 
 Todo el sistema en una sola máquina con Docker Compose. Pensado para montarse unos días antes
-de cada concurso (2 veces al año, 2–4 h) y desmontarse después. Requisitos de hardware en
-[docs/design/server-specs.md](../docs/design/server-specs.md).
+de cada concurso (2 veces al año, 2–4 h) y desmontarse después.
 
 ```
                  :80 / :443
@@ -125,7 +124,7 @@ El servicio `worker` (`apps/backend/src/worker.ts`) arranca junto con los demás
 
 El worker monta `docker.sock`, que equivale a root en el host: por eso no publica puertos ni
 comparte proceso con la API. Los requisitos de ejecución (variables de .NET, detección de MLE,
-límites) están en [server-specs.md](../docs/design/server-specs.md#requisitos-que-el-worker-debe-cumplir).
+límites) los aplica el propio worker.
 
 ## Pendiente con el hardware nuevo
 
@@ -136,6 +135,30 @@ Se hace en la máquina donde correrá el concurso, porque los tiempos dependen d
 2. **Simulacro completo**: app de competidores en las máquinas del laboratorio, panel de staff
    y proyector; un AC, un WA y un TLE por lenguaje; entrar como superadmin, admin, juez,
    observador y sin sesión; reemplazar la sesión de un equipo en otra máquina.
+
+## Instalar en otra máquina con imágenes de ghcr.io
+
+Las imágenes de `api`/`worker` y `web` se publican en GitHub Container Registry (paquetes
+públicos), así la otra máquina no necesita el código ni construir.
+
+**Publicar:** lo hace solo el workflow `.github/workflows/imagenes.yml` en cada push a `main`
+que toque el backend, el panel o `packages/` (o a mano: Actions → imagenes → Run workflow).
+No hace falta token propio. Sube `latest` y la versión del commit (`IMAGE_TAG=<sha>` para volver
+a una anterior).
+
+La primera vez, en GitHub → Packages → `concurso-backend` y `concurso-web` → Package settings →
+Change visibility → Public.
+
+**Instalar** (en la otra máquina; sin token): copiar la carpeta `deploy/` con su `.env`
+(con el mismo `IMAGE_PREFIX`) y:
+
+```bash
+docker compose pull
+docker compose up -d        # sin --build
+```
+
+Para restaurar un respaldo de otra instalación, el `.env` debe tener los mismos
+`PASSWORD_ADMIN_MASTERKEY` y `TEAM_SALT`.
 
 ## Actualizar el código
 

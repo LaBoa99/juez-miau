@@ -1,0 +1,49 @@
+name: imagenes
+
+# Construye las imágenes del despliegue (api/worker y web) y las sube a ghcr.io.
+# Otra máquina las descarga con "docker compose pull" usando IMAGE_PREFIX=ghcr.io/laboa99/ (ver deploy/README.md)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/backend/**"
+      - "apps/frontend-staff/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/imagenes.yml"
+
+# El GITHUB_TOKEN de cada corrida basta para subir a ghcr.io: no hace falta un token propio
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: concurso-backend
+            dockerfile: apps/backend/Dockerfile
+          - image: concurso-web
+            dockerfile: apps/frontend-staff/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          # latest para el compose y el commit para poder volver a una versión anterior (IMAGE_TAG=<sha>)
+          tags: |
+            ghcr.io/laboa99/${{ matrix.image }}:latest
+            ghcr.io/laboa99/${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}

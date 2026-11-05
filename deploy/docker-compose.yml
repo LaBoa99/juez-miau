@@ -92,7 +92,7 @@ services:
     build:
       context: ..
       dockerfile: apps/backend/Dockerfile
-    image: concurso-backend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-}concurso-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       <<: *backend-env
@@ -115,7 +115,7 @@ services:
   # Juez: toma envíos y builds de testsets de la cola y los ejecuta en contenedores hermanos
   # a través de docker.sock (src/worker.ts)
   worker:
-    image: concurso-backend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-}concurso-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     command: ["node", "dist/worker.js"]
     environment:
@@ -173,7 +173,7 @@ services:
     build:
       context: ..
       dockerfile: apps/frontend-staff/Dockerfile
-    image: concurso-web:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-}concurso-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
