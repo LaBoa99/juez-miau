@@ -41,7 +41,7 @@
     <oj-alert tone="error">{{ formError() }}</oj-alert>
   }
 
-  <oj-form-field label="Código" for="cat-code">
+  <oj-form-field label="Código" for="cat-code" hint="Clave corta, p. ej. A o BAS. Se ve en equipos y marcador, y sirve para importar equipos.">
     <input id="cat-code" class="oj-mono" type="text" formControlName="code" />
   </oj-form-field>
   <oj-form-field label="Nombre" for="cat-name">
@@ -60,7 +60,7 @@
     @if (editError()) {
       <oj-alert tone="error">{{ editError() }}</oj-alert>
     }
-    <oj-form-field label="Código" for="cat-edit-code">
+    <oj-form-field label="Código" for="cat-edit-code" hint="Clave corta, p. ej. A o BAS. Se ve en equipos y marcador, y sirve para importar equipos.">
       <input id="cat-edit-code" class="oj-mono" type="text" formControlName="code" />
     </oj-form-field>
     <oj-form-field label="Nombre" for="cat-edit-name">

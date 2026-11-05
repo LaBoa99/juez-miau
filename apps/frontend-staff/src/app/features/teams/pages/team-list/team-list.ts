@@ -23,6 +23,8 @@ import { backendMessage } from '../../../../core/http/backend-error.mapper';
 
 const PAGE_SIZE = 20;
 
+const MEMBERS_INCOMPLETE = 'Cada integrante necesita nombre y carrera.';
+
 @Component({
   selector: 'oj-team-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -124,6 +126,9 @@ export class TeamList {
 
   constructor() {
     this.load();
+    this.editForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      if (this.editError() === MEMBERS_INCOMPLETE && this.members().valid) this.editError.set(null);
+    });
     this.roomsService.list(this.editionId).subscribe({ next: (rooms) => this.allRooms.set(rooms), error: () => {} });
     this.categoryCtrl.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
       this.page.set(1);
@@ -371,6 +376,9 @@ export class TeamList {
   submitEdit(): void {
     if (this.editForm.invalid || this.editingId == null) {
       this.editForm.markAllAsTouched();
+      // Los integrantes no usan oj-form-field: su aviso va arriba del modal
+      if (this.members().invalid) this.editError.set(MEMBERS_INCOMPLETE);
+      focusFirstInvalid();
       return;
     }
     const raw = this.editForm.getRawValue();

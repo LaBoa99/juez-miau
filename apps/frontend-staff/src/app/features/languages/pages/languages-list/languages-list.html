@@ -91,34 +91,34 @@
       }
 
       <div class="lang__row">
-        <oj-form-field label="Nombre" for="lang-code" class="lang__grow" [error]="fieldError('code')">
+        <oj-form-field label="Nombre" for="lang-code" class="lang__grow">
           <input id="lang-code" type="text" formControlName="code" placeholder="Ej. rust" />
         </oj-form-field>
-        <oj-form-field label="Extensión" for="lang-ext" class="lang__ext-field" [error]="fieldError('file_ext')">
+        <oj-form-field label="Extensión" for="lang-ext" class="lang__ext-field">
           <input id="lang-ext" class="oj-mono" type="text" formControlName="file_ext" maxlength="4" placeholder="rs" />
         </oj-form-field>
       </div>
 
       <div class="lang__row">
-        <oj-form-field label="Versión del compilador" for="lang-ver" class="lang__ver-field" [error]="fieldError('compiler_version')">
+        <oj-form-field label="Versión del compilador" for="lang-ver" class="lang__ver-field">
           <input id="lang-ver" class="oj-mono" type="text" formControlName="compiler_version" placeholder="Ej. Rust 1.83" />
         </oj-form-field>
-        <oj-form-field label="Imagen Docker" for="lang-img" class="lang__grow" [error]="fieldError('image_ref')">
+        <oj-form-field label="Imagen Docker" for="lang-img" class="lang__grow">
           <input id="lang-img" class="oj-mono" type="text" formControlName="image_ref" placeholder="Ej. rust:1.83-slim" />
         </oj-form-field>
       </div>
 
-      <oj-form-field label="Comando de compilación" for="lang-compile" [error]="fieldError('compile_cmd')">
+      <oj-form-field label="Comando de compilación" for="lang-compile">
         <input id="lang-compile" class="oj-mono" type="text" formControlName="compile_cmd" placeholder="Ej. rustc Main.rs -o main" />
       </oj-form-field>
-      <oj-form-field label="Comando de ejecución" for="lang-run" [error]="fieldError('run_cmd')">
+      <oj-form-field label="Comando de ejecución" for="lang-run">
         <input id="lang-run" class="oj-mono" type="text" formControlName="run_cmd" placeholder="Ej. ./main" />
       </oj-form-field>
       <oj-form-field label="Flags" for="lang-flags" [optional]="true">
         <input id="lang-flags" class="oj-mono" type="text" formControlName="flags" placeholder="Ej. -O" />
       </oj-form-field>
-      <oj-form-field label="Multiplicador de tiempo" for="lang-mult" class="lang__mult-field" [error]="fieldError('time_multiplier')">
-        <input id="lang-mult" class="oj-mono" type="number" step="0.01" min="0.01" max="99.99" formControlName="time_multiplier" />
+      <oj-form-field label="Multiplicador de tiempo" for="lang-mult" class="lang__mult-field">
+        <input id="lang-mult" class="oj-mono" type="number" step="0.01" formControlName="time_multiplier" />
       </oj-form-field>
 
       <label class="lang__check">

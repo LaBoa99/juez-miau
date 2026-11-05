@@ -26,11 +26,10 @@
               <td>
                 <select
                   [attr.aria-label]="'Rol de ' + staffName(r.staff_user_id)"
-                  [value]="r.role"
                   (change)="changeRole(r, $any($event.target).value)"
                 >
                   @for (role of roles; track role) {
-                    <option [value]="role">{{ role }}</option>
+                    <option [value]="role" [selected]="role === r.role">{{ roleLabel[role] }}</option>
                   }
                 </select>
               </td>
@@ -50,6 +49,13 @@
 <form class="tab__aside" [formGroup]="form" (ngSubmit)="submit()">
   <h3 class="tab__aside-title">Asignar staff</h3>
 
+  @if (noStaff()) {
+    <oj-alert tone="info">No hay más usuarios de staff para asignar. Créalos primero en Staff.</oj-alert>
+    <div class="tab__actions">
+      <a ojButton variant="secondary" routerLink="/staff">Crear usuario de staff</a>
+    </div>
+  }
+
   <oj-form-field label="Usuario" for="staff-user">
     <select id="staff-user" formControlName="staff_user_id">
       <option [ngValue]="null" disabled>Selecciona un usuario</option>
@@ -62,7 +68,7 @@
   <oj-form-field label="Rol" for="staff-role">
     <select id="staff-role" formControlName="role">
       @for (role of roles; track role) {
-        <option [ngValue]="role">{{ role }}</option>
+        <option [ngValue]="role">{{ roleLabel[role] }}</option>
       }
     </select>
   </oj-form-field>

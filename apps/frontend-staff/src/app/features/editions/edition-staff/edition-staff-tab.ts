@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { IEditionStaff, IStaffListItem, StaffRole } from '@concurso/shared-types';
 import { ButtonDirective } from '../../../shared/ui/button.directive';
 import { FormField } from '../../../shared/ui/form-field.component';
@@ -10,10 +10,11 @@ import { EditionStaffService } from './data/edition-staff.service';
 import { EditionContext } from '../pages/edition-layout/edition-context';
 import { findEditionId, message } from '../tab-utils';
 
+import { withMessage } from '../../../shared/validators';
 @Component({
   selector: 'oj-edition-staff-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, ButtonDirective, FormField, Alert, EmptyState],
+  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, FormField, Alert, EmptyState],
   templateUrl: './edition-staff-tab.html',
   styleUrl: '../tab.css',
 })
@@ -25,6 +26,11 @@ export class EditionStaffTab {
 
   protected readonly editionId = findEditionId(this.route);
   protected readonly roles = Object.values(StaffRole);
+  protected readonly roleLabel: Record<StaffRole, string> = {
+    [StaffRole.ADMIN]: 'Administrador',
+    [StaffRole.JUDGE]: 'Juez',
+    [StaffRole.OBSERVER]: 'Observador',
+  };
 
   protected readonly rows = signal<IEditionStaff[]>([]);
   protected readonly users = signal<IStaffListItem[]>([]);
@@ -39,8 +45,12 @@ export class EditionStaffTab {
     return this.users().filter((u) => u.active && !assigned.has(u.id));
   });
 
+  // Solo con la lista cargada (superadmin) y sin nadie más que el superadmin para asignar.
+  private readonly usersLoaded = signal(false);
+  protected readonly noStaff = computed(() => this.usersLoaded() && !this.available().some((u) => !u.isSuperadmin));
+
   protected readonly form = this.fb.nonNullable.group({
-    staff_user_id: [null as number | null, [Validators.required]],
+    staff_user_id: [null as number | null, [withMessage(Validators.required, 'Elige un usuario.')]],
     role: [StaffRole.JUDGE, [Validators.required]],
   });
 
@@ -63,7 +73,7 @@ export class EditionStaffTab {
       },
     });
     // GET /staff es superadmin-only: si falla, el select queda vacío y los nombres caen a #id.
-    this.service.staffUsers().subscribe({ next: (u) => this.users.set(u), error: () => {} });
+    this.service.staffUsers().subscribe({ next: (u) => { this.users.set(u); this.usersLoaded.set(true); }, error: () => {} });
   }
 
   staffName(id: number): string {

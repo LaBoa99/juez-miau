@@ -12,6 +12,10 @@ import { backendMessage } from '../../../../core/http/backend-error.mapper';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { EditionLanguagesService } from '../../../editions/edition-languages/data/edition-languages.service';
 
+import { withMessage } from '../../../../shared/validators';
+
+const RANGE = 'Debe ser un número entre 0.01 y 99.99.';
+
 @Component({
   selector: 'oj-languages-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -39,13 +43,13 @@ export class LanguagesList {
   protected readonly formError = signal<string | null>(null);
   protected readonly form = this.fb.nonNullable.group({
     code: ['', [Validators.required, Validators.maxLength(100)]],
-    file_ext: ['', [Validators.required, Validators.pattern(/^[a-z0-9]{1,4}$/)]],
+    file_ext: ['', [Validators.required, withMessage(Validators.pattern(/^[a-z0-9]{1,4}$/), 'Solo minúsculas y números (1 a 4 caracteres).')]],
     compiler_version: ['', [Validators.required]],
     image_ref: ['', [Validators.required]],
     compile_cmd: ['', [Validators.required]],
     run_cmd: ['', [Validators.required]],
     flags: [''],
-    time_multiplier: [1, [Validators.required, Validators.min(0.01), Validators.max(99.99)]],
+    time_multiplier: [1, [Validators.required, withMessage(Validators.min(0.01), RANGE), withMessage(Validators.max(99.99), RANGE)]],
     active: [true],
   });
 
@@ -120,16 +124,6 @@ export class LanguagesList {
   }
 
   // Mensaje de error por campo, solo cuando el control es inválido y ya fue tocado.
-  protected fieldError(name: keyof typeof this.form.controls): string | undefined {
-    const c = this.form.controls[name];
-    if (!c.touched || c.valid) return undefined;
-    if (c.hasError('required')) return 'Este campo es obligatorio.';
-    if (c.hasError('maxlength')) return 'Máximo 100 caracteres.';
-    if (c.hasError('pattern')) return 'Solo minúsculas y números (1 a 4 caracteres).';
-    if (c.hasError('min') || c.hasError('max')) return 'Debe ser un número entre 0.01 y 99.99.';
-    return 'Valor inválido.';
-  }
-
   toggleActive(lang: ILanguage): void {
     this.togglingId.set(lang.id);
     this.toggleError.set(null);

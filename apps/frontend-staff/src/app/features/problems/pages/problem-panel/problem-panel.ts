@@ -30,6 +30,7 @@ import { ProblemsBus } from '../../data/problems-bus';
 import { EditionContext } from '../../../editions/pages/edition-layout/edition-context';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
 
+import { withMessage } from '../../../../shared/validators';
 @Component({
   selector: 'oj-problem-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -99,7 +100,7 @@ export class ProblemPanel {
   protected readonly previewLoading = signal(false);
 
   protected readonly form = this.fb.nonNullable.group({
-    categoryId: [null as number | null, [Validators.required]],
+    categoryId: [null as number | null, [withMessage(Validators.required, 'Elige una categoría.')]],
     title: ['', [Validators.required, Validators.maxLength(255)]],
     statement: ['', [Validators.required]],
     points: [1, [Validators.required, Validators.min(0), Validators.max(100000)]],
