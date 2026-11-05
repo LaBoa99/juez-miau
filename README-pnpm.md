@@ -99,8 +99,8 @@ pnpm --filter frontend-staff start
 ```
 
 > El backend necesita PostgreSQL y Redis. Se levantan con el mismo compose del despliegue
-> (quedan solo en `127.0.0.1`): `docker compose -f deploy/docker-compose.yml up -d postgres redis`.
-> `apps/backend/.env` usa las mismas contraseñas que `deploy/.env` (ver [deploy/README.md](deploy/README.md)).
+> (quedan solo en `127.0.0.1`): `cd deploy && docker compose up -d postgres redis`.
+> `apps/backend/.env` usa la misma contraseña de la BD que `deploy/.env` (ver [deploy/README.md](deploy/README.md)).
 
 ---
 

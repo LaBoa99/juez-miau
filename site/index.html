@@ -333,10 +333,9 @@ postgres <i class="v v--ac">Up</i></pre></div>
         <ul class="pallet">
           <li class="box"><div class="box__label"><b class="mono">web</b><span class="box__role">Caddy</span><p>Sirve el panel de staff y pasa <code>/api</code> y <code>/socket.io</code> a la API.</p><span class="box__port mono">:80 · :443</span></div></li>
           <li class="box"><div class="box__label"><b class="mono">api</b><span class="box__role">NestJS</span><p>La API del panel y de la app de escritorio. Al arrancar carga los datos iniciales.</p><span class="box__port mono">interno</span></div></li>
-          <li class="box"><div class="box__label"><b class="mono">worker</b><span class="box__role">El juez</span><p>Mismo código que la API. Toma los envíos de la cola y los corre en contenedores.</p><span class="box__port mono">sin puertos</span></div></li>
-          <li class="box"><div class="box__label"><b class="mono">postgres</b><span class="box__role">PostgreSQL 14</span><p>Ediciones, equipos, problemas, envíos y bitácora.</p><span class="box__port mono">solo 127.0.0.1</span></div></li>
-          <li class="box"><div class="box__label"><b class="mono">redis</b><span class="box__role">Redis 7</span><p>La cola de envíos que reparte el trabajo al juez.</p><span class="box__port mono">solo 127.0.0.1</span></div></li>
-          <li class="box"><div class="box__label"><b class="mono">judge-*</b><span class="box__role">Lenguajes</span><p>Imágenes de gcc, Java, .NET, Node y Python. Solo se descargan; terminan en <code>Exited (0)</code>.</p><span class="box__port mono">sin puertos</span></div></li>
+          <li class="box"><div class="box__label"><b class="mono">worker</b><span class="box__role">El juez</span><p>Mismo código que la API. Descarga las imágenes de los lenguajes, toma los envíos de la cola y los corre en contenedores.</p><span class="box__port mono">sin puertos</span></div></li>
+          <li class="box"><div class="box__label"><b class="mono">postgres</b><span class="box__role">PostgreSQL 14</span><p>Ediciones, equipos, problemas, envíos y bitácora.</p><span class="box__port mono">interno</span></div></li>
+          <li class="box"><div class="box__label"><b class="mono">redis</b><span class="box__role">Redis 7</span><p>La cola de envíos que reparte el trabajo al juez.</p><span class="box__port mono">interno</span></div></li>
         </ul>
         <div class="docs-wrap">
           <div class="label label--docs taped taped--corners">

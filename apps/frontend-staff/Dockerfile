@@ -1,8 +1,8 @@
 # Se construye desde la RAÍZ del monorepo (necesita el workspace para @concurso/shared-types):
 #   docker build -f apps/frontend-staff/Dockerfile -t concurso-web .
 #
-# La imagen final es Caddy con el build de Angular en /srv. El Caddyfile NO va en la imagen:
-# se monta desde deploy/Caddyfile para poder cambiar dominio/HTTPS sin reconstruir.
+# La imagen final es Caddy con el build de Angular en /srv y deploy/Caddyfile. El dominio/HTTPS
+# se cambia sin reconstruir con SITE_ADDRESS.
 
 # ===================================
 # BUILD: compila shared-types y el frontend
@@ -26,3 +26,4 @@ RUN pnpm --filter frontend-staff... build
 # ===================================
 FROM caddy:2-alpine AS runtime
 COPY --from=build /repo/apps/frontend-staff/dist/frontend-staff/browser /srv
+COPY deploy/Caddyfile /etc/caddy/Caddyfile

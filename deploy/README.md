@@ -16,11 +16,14 @@ de los equipos                     └── /socket.io/* ─►                
 | `web` | Caddy: sirve `apps/frontend-staff` y hace proxy a la API | 80, 443 publicados |
 | `api` | Backend NestJS. Al arrancar corre el seeder (`SEED_PROFILE`) | interno |
 | `worker` | Juez. Mismo código que la API, arranca `dist/worker.js` | ninguno |
-| `postgres` | Base de datos | solo `127.0.0.1:5432` (desarrollo) |
-| `redis` | Cola de envíos (BullMQ) | solo `127.0.0.1:6379` (desarrollo) |
-| `judge-*` | Imágenes de los lenguajes. Solo sirven para que `up` las descargue; terminan en `Exited (0)` | ninguno |
+| `postgres` | Base de datos | interno (`127.0.0.1:5432` en desarrollo) |
+| `redis` | Cola de envíos (BullMQ). Sin contraseña: solo lo ve la red interna | interno (`127.0.0.1:6379` en desarrollo) |
 
-Este es el **único** docker-compose del proyecto: sirve para el concurso y para desarrollo.
+Este es el **único** docker-compose del proyecto: sirve para el concurso y para desarrollo. La
+configuración vive en las imágenes (`ENV`, healthcheck y arranque en `apps/backend/Dockerfile` y
+`docker-entrypoint.sh`; el Caddyfile dentro de la imagen `web`), así que el `.env` solo lleva la
+URL y los secretos. En el repo, `docker-compose.override.yml` (Docker lo lee solo) agrega el build
+local y los puertos de desarrollo; en otra máquina no hace falta.
 
 **Frontend:** el panel llama a la API con rutas relativas `/api/...` (mismo origen), no con una URL
 fija. Caddy las adapta al prefijo `/api/v1` del backend y reescribe el path de la cookie de sesión.
@@ -37,18 +40,27 @@ se conecta a `PUBLIC_URL`/`api/v1`.
 
 ## Instalación
 
+En cualquier máquina, sin el código (usa las imágenes de ghcr.io):
+
 ```bash
-git clone <repo> && cd juez-miau/deploy
-cp .env.example .env
-# Editar .env: PUBLIC_URL, contraseñas y secretos (openssl rand -hex 32)
-docker compose up -d --build
-docker compose ps              # todo "Up"; postgres y redis "(healthy)"
+mkdir concurso && cd concurso
+curl -fsSL https://raw.githubusercontent.com/LaBoa99/juez-miau/main/deploy/instalar.sh | sh
 ```
 
-Entrar a `PUBLIC_URL` con `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
+Pregunta la dirección del panel y el correo del superadmin, genera el `.env` con secretos nuevos,
+arranca todo y muestra la contraseña del superadmin. **Guarda el `.env`** junto con los respaldos.
 
-No hay más pasos: el worker crea solo la carpeta de envíos (`SUBMISSIONS_DIR`), toma el grupo
-de `docker.sock` y `up` descarga las imágenes de los lenguajes antes de arrancarlo.
+A mano: copia `docker-compose.yml` y `.env.example` a una carpeta, `cp .env.example .env`,
+cambia lo marcado con `cambia_esto` y `docker compose up -d`. Desde el repo, en `deploy/`:
+`docker compose up -d --build` construye con el código local.
+
+```bash
+docker compose ps              # todo "Up"; api "(healthy)"
+```
+
+No hay más pasos: el worker crea solo la carpeta de envíos (`/var/lib/concurso/submissions`),
+toma el grupo de `docker.sock`, descarga las imágenes de los lenguajes la primera vez y espera
+a que la API responda antes de tomar envíos.
 
 ### Desarrollo local con el mismo compose
 
@@ -57,15 +69,16 @@ Para probar todo como en el concurso, en `deploy/.env` pon `PUBLIC_URL=http://lo
 y `docker compose up -d --build`. Abre `http://localhost:8080`.
 
 Para trabajar en el backend con recarga en caliente, levanta solo la base de datos y Redis
-(quedan en `127.0.0.1`, no se ven desde la red):
+(el override los deja en `127.0.0.1`, no se ven desde la red; hay que correrlo desde `deploy/`
+para que Docker lo lea):
 
 ```bash
-docker compose -f deploy/docker-compose.yml up -d postgres redis
-cd apps/backend && pnpm start:dev
+cd deploy && docker compose up -d postgres redis
+cd ../apps/backend && pnpm start:dev
 ```
 
-`apps/backend/.env` debe usar `DB_USERNAME`, `DB_PASSWORD` y `REDIS_PASSWORD` iguales a los de
-`deploy/.env`. Para no mezclar datos, usa otra base (`DB_DATABASE=concurso_dev`; se crea con
+`apps/backend/.env` debe usar `DB_USERNAME` (`concurso`) y `DB_PASSWORD` iguales a los de
+`deploy/.env`, y `REDIS_PASSWORD` vacío. Para no mezclar datos, usa otra base (`DB_DATABASE=concurso_dev`; se crea con
 `docker compose exec postgres sh -c 'createdb -U "$POSTGRES_USER" concurso_dev'`). No corras un
 worker local mientras el del compose esté arriba: comparten la cola de Redis y se repartirían
 los envíos.
@@ -75,9 +88,10 @@ docker compose -f deploy/docker-compose.yml logs -f api web   # errores de API y
 docker compose -f deploy/docker-compose.yml down              # detener sin borrar datos
 ```
 
-**Sin internet en el laboratorio:** en una máquina con internet, `docker compose build` y
-`scripts/images.sh save` (guarda las del sistema y las del juez, según el compose); copiar la
-carpeta del repo (con `images/`) y en la máquina del concurso `scripts/images.sh load` y después `docker compose up -d` (sin `--build`).
+**Sin internet en el laboratorio:** en una máquina con internet, `scripts/images.sh pull` (o
+`docker compose build`) y `scripts/images.sh save` (guarda las del compose y las del juez);
+copiar la carpeta `deploy/` (con `images/` y el `.env`) y en la máquina del concurso
+`scripts/images.sh load` y después `docker compose up -d` (sin `--build`).
 
 ## Ciclo por semestre
 
@@ -109,16 +123,19 @@ cookie de refresh.
 
 ## El juez
 
-El servicio `worker` (`apps/backend/src/worker.ts`) arranca junto con los demás, ya sin pasos a mano:
+El servicio `worker` (`command: worker`, misma imagen que la API) arranca junto con los demás,
+sin pasos a mano. Lo prepara `apps/backend/docker-entrypoint.sh`:
 
-- Arranca como root solo para crear `SUBMISSIONS_DIR` (dueño uid 1000) y leer el grupo de
-  `docker.sock`; después `docker-entrypoint.sh` baja al usuario `node` con ese grupo.
-- Las imágenes de los lenguajes (~4.4 GB) están declaradas como servicios `judge-*`; el worker
-  espera a que `up` las descargue. Así ningún envío las descarga a mitad de la compilación (eso
-  daba CE falsos por el límite de 60 s, o CE en todo el lenguaje sin internet).
+- Arranca como root solo para crear la carpeta de envíos (dueño uid 1000), leer el grupo de
+  `docker.sock` y descargar las imágenes de los lenguajes (~4.4 GB) que falten; después baja al
+  usuario `node`. Así ningún envío las descarga a mitad de la compilación (eso daba CE falsos
+  por el límite de 60 s, o CE en todo el lenguaje sin internet). Mientras descarga, el worker no
+  toma envíos: `docker compose logs -f worker`.
+- Espera a que la API responda (ya con las migraciones aplicadas) antes de tomar la cola.
 - Las versiones se cambian en `.env` (`JUDGE_IMAGE_GCC`, `JUDGE_IMAGE_PYTHON`, …; ver
   `.env.example`). Al arrancar, la API actualiza la imagen de los 7 lenguajes base en la BD.
-  Un lenguaje creado desde el panel con otra imagen hay que agregarlo también al compose.
+  Un lenguaje creado desde el panel con otra imagen se descarga solo si la agregas al `.env`
+  como `JUDGE_IMAGE_<NOMBRE>=imagen`.
 - Ajusta `JUDGE_CPUS` con una CPU lógica por núcleo físico que se reserve para juzgar
   (`lscpu -e`), y `WORKER_CONCURRENCY` con la misma cantidad.
 
@@ -136,38 +153,25 @@ Se hace en la máquina donde correrá el concurso, porque los tiempos dependen d
    y proyector; un AC, un WA y un TLE por lenguaje; entrar como superadmin, admin, juez,
    observador y sin sesión; reemplazar la sesión de un equipo en otra máquina.
 
-## Instalar en otra máquina con imágenes de ghcr.io
+## Imágenes en ghcr.io
 
-Las imágenes de `api`/`worker` y `web` se publican en GitHub Container Registry (paquetes
-públicos), así la otra máquina no necesita el código ni construir.
+Las imágenes `concurso-backend` (API y worker) y `concurso-web` se publican en GitHub Container
+Registry como paquetes públicos: otra máquina no necesita el código ni construir.
 
-**Publicar:** lo hace solo el workflow `.github/workflows/imagenes.yml` en cada push a `main`
-que toque el backend, el panel o `packages/` (o a mano: Actions → imagenes → Run workflow).
-No hace falta token propio. Sube `latest` y la versión del commit (`IMAGE_TAG=<sha>` para volver
-a una anterior).
-
-La primera vez, en GitHub → Packages → `concurso-backend` y `concurso-web` → Package settings →
-Change visibility → Public.
-
-**Instalar** (en la otra máquina; sin token): copiar la carpeta `deploy/` con su `.env`
-(con el mismo `IMAGE_PREFIX`) y:
-
-```bash
-docker compose pull
-docker compose up -d        # sin --build
-```
-
-Para restaurar un respaldo de otra instalación, el `.env` debe tener los mismos
-`PASSWORD_ADMIN_MASTERKEY` y `TEAM_SALT`.
+Las sube solo el workflow `.github/workflows/imagenes.yml` en cada push a `main` que toque el
+backend, el panel, `packages/` o el Caddyfile (o a mano: Actions → imagenes → Run workflow), sin
+token propio. Sube `latest` y la del commit (`IMAGE_TAG=<sha>` en el `.env` para volver a una
+anterior).
 
 ## Actualizar el código
 
 ```bash
 scripts/backup.sh antes-de-actualizar
-git pull && docker compose up -d --build
+docker compose pull && docker compose up -d     # con las imágenes de ghcr.io
+git pull && docker compose up -d --build        # desde el repo
 ```
 
-La API aplica las migraciones pendientes al arrancar (`RUN_MIGRATIONS=true` en el compose).
+La API aplica las migraciones pendientes al arrancar (`RUN_MIGRATIONS`, `true` por defecto).
 El worker espera a que la API esté sana para arrancar. Aun así, respalda antes de actualizar:
 una migración puede borrar columnas.
 

@@ -1,179 +1,53 @@
-# Despliegue completo del concurso en una sola máquina. Ver deploy/README.md.
+# Juez Miau en una sola máquina. Ver deploy/README.md.
 #
-#   cd deploy && cp .env.example .env   # y editar secretos
-#   docker compose up -d --build
+#   Instalar: deploy/instalar.sh  (o: cp .env.example .env, editarlo y "docker compose up -d")
+#   Actualizar: docker compose pull && docker compose up -d
 #
-# Solo el servicio "web" publica puertos. Postgres, Redis y la API quedan en la red interna.
+# Solo "web" publica puertos. La configuración vive en las imágenes; el .env lleva URL y secretos.
+# En el repo, docker-compose.override.yml agrega el build local y los puertos de desarrollo.
 name: concurso
-
-x-backend-env: &backend-env
-  NODE_ENV: production
-  PORT: 3000
-  DB_HOST: postgres
-  DB_PORT: 5432
-  DB_USERNAME: ${DB_USERNAME}
-  DB_PASSWORD: ${DB_PASSWORD}
-  DB_DATABASE: ${DB_DATABASE}
-  DB_SYNCHRONIZE: ${DB_SYNCHRONIZE}
-  REDIS_HOST: redis
-  REDIS_PORT: 6379
-  REDIS_PASSWORD: ${REDIS_PASSWORD}
-  CORS_ORIGIN: ${PUBLIC_URL}
-  FRONT_END_URL: ${PUBLIC_URL}
-  COOKIE_SECURE: ${COOKIE_SECURE}
-  JWT_SECRET: ${JWT_SECRET}
-  # Vacíos = sin telemetría de Observe
-  OBSERVE_APP_KEY: ${OBSERVE_APP_KEY:-}
-  OBSERVE_APP_SECRET: ${OBSERVE_APP_SECRET:-}
-  JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
-  JWT_TEAM_EXPIRES_IN: ${JWT_TEAM_EXPIRES_IN:-12h}
-  REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-7}
-  PASSWORD_ADMIN_MASTERKEY: ${PASSWORD_ADMIN_MASTERKEY}
-  TEAM_SALT: ${TEAM_SALT}
-  SALT_ROUNDS: ${SALT_ROUNDS:-10}
-  SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
-  SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
-  TZ: ${TZ:-America/Mexico_City}
-  # El seeder sincroniza image_ref de los lenguajes base con estas imágenes
-  JUDGE_IMAGE_GCC: ${JUDGE_IMAGE_GCC:-gcc:14}
-  JUDGE_IMAGE_DOTNET: ${JUDGE_IMAGE_DOTNET:-mcr.microsoft.com/dotnet/sdk:8.0}
-  JUDGE_IMAGE_JAVA: ${JUDGE_IMAGE_JAVA:-eclipse-temurin:21-jdk}
-  JUDGE_IMAGE_NODE: ${JUDGE_IMAGE_NODE:-node:24-slim}
-  JUDGE_IMAGE_PYTHON: ${JUDGE_IMAGE_PYTHON:-python:3.12-slim}
-
-# Imágenes en las que corren los envíos. Estos servicios solo existen para que "docker compose up"
-# las descargue antes de arrancar el worker: terminan al instante (Exited 0)
-x-judge-image: &judge-image
-  entrypoint: ["true"]
-  network_mode: none
-  restart: "no"
 
 services:
   postgres:
-    # Misma versión que en desarrollo (apps/backend/docker-compose.yml) para que los respaldos
-    # de pg_dump se restauren sin problemas en ambos lados
     image: postgres:14-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_USER: ${DB_USERNAME:-concurso}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_DATABASE}
-      TZ: ${TZ:-America/Mexico_City}
-    # Solo en localhost: para el backend en modo desarrollo (pnpm start:dev). No se alcanza desde la red
-    ports:
-      - "127.0.0.1:${DB_LOCAL_PORT:-5432}:5432"
+      POSTGRES_DB: ${DB_DATABASE:-concurso_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
-      interval: 5s
-      timeout: 3s
-      retries: 20
 
+  # Solo la ve la red interna de Docker: no lleva contraseña
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    # Solo guarda la cola de envíos. appendonly para no perder trabajos si el contenedor se reinicia
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
-    environment:
-      REDISCLI_AUTH: ${REDIS_PASSWORD}
-    ports:
-      - "127.0.0.1:${REDIS_LOCAL_PORT:-6379}:6379"
+    command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
 
-  # API HTTP + WebSocket. Al arrancar corre el seeder (SEED_PROFILE, ver docker-entrypoint.sh)
   api:
-    build:
-      context: ..
-      dockerfile: apps/backend/Dockerfile
-    image: ${IMAGE_PREFIX:-}concurso-backend:${IMAGE_TAG:-latest}
+    image: ghcr.io/laboa99/concurso-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    environment:
-      <<: *backend-env
-      SEED_PROFILE: ${SEED_PROFILE:-prod}
-      # Migraciones al arrancar; el worker nunca las corre
-      RUN_MIGRATIONS: "true"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    # BD y Redis respondiendo (GET /api/v1/health). La imagen no trae curl ni wget
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/v1/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 30s
+    env_file: .env
+    depends_on: [postgres, redis]
 
-  # Juez: toma envíos y builds de testsets de la cola y los ejecuta en contenedores hermanos
-  # a través de docker.sock (src/worker.ts)
+  # Juez: corre cada envío en un contenedor aparte
   worker:
-    image: ${IMAGE_PREFIX:-}concurso-backend:${IMAGE_TAG:-latest}
+    image: ghcr.io/laboa99/concurso-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    command: ["node", "dist/worker.js"]
-    environment:
-      <<: *backend-env
-      # El seeder y las migraciones ya los corre la API
-      SEED_PROFILE: none
-      RUN_MIGRATIONS: "false"
-      # 1 = cola en serie: tiempos justos sin contención de memoria (docs/design/server-specs.md)
-      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
-      # CPUs lógicas para juzgar, una por núcleo físico (lscpu -e). Vacío = las últimas WORKER_CONCURRENCY
-      JUDGE_CPUS: ${JUDGE_CPUS:-}
-      DOCKER_TMP_DIR: ${SUBMISSIONS_DIR}
-    # Arranca como root solo para crear la carpeta de envíos y tomar el grupo de docker.sock;
-    # docker-entrypoint.sh baja a "node" (uid 1000) antes de arrancar el worker
-    user: root
+    env_file: .env
+    command: worker
     volumes:
-      # Equivale a root en el host: por eso solo el worker lo tiene y no publica puertos
+      # Para crear los contenedores de los envíos con el Docker de esta máquina
       - /var/run/docker.sock:/var/run/docker.sock
-      # Misma ruta dentro y fuera: los contenedores de los envíos los crea el Docker del host,
-      # que resuelve los bind mounts con rutas del host, no del contenedor del worker
-      - ${SUBMISSIONS_DIR}:${SUBMISSIONS_DIR}
-    # Arranca cuando la API ya aplicó las migraciones y las imágenes del juez están descargadas
-    depends_on:
-      api:
-        condition: service_healthy
-      judge-gcc:
-        condition: service_completed_successfully
-      judge-dotnet:
-        condition: service_completed_successfully
-      judge-java:
-        condition: service_completed_successfully
-      judge-node:
-        condition: service_completed_successfully
-      judge-python:
-        condition: service_completed_successfully
+      # Código y casos de cada envío; misma ruta aquí y en la máquina
+      - /var/lib/concurso/submissions:/var/lib/concurso/submissions
+    depends_on: [api]
 
-  judge-gcc:
-    <<: *judge-image
-    image: ${JUDGE_IMAGE_GCC:-gcc:14}
-  judge-dotnet:
-    <<: *judge-image
-    image: ${JUDGE_IMAGE_DOTNET:-mcr.microsoft.com/dotnet/sdk:8.0}
-  judge-java:
-    <<: *judge-image
-    image: ${JUDGE_IMAGE_JAVA:-eclipse-temurin:21-jdk}
-  judge-node:
-    <<: *judge-image
-    image: ${JUDGE_IMAGE_NODE:-node:24-slim}
-  judge-python:
-    <<: *judge-image
-    image: ${JUDGE_IMAGE_PYTHON:-python:3.12-slim}
-
-  # Entrada pública: panel de staff (Angular) + proxy a la API. Ver deploy/Caddyfile
+  # Panel de staff + proxy a la API (Caddy)
   web:
-    build:
-      context: ..
-      dockerfile: apps/frontend-staff/Dockerfile
-    image: ${IMAGE_PREFIX:-}concurso-web:${IMAGE_TAG:-latest}
+    image: ghcr.io/laboa99/concurso-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
@@ -181,15 +55,10 @@ services:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - api
+    depends_on: [api]
 
 volumes:
   postgres_data:
   redis_data:
-  # Certificados de HTTPS (solo se usa con dominio)
   caddy_data:
-  caddy_config:

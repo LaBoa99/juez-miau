@@ -1,0 +1,26 @@
+# Solo en el repo (Docker lo lee solo junto a docker-compose.yml): construir las imágenes con el
+# código local (docker compose up -d --build) y exponer Postgres y Redis en 127.0.0.1 para
+# "pnpm start:dev". No se ven desde la red. Para instalar en otra máquina no hace falta.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${DB_LOCAL_PORT:-5432}:5432"
+
+  redis:
+    ports:
+      - "127.0.0.1:${REDIS_LOCAL_PORT:-6379}:6379"
+
+  # Misma imagen para los dos: el segundo build sale de la caché. Sin él, compose bajaría la
+  # del registro para el worker en vez de usar la local
+  api:
+    build: &backend
+      context: ..
+      dockerfile: apps/backend/Dockerfile
+
+  worker:
+    build: *backend
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/frontend-staff/Dockerfile

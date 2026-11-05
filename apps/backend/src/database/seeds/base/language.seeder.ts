@@ -8,8 +8,9 @@ const logger = new Logger('LanguageSeeder')
 // - El código se guarda como Main.<file_ext> en el directorio de trabajo del contenedor
 // - `flags` se agrega al final de `compile_cmd`
 // - Los lenguajes interpretados usan compile_cmd como chequeo de sintaxis (falla = CE)
-// Imágenes según docs/design/judge-evaluation.md. Las define deploy/docker-compose.yml (JUDGE_IMAGE_*),
-// que también las descarga; sin esas variables (desarrollo) se usan estos valores
+// Imágenes según docs/design/judge-evaluation.md. Las define la imagen del backend (JUDGE_IMAGE_*,
+// se cambian en deploy/.env) y el worker las descarga al arrancar; sin esas variables (desarrollo)
+// se usan estos valores
 const IMAGES = {
     gcc: ['JUDGE_IMAGE_GCC', 'gcc:14'],
     dotnet: ['JUDGE_IMAGE_DOTNET', 'mcr.microsoft.com/dotnet/sdk:8.0'],

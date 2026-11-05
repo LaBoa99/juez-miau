@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ICreateLanguage, ILanguage } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
@@ -6,6 +6,8 @@ import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { FormField } from '../../../../shared/ui/form-field.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { EmptyState } from '../../../../shared/ui/empty-state.component';
+import { Badge } from '../../../../shared/ui/badge.component';
+import { Modal } from '../../../../shared/ui/modal.component';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { EditionLanguagesService } from '../../../editions/edition-languages/data/edition-languages.service';
@@ -13,7 +15,7 @@ import { EditionLanguagesService } from '../../../editions/edition-languages/dat
 @Component({
   selector: 'oj-languages-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, PageHeader, ButtonDirective, FormField, Alert, EmptyState],
+  imports: [ReactiveFormsModule, PageHeader, ButtonDirective, FormField, Alert, EmptyState, Badge, Modal],
   templateUrl: './languages-list.html',
   styleUrl: './languages-list.css',
 })
@@ -26,7 +28,13 @@ export class LanguagesList {
   protected readonly loading = signal(false);
   protected readonly error = signal(false);
 
-  // Alta (formulario inline a la derecha)
+  // Detalle técnico (solo lectura)
+  private readonly detailsModal = viewChild.required<Modal>('detailsModal');
+  protected readonly selected = signal<ILanguage | null>(null);
+
+  // Alta: caso raro (lenguaje no incluido), por eso va en un modal y no a la vista.
+  // El modal solo existe para el superadmin.
+  private readonly createModal = viewChild<Modal>('createModal');
   protected readonly saving = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly form = this.fb.nonNullable.group({
@@ -64,6 +72,16 @@ export class LanguagesList {
     });
   }
 
+  openDetails(lang: ILanguage): void {
+    this.selected.set(lang);
+    this.detailsModal().open();
+  }
+
+  openCreate(): void {
+    this.resetForm();
+    this.createModal()?.open();
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -86,7 +104,7 @@ export class LanguagesList {
     this.service.create(dto).subscribe({
       next: () => {
         this.saving.set(false);
-        this.resetForm();
+        this.createModal()?.close();
         this.load();
       },
       error: (err) => {

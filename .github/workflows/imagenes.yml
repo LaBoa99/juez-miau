@@ -1,7 +1,7 @@
 name: imagenes
 
 # Construye las imágenes del despliegue (api/worker y web) y las sube a ghcr.io.
-# Otra máquina las descarga con "docker compose pull" usando IMAGE_PREFIX=ghcr.io/laboa99/ (ver deploy/README.md)
+# deploy/docker-compose.yml las usa directo: otra máquina solo hace "docker compose pull" (ver deploy/README.md)
 on:
   workflow_dispatch:
   push:
@@ -11,6 +11,7 @@ on:
       - "apps/frontend-staff/**"
       - "packages/**"
       - "pnpm-lock.yaml"
+      - "deploy/Caddyfile"
       - ".github/workflows/imagenes.yml"
 
 # El GITHUB_TOKEN de cada corrida basta para subir a ghcr.io: no hace falta un token propio

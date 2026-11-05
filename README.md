@@ -82,7 +82,7 @@ docker compose up -d --build
 ```bash
 pnpm install
 pnpm --filter @concurso/shared-types build
-docker compose -f deploy/docker-compose.yml up -d postgres redis
+(cd deploy && docker compose up -d postgres redis)
 pnpm --filter backend start:dev        # API
 pnpm --filter frontend-staff start     # panel de staff
 ```
@@ -92,11 +92,8 @@ como Release con cada tag `competidores-v*`.
 
 ## Documentación
 
-- <img src="site/assets/icons/book-open.svg" width="16"> [Arquitectura y funcionamiento](docs/arquitectura.md)
-- <img src="site/assets/icons/box.svg" width="16"> [Evaluación del juez](docs/design/judge-evaluation.md)
-- <img src="site/assets/icons/server.svg" width="16"> [Despliegue](deploy/README.md) · [Especificaciones del servidor](docs/design/server-specs.md)
-- <img src="site/assets/icons/file-code.svg" width="16"> [Guía de pnpm](README-pnpm.md) · [API del backend](docs/backend-api.md)
-- <img src="site/assets/icons/layers.svg" width="16"> [DESIGN.md](docs/design/DESIGN.md)
+- <img src="site/assets/icons/server.svg" width="16"> [Despliegue](deploy/README.md)
+- <img src="site/assets/icons/file-code.svg" width="16"> [Guía de pnpm](README-pnpm.md)
 
 ## Créditos
 

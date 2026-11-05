@@ -2,35 +2,15 @@
   display: block;
 }
 
-/* Tabla a la izquierda, formulario "Agregar lenguaje" a la derecha. */
-.lang__cols {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 24px;
+.lang__main {
   margin-top: var(--oj-space-md);
 }
 
-.lang__main {
-  flex: 1 1 440px;
-  min-width: 0;
-}
-
-.lang__aside {
-  flex: 0 0 380px;
-  max-width: 380px;
+/* Formulario del modal "Agregar lenguaje" */
+.lang__form {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 16px;
-  border: 1px solid var(--oj-border);
-  border-radius: var(--oj-radius);
-}
-
-.lang__aside-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
 }
 
 /* Nombre + extensión en la misma fila del formulario */
@@ -47,7 +27,7 @@
   flex: 0 0 110px;
 }
 .lang__ver-field {
-  flex: 0 0 120px;
+  flex: 0 0 140px;
 }
 .lang__mult-field {
   max-width: 140px;
@@ -69,33 +49,8 @@
   color: var(--oj-text-muted);
 }
 
-.lang__docker {
-  font-size: 12px;
-}
-
-/* Columna "Compilar / ejecutar": dos líneas mono 12px */
-.lang__cmds {
-  font-size: 12px;
-}
-.lang__compile {
-  color: var(--oj-text);
-}
-.lang__run {
-  color: var(--oj-text-muted);
-}
-
-.lang__num {
-  text-align: right;
-}
-
 .lang__row--off td {
   opacity: 0.6;
-}
-
-.lang__note {
-  margin: var(--oj-space-sm) 0 0;
-  font-size: 12px;
-  color: var(--oj-text-muted);
 }
 
 .lang__loading {
@@ -131,4 +86,7 @@
   margin: var(--oj-space-md) 0 0;
   font-size: 12px;
   color: var(--oj-text-muted);
+}
+.lang__muted--top {
+  margin: 0;
 }

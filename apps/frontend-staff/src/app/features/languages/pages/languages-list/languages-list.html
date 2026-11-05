@@ -1,120 +1,136 @@
-<oj-page-header
-  title="Catálogo de lenguajes"
-  subtitle=""
-/>
-
-<div class="lang__cols">
-  <div class="lang__main">
-    @if (toggleError()) {
-      <oj-alert tone="error">{{ toggleError() }}</oj-alert>
-    }
-    @if (loading()) {
-      <p class="lang__loading">Cargando…</p>
-    } @else if (error()) {
-      <oj-alert tone="error">No se pudo cargar el catálogo de lenguajes.</oj-alert>
-    } @else if (rows().length === 0) {
-      <oj-empty-state message="Aún no hay lenguajes en el catálogo." />
-    } @else {
-      <div class="oj-table-wrap">
-        <table class="oj-table">
-          <thead>
-            <tr>
-              <th>Lenguaje</th>
-              <th>Imagen Docker</th>
-              <th>Compilar / ejecutar</th>
-              <th class="lang__num">Tiempo</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (l of rows(); track l.id) {
-              <tr [class.lang__row--off]="!l.active">
-                <td>
-                  <div class="lang__name">{{ l.code }}</div>
-                  <div class="lang__ext oj-mono">.{{ l.file_ext }}@if (!l.active) { · inactivo }</div>
-                </td>
-                <td class="lang__docker oj-mono">{{ l.image_ref }}</td>
-                <td class="lang__cmds">
-                  <div class="oj-mono lang__compile">{{ l.compile_cmd || '—' }}</div>
-                  <div class="oj-mono lang__run">{{ l.run_cmd }}</div>
-                </td>
-                <td class="lang__num oj-mono">×{{ l.time_multiplier }}</td>
-                <td>
-                  @if (auth.isSuperadmin()) {
-                    <div class="oj-actions oj-actions--end">
-                      @if (l.active) {
-                        <button ojButton variant="danger-outline" size="sm" type="button" [disabled]="togglingId() === l.id" (click)="toggleActive(l)">
-                          {{ togglingId() === l.id ? 'Guardando…' : 'Desactivar' }}
-                        </button>
-                      } @else {
-                        <button ojButton variant="success" size="sm" type="button" [disabled]="togglingId() === l.id" (click)="toggleActive(l)">
-                          {{ togglingId() === l.id ? 'Guardando…' : 'Activar' }}
-                        </button>
-                      }
-                    </div>
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-    <!-- <p class="lang__note">
-      El multiplicador ajusta el tiempo límite de cada problema para ese lenguaje (×2.0 = el doble de tiempo).
-    </p> -->
-  </div>
-
+<oj-page-header title="Catálogo de lenguajes" subtitle="Ya vienen configurados: solo activa los que se usan.">
   @if (auth.isSuperadmin()) {
-  <form class="lang__aside" [formGroup]="form" (ngSubmit)="submit()">
-    <h3 class="lang__aside-title">Agregar lenguaje</h3>
+    <button actions ojButton variant="secondary" type="button" (click)="openCreate()">Agregar lenguaje (avanzado)</button>
+  }
+</oj-page-header>
 
-    @if (formError()) {
-      <oj-alert tone="error">{{ formError() }}</oj-alert>
-    }
-
-    <div class="lang__row">
-      <oj-form-field label="Nombre" for="lang-code" class="lang__grow" [error]="fieldError('code')">
-        <input id="lang-code" type="text" formControlName="code" placeholder="Ej. Java" />
-      </oj-form-field>
-      <oj-form-field label="Extensión" for="lang-ext" class="lang__ext-field" [error]="fieldError('file_ext')">
-        <input id="lang-ext" class="oj-mono" type="text" formControlName="file_ext" maxlength="4" placeholder="java" />
-      </oj-form-field>
+<div class="lang__main">
+  @if (toggleError()) {
+    <oj-alert tone="error">{{ toggleError() }}</oj-alert>
+  }
+  @if (loading()) {
+    <p class="lang__loading">Cargando…</p>
+  } @else if (error()) {
+    <oj-alert tone="error">No se pudo cargar el catálogo de lenguajes.</oj-alert>
+  } @else if (rows().length === 0) {
+    <oj-empty-state message="Aún no hay lenguajes en el catálogo." />
+  } @else {
+    <div class="oj-table-wrap">
+      <table class="oj-table">
+        <thead>
+          <tr>
+            <th>Lenguaje</th>
+            <th>Versión</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of rows(); track l.id) {
+            <tr [class.lang__row--off]="!l.active">
+              <td>
+                <div class="lang__name">{{ l.code }}</div>
+                <div class="lang__ext oj-mono">.{{ l.file_ext }}</div>
+              </td>
+              <td class="oj-mono">{{ l.compiler_version }}</td>
+              <td>
+                <oj-badge [tone]="l.active ? 'success' : 'neutral'">{{ l.active ? 'Activo' : 'Inactivo' }}</oj-badge>
+              </td>
+              <td>
+                <div class="oj-actions oj-actions--end">
+                  <button ojButton variant="secondary" size="sm" type="button" (click)="openDetails(l)">Detalles</button>
+                  @if (auth.isSuperadmin()) {
+                    @if (l.active) {
+                      <button ojButton variant="danger-outline" size="sm" type="button" [disabled]="togglingId() === l.id" (click)="toggleActive(l)">
+                        {{ togglingId() === l.id ? 'Guardando…' : 'Desactivar' }}
+                      </button>
+                    } @else {
+                      <button ojButton variant="success" size="sm" type="button" [disabled]="togglingId() === l.id" (click)="toggleActive(l)">
+                        {{ togglingId() === l.id ? 'Guardando…' : 'Activar' }}
+                      </button>
+                    }
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
+  }
+</div>
 
-    <div class="lang__row">
-      <oj-form-field label="Versión del compilador" for="lang-ver" class="lang__ver-field" [error]="fieldError('compiler_version')">
-        <input id="lang-ver" class="oj-mono" type="text" formControlName="compiler_version" placeholder="Ej. 21" />
+<oj-modal #detailsModal [title]="selected()?.code ?? 'Lenguaje'" size="md">
+  @if (selected(); as l) {
+    <dl class="lang__details">
+      <div><dt>Versión</dt><dd class="oj-mono">{{ l.compiler_version }}</dd></div>
+      <div><dt>Extensión</dt><dd class="oj-mono">.{{ l.file_ext }}</dd></div>
+      <div><dt>Imagen Docker</dt><dd class="oj-mono">{{ l.image_ref }}</dd></div>
+      <div><dt>Compilación</dt><dd class="oj-mono">{{ l.compile_cmd || '—' }} {{ l.flags }}</dd></div>
+      <div><dt>Ejecución</dt><dd class="oj-mono">{{ l.run_cmd }}</dd></div>
+      <div><dt>Tiempo</dt><dd class="oj-mono">×{{ l.time_multiplier }} del límite del problema</dd></div>
+    </dl>
+    <p class="lang__muted">
+      Configuración técnica del juez. La versión se cambia en el .env del servidor (JUDGE_IMAGE_*).
+    </p>
+  }
+  <div footer>
+    <button ojButton variant="secondary" type="button" (click)="detailsModal.close()">Cerrar</button>
+  </div>
+</oj-modal>
+
+@if (auth.isSuperadmin()) {
+  <oj-modal #createModal title="Agregar lenguaje" size="md">
+    <form id="lang-create-form" class="lang__form" [formGroup]="form" (ngSubmit)="submit()">
+      <p class="lang__muted lang__muted--top">
+        Solo para un lenguaje que no viene incluido. Necesita una imagen Docker con su compilador.
+      </p>
+
+      @if (formError()) {
+        <oj-alert tone="error">{{ formError() }}</oj-alert>
+      }
+
+      <div class="lang__row">
+        <oj-form-field label="Nombre" for="lang-code" class="lang__grow" [error]="fieldError('code')">
+          <input id="lang-code" type="text" formControlName="code" placeholder="Ej. rust" />
+        </oj-form-field>
+        <oj-form-field label="Extensión" for="lang-ext" class="lang__ext-field" [error]="fieldError('file_ext')">
+          <input id="lang-ext" class="oj-mono" type="text" formControlName="file_ext" maxlength="4" placeholder="rs" />
+        </oj-form-field>
+      </div>
+
+      <div class="lang__row">
+        <oj-form-field label="Versión del compilador" for="lang-ver" class="lang__ver-field" [error]="fieldError('compiler_version')">
+          <input id="lang-ver" class="oj-mono" type="text" formControlName="compiler_version" placeholder="Ej. Rust 1.83" />
+        </oj-form-field>
+        <oj-form-field label="Imagen Docker" for="lang-img" class="lang__grow" [error]="fieldError('image_ref')">
+          <input id="lang-img" class="oj-mono" type="text" formControlName="image_ref" placeholder="Ej. rust:1.83-slim" />
+        </oj-form-field>
+      </div>
+
+      <oj-form-field label="Comando de compilación" for="lang-compile" [error]="fieldError('compile_cmd')">
+        <input id="lang-compile" class="oj-mono" type="text" formControlName="compile_cmd" placeholder="Ej. rustc Main.rs -o main" />
       </oj-form-field>
-      <oj-form-field label="Imagen Docker" for="lang-img" class="lang__grow" [error]="fieldError('image_ref')">
-        <input id="lang-img" class="oj-mono" type="text" formControlName="image_ref" placeholder="Ej. eclipse-temurin:21-jdk" />
+      <oj-form-field label="Comando de ejecución" for="lang-run" [error]="fieldError('run_cmd')">
+        <input id="lang-run" class="oj-mono" type="text" formControlName="run_cmd" placeholder="Ej. ./main" />
       </oj-form-field>
-    </div>
+      <oj-form-field label="Flags" for="lang-flags" [optional]="true">
+        <input id="lang-flags" class="oj-mono" type="text" formControlName="flags" placeholder="Ej. -O" />
+      </oj-form-field>
+      <oj-form-field label="Multiplicador de tiempo" for="lang-mult" class="lang__mult-field" [error]="fieldError('time_multiplier')">
+        <input id="lang-mult" class="oj-mono" type="number" step="0.01" min="0.01" max="99.99" formControlName="time_multiplier" />
+      </oj-form-field>
 
-    <oj-form-field label="Comando de compilación" for="lang-compile" [error]="fieldError('compile_cmd')">
-      <input id="lang-compile" class="oj-mono" type="text" formControlName="compile_cmd" placeholder="Ej. javac Main.java" />
-    </oj-form-field>
-    <oj-form-field label="Comando de ejecución" for="lang-run" [error]="fieldError('run_cmd')">
-      <input id="lang-run" class="oj-mono" type="text" formControlName="run_cmd" placeholder="Ej. java Main" />
-    </oj-form-field>
-    <oj-form-field label="Flags" for="lang-flags" [optional]="true">
-      <input id="lang-flags" class="oj-mono" type="text" formControlName="flags" placeholder="Ej. -Xmx256m" />
-    </oj-form-field>
-    <oj-form-field label="Multiplicador de tiempo" for="lang-mult" class="lang__mult-field" [error]="fieldError('time_multiplier')">
-      <input id="lang-mult" class="oj-mono" type="number" step="0.01" min="0.01" max="99.99" formControlName="time_multiplier" />
-    </oj-form-field>
-
-    <label class="lang__check">
-      <input type="checkbox" formControlName="active" />
-      Activo
-    </label>
-
-    <div class="oj-actions oj-actions--end">
-      <button ojButton variant="secondary" type="button" (click)="resetForm()">Cancelar</button>
-      <button ojButton variant="primary" type="submit" [disabled]="saving()">
+      <label class="lang__check">
+        <input type="checkbox" formControlName="active" />
+        Activo
+      </label>
+    </form>
+    <div footer>
+      <button ojButton variant="secondary" type="button" (click)="createModal.close()">Cancelar</button>
+      <button ojButton variant="primary" type="submit" form="lang-create-form" [disabled]="saving()">
         {{ saving() ? 'Guardando…' : 'Agregar lenguaje' }}
       </button>
     </div>
-  </form>
-  }
-</div>
+  </oj-modal>
+}
