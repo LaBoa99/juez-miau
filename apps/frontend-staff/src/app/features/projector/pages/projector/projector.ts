@@ -13,6 +13,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { RoomsService } from '../../../editions/rooms/data/rooms.service';
 import { TeamsService } from '../../../teams/data/teams.service';
 import { filterByRoom } from '../../../standings/room-filter';
+import { confetti, podium, podiumEmoji } from '../../../standings/podium';
 
 // Pantalla 17: proyector público (1920×1080). Fuera del shell, sin guards, sin token.
 // Carga por HTTP al entrar, se actualiza por socket (joinPublic) y, si se pierde la conexión,
@@ -21,6 +22,7 @@ import { filterByRoom } from '../../../standings/room-filter';
   selector: 'oj-projector',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ButtonDirective, Segmented, StandingsCell, ContestCountdown],
+  host: { class: 'oj-theme-bodega' },
   templateUrl: './projector.html',
   styleUrl: './projector.css',
 })
@@ -43,7 +45,13 @@ export class Projector {
   protected readonly paused = signal(false);
   protected readonly categorySeg = signal<string>('');
 
+  protected readonly podium = podium;
+  protected readonly podiumEmoji = podiumEmoji;
+  // Solo los 10 primeros: a 1920×1080 caben sin desplazarse
+  protected readonly top = 10;
+
   private started = false;
+  private celebrated = false;
   private readonly reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   protected readonly finished = computed(() => this.clock()?.status === EditionStatus.FINISHED);
@@ -81,6 +89,13 @@ export class Projector {
       if (opts.length && !opts.some((o) => o.value === this.categorySeg())) {
         this.categorySeg.set(opts[0].value);
       }
+    });
+
+    // Al terminar el concurso (marcador descongelado) cae confeti, una vez, como en el video del sitio.
+    effect(() => {
+      if (!this.finished() || this.celebrated) return;
+      this.celebrated = true;
+      confetti();
     });
 
     const rotate = setInterval(() => this.rotate(), 20_000);

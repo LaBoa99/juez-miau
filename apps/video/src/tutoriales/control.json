@@ -1,0 +1,115 @@
+{
+  "id": "control",
+  "titulo": "Control del concurso",
+  "pasos": [
+    {
+      "img": "01.png",
+      "voz": "Durante el concurso, la pestaña Concurso es tu tablero de control.",
+      "caja": {
+        "x": 1713,
+        "y": 18,
+        "w": 64,
+        "h": 13
+      },
+      "accion": null,
+      "frames": 119
+    },
+    {
+      "img": "02.png",
+      "voz": "Aquí ves cuándo empezó, cuánto dura, cuánto lleva y a qué minuto se congela el marcador.",
+      "caja": {
+        "x": 345,
+        "y": 395,
+        "w": 866,
+        "h": 35
+      },
+      "accion": null,
+      "frames": 158
+    },
+    {
+      "img": "03.png",
+      "voz": "El juez automático: cuántos workers evalúan, cuántos envíos esperan en la cola y si la base y Redis están en línea.",
+      "caja": {
+        "x": 1260,
+        "y": 193,
+        "w": 340,
+        "h": 156
+      },
+      "accion": null,
+      "frames": 204
+    },
+    {
+      "img": "04.png",
+      "voz": "Si la cola crece o algo sale sin conexión, pausa.",
+      "caja": {
+        "x": 664,
+        "y": 446,
+        "w": 73,
+        "h": 40
+      },
+      "accion": "clic",
+      "frames": 105
+    },
+    {
+      "img": "05.png",
+      "voz": "En pausa el reloj se detiene y los equipos no pueden enviar.",
+      "caja": {
+        "x": 657,
+        "y": 383,
+        "w": 242,
+        "h": 16
+      },
+      "accion": null,
+      "frames": 102
+    },
+    {
+      "img": "06.png",
+      "voz": "Cuando todo esté bien, reanuda: el tiempo pausado no se les descuenta.",
+      "caja": {
+        "x": 656,
+        "y": 466,
+        "w": 90,
+        "h": 40
+      },
+      "accion": "clic",
+      "frames": 134
+    },
+    {
+      "img": "07.png",
+      "voz": "Desde aquí también abres el proyector para la pantalla del salón.",
+      "caja": {
+        "x": 1277,
+        "y": 441,
+        "w": 306,
+        "h": 38
+      },
+      "accion": null,
+      "frames": 103
+    },
+    {
+      "img": "08.png",
+      "voz": "El concurso termina solo al acabar el tiempo. Si hace falta cerrarlo antes, usa Finalizar concurso.",
+      "caja": {
+        "x": 746,
+        "y": 446,
+        "w": 146,
+        "h": 40
+      },
+      "accion": "clic",
+      "frames": 198
+    },
+    {
+      "img": "09.png",
+      "voz": "Confirma solo si estás seguro: ya no se puede reanudar.",
+      "caja": {
+        "x": 1075,
+        "y": 578,
+        "w": 83,
+        "h": 34
+      },
+      "accion": null,
+      "frames": 107
+    }
+  ],
+  "tituloFrames": 49
+}

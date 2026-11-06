@@ -69,10 +69,14 @@
         </thead>
         <tbody>
           @for (row of cat.rows; track row.teamId) {
-            <tr [class.st__suspended]="row.suspended">
+            @let place = podium(row, cat.rows);
+            <tr [class.st__suspended]="row.suspended" [class]="place ? 'oj-podium-' + place : ''">
               <td class="st__rank oj-mono">{{ row.rank ?? '—' }}</td>
               <td class="st__team">
                 {{ row.teamName }}
+                @if (place) {
+                  <span aria-hidden="true">{{ podiumEmoji(place) }}</span>
+                }
                 @if (row.suspended) {
                   <span class="st__tag">Suspendido</span>
                 }

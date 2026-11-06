@@ -13,6 +13,7 @@ import { backendMessage } from '../../../../core/http/backend-error.mapper';
 import { EditionContext } from '../../../editions/pages/edition-layout/edition-context';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { ContestClockService } from '../../../contest/data/contest-clock.service';
+import { podium, podiumEmoji } from '../../podium';
 import { StandingsService } from '../../data/standings.service';
 import { ContestCountdown } from '../../../../shared/ui/contest-countdown.component';
 import { RoomsService } from '../../../editions/rooms/data/rooms.service';
@@ -30,6 +31,8 @@ export class StandingsPage {
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(StandingsService);
   private readonly clockService = inject(ContestClockService);
+  protected readonly podium = podium;
+  protected readonly podiumEmoji = podiumEmoji;
   protected readonly ctx = inject(EditionContext);
   private readonly rt = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);

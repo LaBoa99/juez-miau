@@ -1,0 +1,91 @@
+{
+  "id": "problemas",
+  "titulo": "Problemas y casos de prueba",
+  "pasos": [
+    {
+      "img": "01.png",
+      "voz": "En Problemas ves los de cada categoría. Para crear uno, presiona Nuevo problema.",
+      "caja": {
+        "x": 327,
+        "y": 374,
+        "w": 288,
+        "h": 34
+      },
+      "accion": null,
+      "frames": 168
+    },
+    {
+      "img": "02.png",
+      "voz": "Cada problema se arma en seis pasos. Primero los datos: categoría, título y enunciado.",
+      "caja": {
+        "x": 646,
+        "y": 203,
+        "w": 954,
+        "h": 47
+      },
+      "accion": null,
+      "frames": 197
+    },
+    {
+      "img": "03.png",
+      "voz": "En Evaluación eliges cómo se compara la respuesta del equipo con la correcta, y los límites de tiempo y memoria.",
+      "caja": {
+        "x": 646,
+        "y": 266,
+        "w": 954,
+        "h": 20
+      },
+      "accion": null,
+      "frames": 178
+    },
+    {
+      "img": "04.png",
+      "voz": "La firma es la función que programan los equipos: su nombre, sus parámetros y lo que regresa.",
+      "caja": {
+        "x": 646,
+        "y": 446,
+        "w": 954,
+        "h": 17
+      },
+      "accion": null,
+      "frames": 163
+    },
+    {
+      "img": "05.png",
+      "voz": "Sube la solución oficial: con ella se calculan las respuestas correctas.",
+      "caja": {
+        "x": 646,
+        "y": 475,
+        "w": 954,
+        "h": 74
+      },
+      "accion": null,
+      "frames": 129
+    },
+    {
+      "img": "06.png",
+      "voz": "Agrega los casos de prueba. Los públicos los ven los equipos; los ocultos, no.",
+      "caja": {
+        "x": 647,
+        "y": 476,
+        "w": 952,
+        "h": 190
+      },
+      "accion": null,
+      "frames": 168
+    },
+    {
+      "img": "07.png",
+      "voz": "Al final, construye los casos y publica el problema. Solo los publicados entran al concurso.",
+      "caja": {
+        "x": 646,
+        "y": 446,
+        "w": 954,
+        "h": 117
+      },
+      "accion": null,
+      "frames": 184
+    }
+  ],
+  "tituloFrames": 57
+}

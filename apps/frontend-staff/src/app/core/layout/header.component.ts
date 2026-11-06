@@ -22,6 +22,7 @@ import { EditionStatus } from '@concurso/shared-types';
             <a class="oj-hd__link" routerLink="/staff" routerLinkActive="oj-hd__link--active">Staff</a>
             <a class="oj-hd__link" routerLink="/auditoria" routerLinkActive="oj-hd__link--active">Auditoría</a>
           }
+          <a class="oj-hd__link" routerLink="/tutoriales" routerLinkActive="oj-hd__link--active">Tutoriales</a>
           <a class="oj-hd__link" routerLink="/creditos" routerLinkActive="oj-hd__link--active">Créditos</a>
         </nav>
       </div>

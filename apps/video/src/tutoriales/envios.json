@@ -1,0 +1,79 @@
+{
+  "id": "envios",
+  "titulo": "Envíos y revisión",
+  "pasos": [
+    {
+      "img": "01.png",
+      "voz": "En Envíos ves cada solución en vivo, con su veredicto.",
+      "caja": {
+        "x": 321,
+        "y": 418,
+        "w": 1278,
+        "h": 102
+      },
+      "accion": null,
+      "frames": 103
+    },
+    {
+      "img": "02.png",
+      "voz": "Filtra por categoría, problema, equipo o veredicto.",
+      "caja": {
+        "x": 744,
+        "y": 325,
+        "w": 379,
+        "h": 32
+      },
+      "accion": null,
+      "frames": 113
+    },
+    {
+      "img": "03.png",
+      "voz": "Presiona Ver para revisar uno.",
+      "caja": {
+        "x": 1547,
+        "y": 424,
+        "w": 44,
+        "h": 38
+      },
+      "accion": "clic",
+      "frames": 59
+    },
+    {
+      "img": "04.png",
+      "voz": "Aquí está el código que envió el equipo…",
+      "caja": {
+        "x": 985,
+        "y": 303,
+        "w": 598,
+        "h": 134
+      },
+      "accion": null,
+      "frames": 72
+    },
+    {
+      "img": "05.png",
+      "voz": "…y el resultado de cada caso de prueba: verde si salió bien, rojo si falló.",
+      "caja": {
+        "x": 337,
+        "y": 272,
+        "w": 598,
+        "h": 19
+      },
+      "accion": null,
+      "frames": 140
+    },
+    {
+      "img": "06.png",
+      "voz": "Si algo no cuadra, revísalo a mano y cambia el veredicto.",
+      "caja": {
+        "x": 1435,
+        "y": 155,
+        "w": 165,
+        "h": 34
+      },
+      "accion": null,
+      "frames": 112
+    }
+  ],
+  "tituloFrames": 46
+}

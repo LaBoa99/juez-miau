@@ -1,0 +1,127 @@
+{
+  "id": "superadmin",
+  "titulo": "Ediciones, staff y lenguajes",
+  "pasos": [
+    {
+      "img": "01.png",
+      "voz": "Como superadmin, tú creas los concursos. Presiona Nueva edición.",
+      "caja": {
+        "x": 1480,
+        "y": 110,
+        "w": 120,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 148
+    },
+    {
+      "img": "02.png",
+      "voz": "Escribe el nombre del concurso.",
+      "caja": {
+        "x": 1255,
+        "y": 288,
+        "w": 328,
+        "h": 32
+      },
+      "accion": "escribir",
+      "frames": 64
+    },
+    {
+      "img": "03.png",
+      "voz": "Indica cuántos minutos dura…",
+      "caja": {
+        "x": 1255,
+        "y": 357,
+        "w": 328,
+        "h": 32
+      },
+      "accion": "escribir",
+      "frames": 59
+    },
+    {
+      "img": "04.png",
+      "voz": "…y cuántos minutos antes del final se congela el marcador.",
+      "caja": {
+        "x": 1255,
+        "y": 426,
+        "w": 328,
+        "h": 32
+      },
+      "accion": "escribir",
+      "frames": 98
+    },
+    {
+      "img": "05.png",
+      "voz": "Crea la edición: queda como borrador mientras la configuras.",
+      "caja": {
+        "x": 1469,
+        "y": 556,
+        "w": 114,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 114
+    },
+    {
+      "img": "06.png",
+      "voz": "Ya aparece en la lista, lista para configurarse.",
+      "caja": {
+        "x": 329,
+        "y": 458,
+        "w": 353,
+        "h": 17
+      },
+      "accion": null,
+      "frames": 95
+    },
+    {
+      "img": "07.png",
+      "voz": "En Staff das de alta a los jueces, observadores y administradores.",
+      "caja": {
+        "x": 1223,
+        "y": 265,
+        "w": 360,
+        "h": 32
+      },
+      "accion": null,
+      "frames": 128
+    },
+    {
+      "img": "08.png",
+      "voz": "Solo pides nombre, correo y una contraseña inicial. El rol se asigna en cada edición.",
+      "caja": {
+        "x": 1223,
+        "y": 403,
+        "w": 360,
+        "h": 32
+      },
+      "accion": null,
+      "frames": 181
+    },
+    {
+      "img": "09.png",
+      "voz": "En Lenguajes administras los compiladores disponibles para los concursos.",
+      "caja": {
+        "x": 321,
+        "y": 149,
+        "w": 1178,
+        "h": 552
+      },
+      "accion": null,
+      "frames": 119
+    },
+    {
+      "img": "10.png",
+      "voz": "Y en Auditoría ves quién hizo qué y cuándo.",
+      "caja": {
+        "x": 321,
+        "y": 292,
+        "w": 1278,
+        "h": 32
+      },
+      "accion": null,
+      "frames": 76
+    }
+  ],
+  "tituloFrames": 76
+}

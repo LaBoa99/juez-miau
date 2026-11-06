@@ -1,0 +1,67 @@
+{
+  "id": "aclaraciones",
+  "titulo": "Aclaraciones",
+  "pasos": [
+    {
+      "img": "01.png",
+      "voz": "Las preguntas de los equipos llegan aquí en vivo.",
+      "caja": {
+        "x": 335,
+        "y": 325,
+        "w": 1250,
+        "h": 17
+      },
+      "accion": null,
+      "frames": 81
+    },
+    {
+      "img": "02.png",
+      "voz": "Presiona Responder.",
+      "caja": {
+        "x": 1337,
+        "y": 348,
+        "w": 90,
+        "h": 28
+      },
+      "accion": "clic",
+      "frames": 48
+    },
+    {
+      "img": "03.png",
+      "voz": "Escribe la respuesta. La verán todos los equipos de la categoría, sin saber quién preguntó.",
+      "caja": {
+        "x": 762,
+        "y": 509,
+        "w": 396,
+        "h": 94
+      },
+      "accion": "escribir",
+      "frames": 176
+    },
+    {
+      "img": "04.png",
+      "voz": "Publícala.",
+      "caja": {
+        "x": 1010,
+        "y": 653,
+        "w": 148,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 35
+    },
+    {
+      "img": "05.png",
+      "voz": "Queda en Respondidas, y la puedes corregir después.",
+      "caja": {
+        "x": 446,
+        "y": 245,
+        "w": 100,
+        "h": 30
+      },
+      "accion": null,
+      "frames": 96
+    }
+  ],
+  "tituloFrames": 44
+}

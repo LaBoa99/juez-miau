@@ -1,0 +1,151 @@
+{
+  "id": "edicion",
+  "titulo": "Configurar la edición",
+  "pasos": [
+    {
+      "img": "01.png",
+      "voz": "Al abrir una edición llegas a Configuración. Empieza por las categorías.",
+      "caja": {
+        "x": 320,
+        "y": 262,
+        "w": 103,
+        "h": 30
+      },
+      "accion": null,
+      "frames": 146
+    },
+    {
+      "img": "02.png",
+      "voz": "Escribe un código corto…",
+      "caja": {
+        "x": 1175,
+        "y": 381,
+        "w": 360,
+        "h": 32
+      },
+      "accion": "escribir",
+      "frames": 58
+    },
+    {
+      "img": "03.png",
+      "voz": "…y el nombre de la categoría.",
+      "caja": {
+        "x": 1175,
+        "y": 450,
+        "w": 360,
+        "h": 32
+      },
+      "accion": "escribir",
+      "frames": 56
+    },
+    {
+      "img": "04.png",
+      "voz": "Agrégala.",
+      "caja": {
+        "x": 1454,
+        "y": 498,
+        "w": 81,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 35
+    },
+    {
+      "img": "05.png",
+      "voz": "En Salones da de alta cada salón…",
+      "caja": {
+        "x": 1127,
+        "y": 381,
+        "w": 360,
+        "h": 32
+      },
+      "accion": "escribir",
+      "frames": 69
+    },
+    {
+      "img": "06.png",
+      "voz": "…con la categoría que compite ahí.",
+      "caja": {
+        "x": 1127,
+        "y": 450,
+        "w": 360,
+        "h": 32
+      },
+      "accion": "clic",
+      "frames": 65
+    },
+    {
+      "img": "07.png",
+      "voz": "Agrégalo.",
+      "caja": {
+        "x": 1406,
+        "y": 569,
+        "w": 81,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 33
+    },
+    {
+      "img": "08.png",
+      "voz": "En Lenguajes marca los que podrán usar los equipos…",
+      "caja": {
+        "x": 360,
+        "y": 590,
+        "w": 47,
+        "h": 17
+      },
+      "accion": "clic",
+      "frames": 90
+    },
+    {
+      "img": "09.png",
+      "voz": "…y guarda la selección.",
+      "caja": {
+        "x": 736,
+        "y": 631,
+        "w": 144,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 46
+    },
+    {
+      "img": "10.png",
+      "voz": "En Staff asigna a tu equipo de trabajo: elige a la persona…",
+      "caja": {
+        "x": 1223,
+        "y": 381,
+        "w": 360,
+        "h": 32
+      },
+      "accion": "clic",
+      "frames": 115
+    },
+    {
+      "img": "11.png",
+      "voz": "…y su rol en esta edición.",
+      "caja": {
+        "x": 1223,
+        "y": 450,
+        "w": 360,
+        "h": 32
+      },
+      "accion": "clic",
+      "frames": 53
+    },
+    {
+      "img": "12.png",
+      "voz": "Agrégala. Cada rol solo ve lo que le toca: el observador, por ejemplo, solo ve envíos, marcador y alertas.",
+      "caja": {
+        "x": 1504,
+        "y": 498,
+        "w": 79,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 235
+    }
+  ],
+  "tituloFrames": 50
+}

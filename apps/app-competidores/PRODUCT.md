@@ -7,7 +7,7 @@
 desktop (Windows 10/11, PySide6 QtWidgets nativo; ninguno de los valores web/ios/android aplica)
 
 ## Stack
-PySide6-Essentials + requests, empaquetado como un solo `.exe` con PyInstaller en GitHub Actions. Decidido con el usuario; ver `docs/design/frontend-competidores.md`.
+PySide6-Essentials + requests, empaquetado como un solo `.exe` con PyInstaller en GitHub Actions. Decidido con el usuario.
 
 ## Users
 Equipos de un concurso universitario de programación, en un laboratorio con más de 90 equipos Windows. Programan en su propio IDE; esta app queda en segundo plano y solo la abren para leer un problema, descargar la plantilla, subir su archivo y ver el veredicto.

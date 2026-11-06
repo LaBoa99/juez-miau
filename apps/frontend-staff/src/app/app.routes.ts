@@ -49,6 +49,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/audit/audit.routes').then((m) => m.routes),
       },
       { path: '403', component: Forbidden },
+      {
+        path: 'tutoriales',
+        loadComponent: () => import('./features/tutorials/pages/tutorials-page/tutorials-page').then((m) => m.TutorialsPage),
+      },
       { path: 'creditos', component: Credits },
       { path: '', redirectTo: 'ediciones', pathMatch: 'full' },
       // Cualquier otra ruta: 404 dentro del shell (sin sesión, el authGuard manda al login)

@@ -127,6 +127,11 @@ a:focus-visible {
   background: var(--oj-bg-muted);
 }
 
+/* Podio del marcador: 1.º oro, 2.º plata, 3.º bronce (ver features/standings/podium.ts) */
+.oj-table tbody tr.oj-podium-1 > td { background: var(--oj-gold); color: var(--oj-podium-ink); }
+.oj-table tbody tr.oj-podium-2 > td { background: var(--oj-silver); color: var(--oj-podium-ink); }
+.oj-table tbody tr.oj-podium-3 > td { background: var(--oj-bronze); color: var(--oj-podium-ink); }
+
 .oj-visually-hidden {
   position: absolute;
   width: 1px;

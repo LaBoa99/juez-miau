@@ -1,0 +1,79 @@
+{
+  "id": "alertas",
+  "titulo": "Alertas anti-trampas",
+  "pasos": [
+    {
+      "img": "01.png",
+      "voz": "Las alertas anti-trampas llegan solas desde la app de los equipos.",
+      "caja": {
+        "x": 321,
+        "y": 220,
+        "w": 90,
+        "h": 30
+      },
+      "accion": null,
+      "frames": 108
+    },
+    {
+      "img": "02.png",
+      "voz": "Cada una dice qué pasó, en qué equipo y a qué hora.",
+      "caja": {
+        "x": 449,
+        "y": 276,
+        "w": 83,
+        "h": 17
+      },
+      "accion": null,
+      "frames": 100
+    },
+    {
+      "img": "03.png",
+      "voz": "Ve a revisar al equipo. Si todo está bien, presiona Resolver.",
+      "caja": {
+        "x": 335,
+        "y": 323,
+        "w": 77,
+        "h": 28
+      },
+      "accion": "clic",
+      "frames": 139
+    },
+    {
+      "img": "04.png",
+      "voz": "Deja una nota de lo que encontraste…",
+      "caja": {
+        "x": 762,
+        "y": 507,
+        "w": 396,
+        "h": 74
+      },
+      "accion": "escribir",
+      "frames": 67
+    },
+    {
+      "img": "05.png",
+      "voz": "…y márcala como resuelta.",
+      "caja": {
+        "x": 991,
+        "y": 610,
+        "w": 167,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 55
+    },
+    {
+      "img": "06.png",
+      "voz": "Queda en Resueltas, con tu nota.",
+      "caja": {
+        "x": 414,
+        "y": 220,
+        "w": 82,
+        "h": 30
+      },
+      "accion": null,
+      "frames": 69
+    }
+  ],
+  "tituloFrames": 57
+}

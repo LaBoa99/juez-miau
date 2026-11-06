@@ -1,20 +1,12 @@
-/* Proyector (pantalla 17, 1920×1080). Tamaños en px por diseño; colores solo de tokens.
-   No se usan transiciones, así que se respeta prefers-reduced-motion por construcción; además
-   la rotación automática de categorías se detiene con prefers-reduced-motion (ver projector.ts). */
+/* Proyector (pantalla 17, 1920×1080) con el estilo "bodega" del sitio y del video: fondo oscuro, letra stencil,
+   cinta azul con el título y calcomanía roja al congelar. Los colores salen del tema .oj-theme-bodega (tokens.css).
+   Sin transiciones; la rotación de categorías y el confeti se detienen con prefers-reduced-motion. */
 :host {
   display: block;
   position: relative;
   min-height: 100vh;
   background: var(--oj-bg);
   color: var(--oj-text);
-}
-
-/* Botón discreto de pantalla completa, en la esquina (se oculta en pantalla completa). */
-.pj__fs {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 1;
 }
 
 .pj__center {
@@ -25,8 +17,10 @@
 }
 .pj__center p {
   margin: 0;
-  font-size: 32px;
-  font-weight: 600;
+  font-family: var(--oj-font-stencil);
+  font-size: 48px;
+  font-weight: 900;
+  text-transform: uppercase;
   color: var(--oj-text-muted);
 }
 
@@ -36,24 +30,33 @@
   align-items: center;
   justify-content: space-between;
   gap: 32px;
-  padding: 40px 56px;
-  border-bottom: 1px solid var(--oj-border);
+  padding: 20px 56px;
+}
+.pj__left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 .pj__title {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 24px;
   min-width: 0;
 }
 .pj__oj {
   display: block;
-  width: 56px;
-  height: 56px;
+  width: 72px;
+  height: 72px;
 }
 .pj__name {
   margin: 0;
-  font-size: 44px;
-  font-weight: 700;
+  font-family: var(--oj-font-stencil);
+  font-size: 72px;
+  font-weight: 900;
+  line-height: 0.92;
+  text-transform: uppercase;
+  font-variation-settings: 'opsz' 72;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -61,42 +64,41 @@
 .pj__clock {
   flex: 0 0 420px;
 }
-.pj__final,
-.pj__subtitle {
-  margin: 0 0 24px;
-  font-size: 36px;
-  font-weight: 700;
-}
-.pj__subtitle {
-  font-size: 28px;
-  color: var(--oj-text-muted);
-}
 
-/* ─── Banda de congelamiento ─── */
-.pj__frozen {
-  padding: 12px 56px;
-  background: var(--oj-warning-bg);
-  border-bottom: 1px solid var(--oj-warning);
-  color: var(--oj-warning);
-  font-size: 22px;
+/* ─── Cinta (en vivo / final) y calcomanía (congelado) ─── */
+.pj__band {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 14px 56px;
+  background: var(--oj-tape);
+  color: var(--oj-on-tape);
+}
+.pj__band--frozen {
+  background: var(--oj-sticker);
+}
+.pj__band-text {
+  font-family: var(--oj-font-stencil);
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pj__band-note {
+  font-size: 20px;
   font-weight: 600;
 }
 
 /* ─── Cuerpo ─── */
 .pj__body {
-  padding: 24px 56px 56px;
+  padding: 12px 56px 24px;
 }
 .pj__controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 24px;
-}
-.pj__rotate {
-  display: flex;
-  align-items: center;
-  gap: 24px;
+  gap: 16px;
 }
 .pj__room {
   display: flex;
@@ -108,26 +110,62 @@
 .pj__room select {
   min-width: 240px;
 }
-.pj__hint {
-  font-size: 18px;
+/* ─── Tabla grande: cada equipo es una fila-tarjeta, como en el video ─── */
+.pj__body .oj-table-wrap {
+  border: 0;
+}
+.pj__table {
+  border-collapse: separate;
+  border-spacing: 0 6px;
+}
+.pj__table thead th {
+  background: none;
+  font-size: 16px;
+  letter-spacing: 0.08em;
   color: var(--oj-text-muted);
 }
-
-/* ─── Tabla grande ─── */
-.pj__table th {
-  font-size: 16px;
+.pj__table td {
+  padding: 4px 16px;
+  border-bottom: 0;
+}
+/* :where baja la especificidad para que el oro, la plata y el bronce del podio (styles.css) ganen */
+:where(.pj__table) td {
+  background: var(--oj-row);
+}
+.pj__table td:first-child {
+  border-radius: 10px 0 0 10px;
+}
+.pj__table td:last-child {
+  border-radius: 0 10px 10px 0;
+}
+.pj__table tbody tr:hover {
+  background: none;
 }
 .pj__rank {
-  font-size: 32px;
+  width: 1%;
+  font-size: 36px;
   font-weight: 700;
   text-align: right;
   white-space: nowrap;
 }
 .pj__team {
-  font-size: 28px;
-  font-weight: 600;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+.pj__medal {
+  margin-left: 16px;
 }
 .pj__prob {
   text-align: center;
   white-space: nowrap;
+  /* Las cajitas usan --oj-bg/--oj-border/--oj-neutral-bg: aquí se aclaran para que resalten sobre la fila */
+  --oj-bg: var(--oj-cell-bg);
+  --oj-border: var(--oj-cell-border);
+  --oj-neutral-bg: var(--oj-cell-head);
+}
+.pj__more {
+  margin: 8px 0 0;
+  font-size: 20px;
+  color: var(--oj-text-muted);
 }

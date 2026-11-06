@@ -127,3 +127,13 @@ desktop.ini
 equipos-prueba/credenciales-*
 equipos-prueba/edicion.json
 equipos-prueba/reporte.md
+
+# ===================================
+# DOCUMENTACIÓN LOCAL
+# ===================================
+docs/
+
+# ===================================
+# VIDEO (Remotion)
+# ===================================
+apps/video/public/clips/

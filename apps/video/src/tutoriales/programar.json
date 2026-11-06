@@ -1,0 +1,103 @@
+{
+  "id": "programar",
+  "titulo": "Programar e iniciar el concurso",
+  "pasos": [
+    {
+      "img": "01.png",
+      "voz": "Con todo listo, presiona Programar edición.",
+      "caja": {
+        "x": 1368,
+        "y": 155,
+        "w": 145,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 90
+    },
+    {
+      "img": "02.png",
+      "voz": "Revisa la lista: duración, un problema publicado y al menos un equipo.",
+      "caja": {
+        "x": 968,
+        "y": 439,
+        "w": 260,
+        "h": 78
+      },
+      "accion": null,
+      "frames": 138
+    },
+    {
+      "img": "03.png",
+      "voz": "Elige la fecha y la hora de inicio.",
+      "caja": {
+        "x": 692,
+        "y": 460,
+        "w": 260,
+        "h": 32
+      },
+      "accion": "clic",
+      "frames": 72
+    },
+    {
+      "img": "04.png",
+      "voz": "Y programa.",
+      "caja": {
+        "x": 1132,
+        "y": 656,
+        "w": 96,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 33
+    },
+    {
+      "img": "05.png",
+      "voz": "El concurso arranca solo a esa hora. Si quieres empezar antes, ve a Concurso.",
+      "caja": {
+        "x": 771,
+        "y": 90,
+        "w": 84,
+        "h": 38
+      },
+      "accion": "clic",
+      "frames": 167
+    },
+    {
+      "img": "06.png",
+      "voz": "Presiona Iniciar ahora…",
+      "caja": {
+        "x": 724,
+        "y": 446,
+        "w": 108,
+        "h": 40
+      },
+      "accion": "clic",
+      "frames": 54
+    },
+    {
+      "img": "07.png",
+      "voz": "…y confirma.",
+      "caja": {
+        "x": 1089,
+        "y": 578,
+        "w": 69,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 36
+    },
+    {
+      "img": "08.png",
+      "voz": "Listo: el reloj corre y los equipos ya pueden enviar. Pausar y finalizar le tocan al superadmin.",
+      "caja": {
+        "x": 1713,
+        "y": 18,
+        "w": 64,
+        "h": 13
+      },
+      "accion": null,
+      "frames": 194
+    }
+  ],
+  "tituloFrames": 65
+}

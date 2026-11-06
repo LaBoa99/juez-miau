@@ -19,6 +19,17 @@
   --oj-neutral-bg: #F3F4F6;
   --oj-backdrop: rgba(17, 24, 39, 0.4);
 
+  /* Podio del marcador (oro como en el video del sitio) y tinta oscura encima */
+  --oj-gold: #E8B400;
+  --oj-silver: #C9CED6;
+  --oj-bronze: #D4935A;
+  --oj-podium-ink: #141210;
+  /* Confeti: azul cinta, rojo calcomanía y kraft del video */
+  --oj-confetti-tape: #1A43BF;
+  --oj-confetti-sticker: #BE2018;
+  --oj-confetti-kraft: #C99A5E;
+  --oj-font-stencil: 'Big Shoulders Stencil', 'Inter', sans-serif;
+
   /* Forma y fuente */
   --oj-radius: 4px;
   --oj-font-sans: 'Inter', system-ui, sans-serif;
@@ -45,4 +56,34 @@
   --oj-text-label-weight: 600;
   --oj-text-label-sm: 0.6875rem;
   --oj-text-label-sm-weight: 600;
+}
+
+/* Tema "bodega" del sitio (site/DESIGN.md, modo oscuro) solo para el proyector: al redefinir los tokens,
+   el reloj, las celdas y los botones toman los colores del sitio sin tocarlos. */
+.oj-theme-bodega {
+  --oj-bg: #120F0B;
+  --oj-bg-muted: #1C1914;
+  --oj-text: #EDE8DF;
+  --oj-text-muted: #D2BFA3;
+  --oj-border: rgb(242 232 216 / 0.22);
+  --oj-primary: #EDE8DF;
+  --oj-primary-hover: #D2BFA3;
+  --oj-primary-active: #FFFFFF;
+  --oj-success: #6BE09A;
+  --oj-success-bg: #12402A;
+  --oj-danger: #FF6B5E;
+  --oj-danger-bg: rgb(255 107 94 / 0.12);
+  --oj-warning: #F2B33D;
+  --oj-warning-bg: #45330F;
+  --oj-neutral: #D2BFA3;
+  --oj-neutral-bg: #2A241D;
+  /* Propios del proyector */
+  --oj-row: #1C1914;
+  --oj-tape: #3463EC;
+  --oj-on-tape: #FFFFFF;
+  --oj-sticker: #C8261E;
+  /* Cajitas de problema sin envíos: más claras que la fila para que se distingan */
+  --oj-cell-bg: #2E2820;
+  --oj-cell-head: #4A4034;
+  --oj-cell-border: rgb(242 232 216 / 0.45);
 }

@@ -91,16 +91,16 @@ type Kind = 'solved' | 'failed' | 'pending' | 'empty';
     }
     :host(.oj-sc--grande) .oj-sc__head {
       gap: 4px;
-      padding: 4px 6px;
-      font-size: 18px;
+      padding: 2px 6px;
+      font-size: 16px;
     }
     :host(.oj-sc--grande) .oj-sc__cat {
       width: 16px;
       height: 16px;
     }
     :host(.oj-sc--grande) .oj-sc__body {
-      padding: 6px;
-      font-size: 24px;
+      padding: 3px 6px;
+      font-size: 22px;
     }
   `,
 })

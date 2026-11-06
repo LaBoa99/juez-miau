@@ -1,0 +1,127 @@
+{
+  "id": "marcador",
+  "titulo": "Marcador y proyector",
+  "pasos": [
+    {
+      "img": "01.png",
+      "voz": "En Ediciones, busca tu concurso y presiona Configurar.",
+      "caja": {
+        "x": 1426,
+        "y": 251,
+        "w": 90,
+        "h": 38
+      },
+      "accion": "clic",
+      "frames": 108
+    },
+    {
+      "img": "02.png",
+      "voz": "Entra a la pestaña Marcador.",
+      "caja": {
+        "x": 875,
+        "y": 90,
+        "w": 84,
+        "h": 38
+      },
+      "accion": "clic",
+      "frames": 60
+    },
+    {
+      "img": "03.png",
+      "voz": "Cada fila es un equipo: su lugar, su nombre y una cajita por problema.",
+      "caja": {
+        "x": 321,
+        "y": 400,
+        "w": 1278,
+        "h": 47
+      },
+      "accion": null,
+      "frames": 141
+    },
+    {
+      "img": "04.png",
+      "voz": "En verde, resuelto, con los intentos que le tomó. En ámbar, intentos fallidos. En gris, todavía no lo intenta.",
+      "caja": {
+        "x": 976,
+        "y": 406,
+        "w": 46,
+        "h": 34
+      },
+      "accion": null,
+      "frames": 247
+    },
+    {
+      "img": "05.png",
+      "voz": "Los tres primeros lugares se pintan de oro, plata y bronce.",
+      "caja": {
+        "x": 321,
+        "y": 400,
+        "w": 1278,
+        "h": 47
+      },
+      "accion": null,
+      "frames": 108
+    },
+    {
+      "img": "06.png",
+      "voz": "En la última parte del concurso el marcador se congela para el público. Aquí tú sigues viendo todo.",
+      "caja": {
+        "x": 320,
+        "y": 201,
+        "w": 280,
+        "h": 127
+      },
+      "accion": null,
+      "frames": 179
+    },
+    {
+      "img": "07.png",
+      "voz": "Para la pantalla grande del salón, abre el proyector.",
+      "caja": {
+        "x": 1341,
+        "y": 155,
+        "w": 126,
+        "h": 34
+      },
+      "accion": null,
+      "frames": 95
+    },
+    {
+      "img": "08.png",
+      "voz": "El proyector se actualiza solo y cambia de categoría cada veinte segundos.",
+      "caja": {
+        "x": 0,
+        "y": 208,
+        "w": 1920,
+        "h": 64
+      },
+      "accion": null,
+      "frames": 129
+    },
+    {
+      "img": "09.png",
+      "voz": "Muestra el top diez, con el podio y confeti al terminar.",
+      "caja": {
+        "x": 56,
+        "y": 284,
+        "w": 1808,
+        "h": 440
+      },
+      "accion": null,
+      "frames": 109
+    },
+    {
+      "img": "10.png",
+      "voz": "Ponlo en pantalla completa y listo.",
+      "caja": {
+        "x": 872,
+        "y": 131,
+        "w": 142,
+        "h": 34
+      },
+      "accion": null,
+      "frames": 66
+    }
+  ],
+  "tituloFrames": 50
+}

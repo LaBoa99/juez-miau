@@ -1,0 +1,44 @@
+<oj-page-header title="Tutoriales" subtitle="Videos cortos para aprender a usar el panel" />
+
+@if (current(); as t) {
+  <div class="tu">
+    <section class="tu__player" aria-live="polite">
+      <!-- track by id: al cambiar de tutorial se crea un <video> nuevo y no sigue el anterior -->
+      @for (v of [t]; track v.id) {
+        <video class="tu__video" controls preload="metadata" [poster]="'tutoriales/' + v.id + '.jpg'">
+          <source [src]="'tutoriales/' + v.id + '.mp4'" type="video/mp4" />
+          Tu navegador no puede reproducir este video.
+        </video>
+      }
+      <h2 class="tu__title">{{ t.title }}</h2>
+      <p class="tu__summary">{{ t.summary }}</p>
+    </section>
+
+    <nav class="tu__list" aria-label="Lista de tutoriales">
+      @for (g of groups(); track g.name) {
+        <h3 class="tu__group">{{ g.name }}</h3>
+        <ul>
+          @for (item of g.items; track item.id) {
+            <li>
+              <button
+                type="button"
+                class="tu__item"
+                [class.tu__item--active]="item.id === t.id"
+                [attr.aria-current]="item.id === t.id ? 'true' : null"
+                (click)="pick(item)"
+              >
+                <img class="tu__thumb" [src]="'tutoriales/' + item.id + '.jpg'" alt="" />
+                <span class="tu__item-text">
+                  <span class="tu__item-title">{{ item.title }}</span>
+                  <span class="tu__item-summary">{{ item.summary }}</span>
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </nav>
+  </div>
+} @else {
+  <oj-empty-state message="Aún no tienes ediciones asignadas. Cuando te asignen a una, aquí verás los tutoriales de lo que puedes hacer." />
+}

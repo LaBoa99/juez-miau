@@ -1,18 +1,44 @@
-@if (!isFullscreen()) {
-  <button ojButton variant="secondary" type="button" class="pj__fs" (click)="toggleFullscreen()">
-    Pantalla completa
-  </button>
-}
-
 @if (unavailable()) {
   <div class="pj__center"><p>Este concurso todavía no está disponible.</p></div>
 } @else if (!loaded()) {
   <div class="pj__center"><p>Cargando…</p></div>
 } @else {
   <header class="pj__head">
-    <div class="pj__title">
-      <img class="pj__oj" src="assets/logos/gatito.svg" alt="Juez Virtual" />
-      <h1 class="pj__name">{{ clock()?.editionName }}</h1>
+    <div class="pj__left">
+      <div class="pj__title">
+        <img class="pj__oj" src="assets/logos/gatito.svg" alt="Juez Virtual" />
+        <h1 class="pj__name">{{ clock()?.editionName }}</h1>
+      </div>
+      <!-- Controles junto al título para dejarle el alto de la pantalla al top 10 -->
+      <div class="pj__controls">
+        @if (categoryOptions().length > 1) {
+          <oj-segmented
+            size="lg"
+            [options]="categoryOptions()"
+            [value]="categorySeg()"
+            (valueChange)="categorySeg.set($event ?? '')"
+          />
+        }
+        @if (rooms().length) {
+          <label class="pj__room">
+            <span>Salón</span>
+            <select [value]="roomId() ?? ''" (change)="onRoom($any($event.target).value)">
+              <option value="">Todos los salones</option>
+              @for (r of rooms(); track r.id) {
+                <option [value]="r.id">{{ r.name }}</option>
+              }
+            </select>
+          </label>
+        }
+        @if (categoryOptions().length > 1) {
+          <button ojButton variant="secondary" type="button" title="Cambia de categoría cada 20 s" (click)="paused.set(!paused())">
+            {{ paused() ? 'Reanudar rotación' : 'Pausar rotación' }}
+          </button>
+        }
+        @if (!isFullscreen()) {
+          <button ojButton variant="secondary" type="button" (click)="toggleFullscreen()">Pantalla completa</button>
+        }
+      </div>
     </div>
     <div class="pj__clock">
       @if (clock(); as c) {
@@ -21,47 +47,26 @@
     </div>
   </header>
 
-  @if (frozen()) {
-    <div class="pj__frozen">
-      Marcador congelado · Posiciones al minuto {{ standings()?.freezeMinute }}. Los resultados finales se
-      muestran al terminar.
-    </div>
-  }
+  <!-- Cinta como en el sitio: azul en vivo/final, calcomanía roja si está congelado -->
+  <div class="pj__band" [class.pj__band--frozen]="frozen()">
+    <span class="pj__band-text">
+      @if (frozen()) {
+        Congelado · minuto {{ standings()?.freezeMinute }}
+      } @else if (finished()) {
+        Resultados finales
+      } @else {
+        Marcador en vivo
+      }
+      @if (current(); as cat) {
+        · {{ cat.name }}{{ roomName() ? ' · ' + roomName() : '' }}
+      }
+    </span>
+    @if (frozen()) {
+      <span class="pj__band-note">Los resultados finales se muestran al terminar</span>
+    }
+  </div>
 
   <section class="pj__body">
-    @if (finished()) {
-      <h2 class="pj__final">Resultados finales{{ current() ? ' · ' + current()!.name : '' }}{{ roomName() ? ' · ' + roomName() : '' }}</h2>
-    } @else if (current(); as cat) {
-      <h2 class="pj__subtitle">{{ cat.name }}{{ roomName() ? ' · ' + roomName() : '' }}</h2>
-    }
-    @if (categoryOptions().length > 1) {
-      <div class="pj__controls">
-        <oj-segmented
-          size="lg"
-          [options]="categoryOptions()"
-          [value]="categorySeg()"
-          (valueChange)="categorySeg.set($event ?? '')"
-        />
-        <div class="pj__rotate">
-          @if (rooms().length) {
-            <label class="pj__room">
-              <span>Salón</span>
-              <select [value]="roomId() ?? ''" (change)="onRoom($any($event.target).value)">
-                <option value="">Todos los salones</option>
-                @for (r of rooms(); track r.id) {
-                  <option [value]="r.id">{{ r.name }}</option>
-                }
-              </select>
-            </label>
-          }
-          <span class="pj__hint">Cambia de categoría cada 20 s</span>
-          <button ojButton variant="secondary" type="button" (click)="paused.set(!paused())">
-            {{ paused() ? 'Reanudar rotación' : 'Pausar rotación' }}
-          </button>
-        </div>
-      </div>
-    }
-
     @if (current(); as cat) {
       <div class="oj-table-wrap">
         <table class="oj-table pj__table">
@@ -75,10 +80,11 @@
             </tr>
           </thead>
           <tbody>
-            @for (row of cat.rows; track row.teamId) {
-              <tr>
+            @for (row of cat.rows.slice(0, top); track row.teamId) {
+              @let place = podium(row, cat.rows);
+              <tr [class]="place ? 'oj-podium-' + place : ''">
                 <td class="pj__rank oj-mono">{{ row.rank ?? '—' }}</td>
-                <td class="pj__team">{{ row.teamName }}</td>
+                <td class="pj__team">{{ row.teamName }}@if (place) {<span class="pj__medal" aria-hidden="true">{{ podiumEmoji(place) }}</span>}</td>
                 @for (p of cat.problems; track p.id; let i = $index) {
                   <td class="pj__prob"><oj-standings-cell size="grande" [cell]="row.cells[i]" [letter]="p.letter" /></td>
                 }
@@ -87,6 +93,9 @@
           </tbody>
         </table>
       </div>
+      @if (cat.rows.length > top) {
+        <p class="pj__more">Top {{ top }} de {{ cat.rows.length }} equipos</p>
+      }
     }
   </section>
 }

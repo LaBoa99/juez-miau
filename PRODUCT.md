@@ -7,10 +7,10 @@
 web
 
 ## Stack
-Página pública en `site/`: HTML y CSS estáticos sin build, publicada con GitHub Pages (`.github/workflows/pages.yml`). El producto en sí es un monorepo pnpm: backend NestJS, panel de staff Angular y app de escritorio PySide6 (ver `docs/arquitectura.md`).
+Página pública en `site/`: HTML y CSS estáticos sin build, publicada con GitHub Pages (`.github/workflows/pages.yml`). El producto en sí es un monorepo pnpm: backend NestJS, panel de staff Angular y app de escritorio PySide6.
 
 ## Users
-- **Página pública:** organizadores de concursos de programación de otras escuelas y universidades (profes, coordinadores, clubes) que evalúan si usar Juez Miau en sus propios concursos. Llegan desde un enlace (README, correo, presentación) y deben salir convencidos de que el juez es rápido y justo, y de que lo pueden montar ellos mismos. Brief completo: `docs/design/site-brief.md`.
+- **Página pública:** organizadores de concursos de programación de otras escuelas y universidades (profes, coordinadores, clubes) que evalúan si usar Juez Miau en sus propios concursos. Llegan desde un enlace (README, correo, presentación) y deben salir convencidos de que el juez es rápido y justo, y de que lo pueden montar ellos mismos.
 - **Producto:** staff del concurso (superadmin, administrador, juez, observador) en el panel web; equipos de estudiantes en un laboratorio con más de 90 equipos Windows usando la app de escritorio.
 
 ## Product Purpose
@@ -43,7 +43,7 @@ Es un juez hecho en casa, en la Maestría en Ingeniería de Software del CUValle
 - Identidad original: sin globos de colores ni referencias o comparaciones con ICPC u otros concursos o jueces.
 
 ## Evidence on Hand
-- Código, documentación (`docs/`, `deploy/README.md`) y workflow de CI del `.exe`.
+- Código, documentación (`deploy/README.md`) y workflow de CI del `.exe`.
 - Marcadores, envíos y equipos mostrados en la página son ilustrativos y deben marcarse como ejemplo.
 - Pendiente del usuario: nombres completos, correos y LinkedIn de los integrantes y nombre exacto del programa.
 - Ausentes: capturas reales del panel, fotos de concursos, cifras de uso.
