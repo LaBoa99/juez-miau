@@ -1,0 +1,4 @@
+:host { display: flex; flex-direction: column; gap: var(--oj-space-md); }
+.home__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--oj-space-sm); }
+.home__title { margin: 0; font-size: 16px; font-weight: 600; }
+.home__hint { margin: 0; font-size: 13px; color: var(--oj-text-muted); }

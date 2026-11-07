@@ -9,6 +9,7 @@ import marcador from "./marcador.json";
 import problemas from "./problemas.json";
 import programar from "./programar.json";
 import superadmin from "./superadmin.json";
+import triangulo from "./triangulo.json";
 
 // Un video por guion de scripts/guiones.mjs (los JSON los escriben capturas.mjs y voz_tutoriales.py).
-export const TUTORIALES = [marcador, alertas, control, envios, aclaraciones, problemas, edicion, equipos, programar, superadmin] as Datos[];
+export const TUTORIALES = [marcador, alertas, control, envios, aclaraciones, problemas, edicion, equipos, programar, superadmin, triangulo] as Datos[];

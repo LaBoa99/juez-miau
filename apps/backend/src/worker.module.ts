@@ -7,7 +7,8 @@ import { JudgeModule } from './judge/judge.module.js'
 import { Testset } from './testsets/entities/testset.entity.js'
 import { TestCase } from './testsets/entities/test-case.entity.js'
 import { TestsetBuildProcessor } from './testsets/processors/testset-build.processor.js'
-import { TEST_RUN_QUEUE, TESTSET_BUILD_QUEUE } from './testsets/testsets.constants.js'
+import { SIGNATURE_QUEUE, TEST_RUN_QUEUE, TESTSET_BUILD_QUEUE } from './testsets/testsets.constants.js'
+import { SignatureProcessor } from './testsets/processors/signature.processor.js'
 import { TestRunProcessor } from './testsets/processors/test-run.processor.js'
 import { Submission } from './submissions/entities/submission.entity.js'
 import { SubmissionCase } from './submissions/entities/submission-case.entity.js'
@@ -23,10 +24,10 @@ import { SUBMISSIONS_QUEUE } from './submissions/submissions.constants.js'
         workerTypeOrmImport,
         bullImport,
         TypeOrmModule.forFeature([Testset, TestCase, Submission, SubmissionCase]),
-        BullModule.registerQueue({ name: TESTSET_BUILD_QUEUE }, { name: SUBMISSIONS_QUEUE }, { name: TEST_RUN_QUEUE }),
+        BullModule.registerQueue({ name: TESTSET_BUILD_QUEUE }, { name: SUBMISSIONS_QUEUE }, { name: TEST_RUN_QUEUE }, { name: SIGNATURE_QUEUE }),
         BlobsModule,
         JudgeModule,
     ],
-    providers: [TestsetBuildProcessor, SubmissionProcessor, SubmissionQueueService, TestRunProcessor],
+    providers: [TestsetBuildProcessor, SubmissionProcessor, SubmissionQueueService, TestRunProcessor, SignatureProcessor],
 })
 export class WorkerModule {}

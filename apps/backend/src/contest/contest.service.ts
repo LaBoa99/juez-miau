@@ -44,7 +44,7 @@ export class ContestService {
             languages: languages.map((language) => ({ id: language.id, code: language.code, compilerVersion: language.compiler_version })),
             problems: await Promise.all(problems.map(async (problem): Promise<IContestProblem> => ({
                 id: problem.id,
-                letter: problem.letter,
+                letter: problem.letter ?? '—',
                 points: problem.points,
                 ...await this.problemsService.buildPreview(problem),
                 starterCode: Object.fromEntries(languages.flatMap((language) => {
@@ -53,5 +53,15 @@ export class ContestService {
                 })),
             }))),
         }
+    }
+
+    async getStatementPdf(teamId: number, problemId: number): Promise<Buffer> {
+        const team = await this.teamRepository.findOne({ where: { id: teamId }, relations: { edition: true } })
+        if(!team) throw new NotFoundException('team not found #' + teamId)
+        const problem = STARTED.includes(team.edition.status)
+            ? await this.problemRepository.findOneBy({ id: problemId, edition_id: team.edition_id, category_id: team.category_id, status: ProblemStatus.PUBLISHED })
+            : null
+        if(!problem) throw new NotFoundException('problem not found #' + problemId)
+        return this.problemsService.readStatementPdf(problem)
     }
 }

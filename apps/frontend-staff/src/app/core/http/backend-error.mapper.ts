@@ -32,6 +32,10 @@ const PATTERNS: readonly [RegExp, string][] = [
   // ── Problema / edición ──
   [/letter .* is already used/i, 'Esa letra ya está usada en la categoría.'],
   [/can only be deleted while it is a draft/i, 'Solo se puede eliminar mientras es borrador.'],
+  [/is in the contest; take it out before deleting/i, 'Está en el concurso: quítalo antes de eliminarlo.'],
+  [/would have more than \d+ cases|already has \d+ cases/i, 'Se pasaría del máximo de casos de prueba de la versión.'],
+  [/only cases generated from the schema can be pinned/i, 'Solo los casos aleatorios se pueden fijar como manuales.'],
+  [/^case \d+: /i, 'Algún caso no coincide con la firma: revisa los nombres y los tipos de los parámetros.'],
   [/can only be modified before it starts/i, 'Solo se puede modificar antes de que inicie el concurso.'],
   [/can only be deleted while it is a draft/i, 'Solo se puede eliminar mientras es borrador.'],
   // ── Programar edición (el backend ya los manda en español; se normalizan) ──

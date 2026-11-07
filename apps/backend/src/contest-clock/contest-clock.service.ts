@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { In, IsNull, LessThanOrEqual, Not, Repository, type FindOptionsWhere } from 'typeorm'
-import { EditionStatus, SOCKET_EVENTS, type IContestClock } from '@concurso/shared-types'
+import { In, IsNull, LessThanOrEqual, Not, Repository, type EntityManager, type FindOptionsWhere } from 'typeorm'
+import { EditionStatus, ProblemStatus, SOCKET_EVENTS, type IContestClock } from '@concurso/shared-types'
 import { Edition } from '../editions/entities/edition.entity.js'
 import { Submission } from '../submissions/entities/submission.entity.js'
 import { Clarification } from '../clarifications/entities/clarification.entity.js'
@@ -9,6 +9,8 @@ import { Flag } from '../flags/entities/flag.entity.js'
 import { Team } from '../teams/entities/team.entity.js'
 import { TeamSession } from '../teams/entities/team-session.entity.js'
 import { RealtimeService } from '../realtime/realtime.service.js'
+import { Problem } from '../problems/entities/problem.entity.js'
+import { letterAt } from '../problems/letters.js'
 import { elapsedMs, remainingMs, toClockDto } from './clock.js'
 
 // Transiciones SCHEDULED → RUNNING ⇄ PAUSED → FINISHED. Todas son updates condicionales sobre
@@ -29,6 +31,7 @@ export class ContestClockService {
     }
 
     // Se puede iniciar a mano antes de la hora programada
+    // En la misma transacción se asignan las letras a los problemas aceptados
     async start(editionId: number): Promise<IContestClock> {
         const now = new Date()
         return this.transition(editionId, [EditionStatus.SCHEDULED], () => ({
@@ -36,7 +39,7 @@ export class ContestClockService {
             started_at: now,
             paused_at: null,
             paused_total_ms: 0,
-        }))
+        }), (manager) => assignLetters(manager, editionId))
     }
 
     async pause(editionId: number): Promise<IContestClock> {
@@ -129,6 +132,7 @@ export class ContestClockService {
         editionId: number,
         from: EditionStatus[],
         changes: (edition: Edition) => Partial<Edition>,
+        alsoInTransaction?: (manager: EntityManager) => Promise<void>,
     ): Promise<IContestClock> {
         const edition = await this.getEdition(editionId)
         if(!from.includes(edition.status)){
@@ -137,10 +141,13 @@ export class ContestClockService {
 
         const update = changes(edition)
         const where: FindOptionsWhere<Edition> = { id: editionId, status: In(from) }
-        const result = await this.editionRepository.update(where, update)
-        if(!result.affected){
-            throw new ConflictException('edition #' + editionId + ' changed while updating its clock; try again')
-        }
+        await this.editionRepository.manager.transaction(async (manager) => {
+            const result = await manager.update(Edition, where, update)
+            if(!result.affected){
+                throw new ConflictException('edition #' + editionId + ' changed while updating its clock; try again')
+            }
+            await alsoInTransaction?.(manager)
+        })
 
         Object.assign(edition, update)
         const clock = toClockDto(edition)
@@ -159,5 +166,22 @@ export class ContestClockService {
         const edition = await this.editionRepository.findOneBy({ id: editionId })
         if(!edition) throw new NotFoundException('edition not found #' + editionId)
         return edition
+    }
+}
+
+// A, B, C… por categoría a los problemas aceptados, en orden de creación; el resto queda sin letra.
+// Corre dentro del update condicional que inicia el concurso, así que no puede haber dos a la vez
+async function assignLetters(manager: EntityManager, editionId: number): Promise<void> {
+    await manager.update(Problem, { edition_id: editionId }, { letter: null })
+    const accepted = await manager.find(Problem, {
+        where: { edition_id: editionId, status: ProblemStatus.PUBLISHED },
+        select: { id: true, category_id: true },
+        order: { category_id: 'ASC', id: 'ASC' },
+    })
+    const nextIndex = new Map<number, number>()
+    for(const problem of accepted){
+        const index = nextIndex.get(problem.category_id) ?? 0
+        nextIndex.set(problem.category_id, index + 1)
+        await manager.update(Problem, problem.id, { letter: letterAt(index) })
     }
 }

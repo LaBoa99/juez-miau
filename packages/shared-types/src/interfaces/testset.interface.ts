@@ -73,9 +73,27 @@ export interface IUpdateTestset {
 export interface ICreateTestCase {
     input: Record<string, unknown>
     visibility?: TestCaseVisibility
+    // Grupo con nombre para casos manuales (p. ej. "bordes"); null o vacío = "Manuales"
+    group?: string | null
 }
 
 export type IUpdateTestCase = Partial<ICreateTestCase>
+
+// POST /testsets/:id/cases/bulk: todos o ninguno
+export interface ICreateTestCases {
+    cases: ICreateTestCase[]
+}
+
+// Visibilidad de un grupo completo; `group: null` son los casos manuales
+export interface IUpdateCasesVisibility {
+    group: string | null
+    visibility: TestCaseVisibility
+}
+
+// Con `schema` lo guarda antes de generar, conservando la visibilidad de cada grupo y semilla
+export interface IGenerateTestset {
+    schema?: ITestsetSchema
+}
 
 export interface ISetRefSolution {
     languageId: string

@@ -2,10 +2,9 @@
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 const LETTERS = [...ALPHABET, ...[...ALPHABET].flatMap((a) => [...ALPHABET].map((b) => a + b))]
 
-// Primera letra libre de la categoría; rellena los huecos que dejan los borradores eliminados
-export function nextFreeLetter(taken: string[]): string {
-    const used = new Set(taken)
-    const letter = LETTERS.find((l) => !used.has(l))
-    if(!letter) throw new Error('no free letters left in the category')
+// Letra del problema número `index` (0 = A) de su categoría
+export function letterAt(index: number): string {
+    const letter = LETTERS[index]
+    if(!letter) throw new Error('a category cannot have more than ' + LETTERS.length + ' problems')
     return letter
 }

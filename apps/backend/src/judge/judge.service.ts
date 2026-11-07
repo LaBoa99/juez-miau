@@ -5,7 +5,7 @@ import { buildProgram, type DriverProgram } from './drivers/index.js'
 import { stripLocalBlocks } from './drivers/driver.types.js'
 import { normalizeOutput, outputsMatch } from './compare.js'
 import { CpuPool } from './cpu-pool.js'
-import { DockerRunnerService, JudgeInfrastructureError, type RawCaseResult } from './docker-runner.service.js'
+import { DockerRunnerService, JudgeInfrastructureError, type CompileResult, type RawCaseResult } from './docker-runner.service.js'
 import { CPU_POOL } from './judge.constants.js'
 import { checkerInput, checkerSignature } from './special-programs.js'
 
@@ -95,6 +95,20 @@ export class JudgeService {
             return this.applyChecker(cpu, request, result)
         }
         return request.exclusive ? this.pool.useExclusive(run) : this.pool.use(run)
+    }
+
+    // Solo compila la solución con el driver de `signature`: confirma que la firma coincide con el código
+    compileCheck(language: Language, signature: IProblemSignature, source: string): Promise<CompileResult> {
+        const program = buildProgram(language.code, { signature, source, flags: language.flags })
+        return this.pool.use(async (cpu) => {
+            const workspace = await this.runner.createWorkspace()
+            try {
+                await this.runner.writeFiles(workspace.box, program.files)
+                return await this.runner.compile(workspace, language.image_ref, program.compileCmd, cpu)
+            } finally {
+                await this.runner.removeWorkspace(workspace)
+            }
+        })
     }
 
     private async execute(cpu: number, request: JudgeRequest, program: DriverProgram): Promise<JudgeResult> {

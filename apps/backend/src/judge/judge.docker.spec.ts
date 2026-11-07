@@ -8,6 +8,7 @@ import { GENERATOR_SIGNATURE, generatorInput } from './special-programs.js'
 import { generatorTemplate } from './drivers/index.js'
 import { parseJsonPreservingIntegers, serializeInput } from '../testsets/generation/canonical-json.js'
 import { normalizeInput } from '../testsets/generation/signature.js'
+import { detectSignatures } from '../testsets/generation/detect-signature.js'
 
 // Compila y ejecuta de verdad en Docker (las imágenes de judge-evaluation.md deben estar descargadas).
 // Tarda ~1 min, por eso no corre con `pnpm test`:
@@ -222,6 +223,26 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('JudgeService en Docker', () => {
             expect(result.verdict).toBe(Verdict.TLE)
             expect(result.cases).toHaveLength(1)
         }, 60_000)
+
+        // JavaScript no tiene tipos: ahí solo se detectan los nombres
+        it.each(Object.keys(SOLUTIONS).filter((language) => language !== 'javascript'))('detecta la firma de scale en %s y compila con su driver', async (language) => {
+            const [detected] = detectSignatures(language, SOLUTIONS[language].scale)
+            // Python y TS no traen todos los tipos en estas soluciones: se completan como lo haría el juez
+            const signature = { ...SCALE, functionName: detected.functionName, params: detected.params.map((param, i) => ({ name: param.name, type: param.type ?? SCALE.params[i].type })) }
+            expect(signature.params.map((param) => param.name)).toEqual(['nums', 'k'])
+            if (detected.params.every((param) => param.type !== null)) expect(detected.params).toEqual(SCALE.params)
+            const compiled = await judge.compileCheck(LANGUAGES[language] as Language, signature, SOLUTIONS[language].scale)
+            expect(compiled.log).toBe(compiled.ok ? compiled.log : 'compila')
+        }, 120_000)
+
+        it('una firma que no coincide con la solución no compila', async () => {
+            const wrong = { ...SCALE, params: [{ name: 'nums', type: string }, SCALE.params[1]] }
+            const [java, cpp] = await Promise.all([
+                judge.compileCheck(LANGUAGES.java as Language, wrong, SOLUTIONS.java.scale),
+                judge.compileCheck(LANGUAGES.cpp as Language, wrong, SOLUTIONS.cpp.scale),
+            ])
+            expect([java.ok, cpp.ok]).toEqual([false, false])
+        }, 120_000)
 
         it('RE con el stderr del programa', async () => {
             const result = await run('python', GREET, 'def greet(name, times):\n    raise ValueError("se rompió")\n', GREET_CASES)

@@ -148,7 +148,7 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Concurso en vivo: reloj, envíos, ju
 
     // Problema publicado con su testset construido por la solución oficial
     const created = await api().post(`/api/v1/editions/${edition.id}/problems`).set(bearer(adminToken)).send({
-      categoryId: category.id, letter: 'A', title: 'Suma', statement: 'Suma los números y multiplica por k.',
+      categoryId: category.id, title: 'Suma', statement: 'Suma los números y multiplica por k.',
       inputFormat: 'nums: int[], k: long', outputFormat: 'long',
     }).expect(201);
     problemId = created.body.id;
@@ -168,7 +168,7 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Concurso en vivo: reloj, envíos, ju
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
     expect((await testsetRepo.findOneByOrFail({ id: testsetId })).status).toBe(TestsetStatus.READY);
-    await api().post(`/api/v1/problems/${problemId}/publish`).set(bearer(adminToken)).expect(200);
+    await api().post(`/api/v1/problems/${problemId}/accept`).set(bearer(adminToken)).expect(200);
 
     // Programada en el futuro: el tick no la arranca sola durante la prueba
     await editionRepo.update(edition.id, { status: EditionStatus.SCHEDULED, scheduled_start: new Date(Date.now() + 3_600_000) });
@@ -217,6 +217,11 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Concurso en vivo: reloj, envíos, ju
     });
     expect(view.body.problems[0].starterCode.cpp).toContain('long long sumar(vector<int> nums, long long k)');
     expect(Object.keys(view.body.problems[0].starterCode).sort()).toEqual(['cpp', 'java', 'python']);
+
+    // El enunciado es markdown: no hay PDF; el otro equipo ni siquiera ve el problema
+    expect(view.body.problems[0].hasStatementPdf).toBe(false);
+    await api().get(`/api/v1/contest/problems/${problemId}/statement-pdf`).set(bearer(teamToken)).expect(404);
+    await api().get(`/api/v1/contest/problems/${problemId}/statement-pdf`).set(bearer(otherTeamToken)).expect(404);
 
     const other = await api().get('/api/v1/contest').set(bearer(otherTeamToken)).expect(200);
     expect(other.body.problems).toEqual([]);

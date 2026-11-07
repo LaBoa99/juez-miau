@@ -6,7 +6,7 @@ export const PENALTY_PER_REJECTION = 20
 const REJECTED = new Set<Verdict>([Verdict.WA, Verdict.TLE, Verdict.MLE, Verdict.RE])
 
 export interface StandingsTeam { id: number, name: string, category_id: number, suspended?: boolean }
-export interface StandingsProblem { id: number, letter: string, title: string, category_id: number }
+export interface StandingsProblem { id: number, letter: string | null, title: string, category_id: number }
 export interface StandingsCategory { id: number, code: string, name: string }
 export interface StandingsSubmission {
     id: number
@@ -32,7 +32,8 @@ export function computeStandings(input: StandingsInput, freezeMs: number | null)
     return input.categories.map((category) => {
         const problems = input.problems
             .filter((problem) => problem.category_id === category.id)
-            .sort((a, b) => a.letter.localeCompare(b.letter))
+            // Antes de iniciar no hay letras: entonces van en orden de creación
+            .sort((a, b) => (a.letter ?? '').localeCompare(b.letter ?? '') || a.id - b.id)
         const teams = input.teams.filter((team) => team.category_id === category.id)
         const problemIds = new Set(problems.map((problem) => problem.id))
 
@@ -114,7 +115,7 @@ export function computeStandings(input: StandingsInput, freezeMs: number | null)
             categoryId: category.id,
             code: category.code,
             name: category.name,
-            problems: problems.map((problem) => ({ id: problem.id, letter: problem.letter, title: problem.title })),
+            problems: problems.map((problem) => ({ id: problem.id, letter: problem.letter ?? '—', title: problem.title })),
             rows: rows.map((entry) => entry.row),
         }
     })

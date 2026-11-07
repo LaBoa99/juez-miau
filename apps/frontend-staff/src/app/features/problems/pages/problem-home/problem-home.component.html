@@ -1,0 +1,51 @@
+@if (bus.problems().length === 0) {
+  <oj-empty-state message="Aún no hay problemas. Crea el primero.">
+    <button ojButton variant="secondary" type="button" (click)="nuevo()">Nuevo problema</button>
+  </oj-empty-state>
+} @else if (!canDecide()) {
+  <p class="home__hint">Selecciona un problema de la lista. Cuando esté listo, propónlo: el admin de la edición decide si entra al concurso.</p>
+} @else {
+  <header class="home__head">
+    <h2 class="home__title">Qué entra al concurso</h2>
+    <oj-segmented [options]="filterOptions" [value]="filter()" (valueChange)="filter.set($any($event))" />
+  </header>
+  <p class="home__hint">Los jueces proponen sus problemas y tú decides cuáles entran. Las letras se asignan al iniciar el concurso.</p>
+  @if (error(); as e) {
+    <oj-alert tone="error">{{ e }}</oj-alert>
+  }
+  @if (rows().length === 0) {
+    <oj-empty-state message="No hay problemas con este estado." />
+  } @else {
+    <div class="oj-table-wrap">
+      <table class="oj-table">
+        <thead>
+          <tr>
+            <th>Problema</th>
+            <th>Categoría</th>
+            <th>Estado</th>
+            <th><span class="oj-visually-hidden">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of rows(); track p.id) {
+            <tr>
+              <td>{{ p.title }}</td>
+              <td>{{ category(p) }}</td>
+              <td><oj-badge [tone]="(p.status | problemStatus).tone">{{ (p.status | problemStatus).label }}</oj-badge></td>
+              <td>
+                <div class="oj-actions oj-actions--end">
+                  <button ojButton variant="secondary" size="sm" type="button" (click)="open(p)">Abrir</button>
+                  @if (p.status === 'published') {
+                    <button ojButton variant="danger-outline" size="sm" type="button" [disabled]="busyId() === p.id" (click)="decide(p, 'disable')">Quitar</button>
+                  } @else {
+                    <button ojButton variant="success" size="sm" type="button" [disabled]="busyId() === p.id" (click)="decide(p, 'accept')">Aceptar</button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}

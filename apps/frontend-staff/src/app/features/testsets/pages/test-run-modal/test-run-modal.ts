@@ -66,6 +66,13 @@ export class TestRunModal {
     this.start({ verify: true });
   }
 
+  // Abre con un resultado ya terminado (p. ej. la verificación que corrió "Verificar y construir")
+  showRun(run: ITestRun, mode: 'ref' | 'verify'): void {
+    this.reset(mode);
+    this.run.set(run);
+    this.modal().open();
+  }
+
   openCustom(): void {
     this.reset('custom');
     this.modal().open();

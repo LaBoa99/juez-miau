@@ -15,13 +15,15 @@ import {
     type IGeneratorTemplate,
     type ITestRun,
     type ITestsetDetail,
+    type ITestsetSchema,
+    type ISignatureDetection,
     type ITestsetSummary,
 } from '@concurso/shared-types';
 import { InjectQueue } from '@nestjs/bullmq';
 import { ConflictException, Injectable, Logger, NotFoundException, ServiceUnavailableException, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Queue } from 'bullmq';
-import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, Not, Repository } from 'typeorm';
 import { BlobsService } from '../../blobs/services/blobs.service.js';
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js';
 import { Problem } from '../../problems/entities/problem.entity.js';
@@ -42,14 +44,18 @@ import { MAX_CASE_BYTES, MAX_GENERATED_TOTAL_BYTES, MAX_INPUT_PREVIEW_BYTES, MAX
 import { validateSchema } from '../generation/schema.js';
 import { normalizeInput, validateSignature } from '../generation/signature.js';
 import { toSourceDto, toTestCaseDto, toTestsetDto, toTestsetSummary } from '../mappers/testset.mapper.js';
-import { TEST_RUN_KEEP_SECONDS, TEST_RUN_QUEUE, TESTSET_BUILD_QUEUE, type TestRunJob, type TestRunResult, type TestsetBuildJob } from '../testsets.constants.js';
+import { SIGNATURE_QUEUE, TEST_RUN_KEEP_SECONDS, TEST_RUN_QUEUE, TESTSET_BUILD_QUEUE, type SignatureJob, type TestRunJob, type TestRunResult, type TestsetBuildJob } from '../testsets.constants.js';
+import type { SignatureResult } from '../processors/signature.processor.js';
+import { DetectSignatureDto } from '../dto/detect-signature.dto.js';
 import { CreateTestRunDto } from '../dto/create-test-run.dto.js';
 import { UpdateSignatureDto } from '../dto/update-signature.dto.js';
 import { UpdateTestsetDto } from '../dto/update-testset.dto.js';
-import { CreateTestCaseDto } from '../dto/create-test-case.dto.js';
-import { UpdateTestCaseDto } from '../dto/update-test-case.dto.js';
+import { CreateTestCaseDto, CreateTestCasesDto } from '../dto/create-test-case.dto.js';
+import { UpdateCasesVisibilityDto, UpdateTestCaseDto } from '../dto/update-test-case.dto.js';
 import { SetRefSolutionDto } from '../dto/set-ref-solution.dto.js';
 import { CreateTestsetVersionDto } from '../dto/create-testset-version.dto.js';
+
+interface ManualCase { text: string, visibility?: TestCaseVisibility, group?: string | null }
 
 const EDITABLE_STATUSES = [TestsetStatus.DRAFT, TestsetStatus.FAILED]
 const DEFAULT_FLOAT_TOLERANCE = 1e-6
@@ -83,6 +89,8 @@ export class TestsetsService {
         private readonly buildQueue: Queue<TestsetBuildJob>,
         @InjectQueue(TEST_RUN_QUEUE)
         private readonly testRunQueue: Queue<TestRunJob, TestRunResult>,
+        @InjectQueue(SIGNATURE_QUEUE)
+        private readonly signatureQueue: Queue<SignatureJob, SignatureResult>,
     ) {}
 
     // ─── Firma y versiones (rutas bajo /problems/:problemId) ─────
@@ -225,12 +233,14 @@ export class TestsetsService {
         })
     }
 
-    // Reemplaza los casos generados por los que produce el esquema
-    async generate(testsetId: number, staffUserId: number): Promise<IGenerateTestsetResponse> {
+    // Reemplaza los casos generados por los que produce el esquema. Con `schema` también lo guarda,
+    // en la misma transacción, para no perder la visibilidad que el juez ya eligió
+    async generate(testsetId: number, staffUserId: number, newSchema?: ITestsetSchema): Promise<IGenerateTestsetResponse> {
         const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
 
         const signature = this.requireSignature(problem)
+        if(newSchema) testset.schema = newSchema
         if(!testset.schema){
             throw unprocessable(['testset v' + testset.version + ' has no schema'])
         }
@@ -246,6 +256,13 @@ export class TestsetsService {
         const schema = testset.schema
         try {
             return await this.dataSource.transaction(async (manager) => {
+                // Misma semilla del mismo grupo = mismo caso para el juez: conserva si era público
+                const previous = await manager.find(TestCase, {
+                    where: { testset_id: testset.id, origin: TestCaseOrigin.GENERATED },
+                    select: { group_name: true, seed: true, visibility: true },
+                })
+                const visibilityOf = new Map(previous.map((testCase) => [testCase.group_name + '\u0000' + testCase.seed, testCase.visibility]))
+
                 await manager.delete(TestCase, { testset_id: testset.id, origin: TestCaseOrigin.GENERATED })
                 let ordinal = await compactOrdinals(testset.id, manager)
                 let totalBytes = 0
@@ -261,7 +278,7 @@ export class TestsetsService {
                     await manager.insert(TestCase, {
                         testset_id: testset.id,
                         ordinal: ++ordinal,
-                        visibility: TestCaseVisibility.HIDDEN,
+                        visibility: visibilityOf.get(generated.group + '\u0000' + generated.seed) ?? TestCaseVisibility.HIDDEN,
                         origin: TestCaseOrigin.GENERATED,
                         input_sha: blob.sha,
                         input_bytes: blob.size,
@@ -517,6 +534,33 @@ export class TestsetsService {
         return base
     }
 
+    // ─── Firma desde la solución oficial ─────────────────────────
+
+    async startSignatureDetection(testsetId: number, dto: DetectSignatureDto, staffUserId: number): Promise<ISignatureDetection> {
+        const { testset } = await this.getTestsetForAuthor(testsetId, staffUserId)
+        await this.assertLanguageUsable(dto.languageId)
+        const job = await this.signatureQueue.add('detect', { testsetId: testset.id, languageId: dto.languageId, source: dto.source, functionName: dto.functionName }, {
+            removeOnComplete: { age: TEST_RUN_KEEP_SECONDS },
+            removeOnFail: { age: TEST_RUN_KEEP_SECONDS },
+        })
+        return { id: job.id!, status: 'queued', candidates: [], chosen: null, compiles: null, compileLog: null, error: null }
+    }
+
+    async getSignatureDetection(testsetId: number, jobId: string, staffUserId: number): Promise<ISignatureDetection> {
+        await this.getTestsetForAuthor(testsetId, staffUserId)
+        const job = await this.signatureQueue.getJob(jobId)
+        if(!job || job.data.testsetId !== testsetId){
+            throw new NotFoundException('signature detection not found #' + jobId)
+        }
+
+        const base: ISignatureDetection = { id: jobId, status: 'queued', candidates: [], chosen: null, compiles: null, compileLog: null, error: null }
+        const state = await job.getState()
+        if(state === 'active') return { ...base, status: 'running' }
+        if(state === 'failed') return { ...base, status: 'failed', error: job.failedReason ?? 'unknown error' }
+        if(state === 'completed') return { ...base, status: 'done', ...job.returnvalue }
+        return base
+    }
+
     // ─── Casos ───────────────────────────────────────────────────
 
     async getCase(testsetId: number, caseId: number, staffUserId: number): Promise<ITestCaseContent> {
@@ -534,11 +578,54 @@ export class TestsetsService {
         const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
         const text = this.serializeManualInput(this.requireSignature(problem), dto.input)
+        return (await this.insertManualCases(testset, [{ text, visibility: dto.visibility, group: dto.group }]))[0]
+    }
+
+    // Todos o ninguno; los errores dicen qué caso (1 = el primero) falló
+    async addCases(testsetId: number, dto: CreateTestCasesDto, staffUserId: number): Promise<ITestCase[]> {
+        const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
+        this.assertEditable(testset)
+        const signature = this.requireSignature(problem)
+
+        const errors: string[] = []
+        const items = dto.cases.map((testCase, index) => {
+            try {
+                return { text: this.serializeManualInput(signature, testCase.input), visibility: testCase.visibility, group: testCase.group }
+            } catch(error) {
+                const messages = error instanceof UnprocessableEntityException ? (error.getResponse() as { errors: string[] }).errors : [String(error)]
+                errors.push(...messages.map((text) => 'case ' + (index + 1) + ': ' + text))
+                return null
+            }
+        })
+        if(errors.length > 0) throw unprocessable(errors)
+        return this.insertManualCases(testset, items as ManualCase[])
+    }
+
+    // Un caso generado pasa a manual: se puede editar y ya no lo borra la siguiente generación
+    async pinCase(testsetId: number, caseId: number, staffUserId: number): Promise<ITestCase> {
+        const { testset } = await this.getTestsetForAuthor(testsetId, staffUserId)
+        this.assertEditable(testset)
+        const testCase = await this.getCaseOfTestset(testsetId, caseId)
+        if(testCase.origin !== TestCaseOrigin.GENERATED){
+            throw new ConflictException('only cases generated from the schema can be pinned')
+        }
 
         return this.dataSource.transaction(async (manager) => {
+            testCase.origin = TestCaseOrigin.MANUAL
+            testCase.group_name = null
+            testCase.seed = null
+            const saved = await manager.save(testCase)
+            await this.markEdited(testset, manager)
+            const preview = saved.input_bytes <= MAX_INPUT_PREVIEW_BYTES ? await this.blobsService.getText(saved.input_sha) : null
+            return toTestCaseDto(saved, preview)
+        })
+    }
+
+    private insertManualCases(testset: Testset, items: ManualCase[]): Promise<ITestCase[]> {
+        return this.dataSource.transaction(async (manager) => {
             const count = await manager.countBy(TestCase, { testset_id: testset.id })
-            if(count >= MAX_TESTSET_CASES){
-                throw unprocessable(['testset v' + testset.version + ' already has ' + MAX_TESTSET_CASES + ' cases'])
+            if(count + items.length > MAX_TESTSET_CASES){
+                throw unprocessable(['testset v' + testset.version + ' would have more than ' + MAX_TESTSET_CASES + ' cases'])
             }
 
             const { max } = await manager.createQueryBuilder(TestCase, 'test_case')
@@ -546,23 +633,27 @@ export class TestsetsService {
                 .where('test_case.testset_id = :testsetId', { testsetId: testset.id })
                 .getRawOne<{ max: number | null }>() ?? { max: null }
 
-            const blob = await this.blobsService.put(text, manager)
-            const testCase = await manager.save(manager.create(TestCase, {
-                testset_id: testset.id,
-                ordinal: (max ?? 0) + 1,
-                visibility: dto.visibility ?? TestCaseVisibility.HIDDEN,
-                origin: TestCaseOrigin.MANUAL,
-                input_sha: blob.sha,
-                input_bytes: blob.size,
-                output_sha: null,
-                output_bytes: null,
-                group_name: null,
-                seed: null,
-                ref_time_ms: null,
-            }))
+            const created: ITestCase[] = []
+            for(const [index, { text, visibility, group }] of items.entries()){
+                const blob = await this.blobsService.put(text, manager)
+                const testCase = await manager.save(manager.create(TestCase, {
+                    testset_id: testset.id,
+                    ordinal: (max ?? 0) + 1 + index,
+                    visibility: visibility ?? TestCaseVisibility.HIDDEN,
+                    origin: TestCaseOrigin.MANUAL,
+                    input_sha: blob.sha,
+                    input_bytes: blob.size,
+                    output_sha: null,
+                    output_bytes: null,
+                    group_name: group?.trim() || null,
+                    seed: null,
+                    ref_time_ms: null,
+                }))
+                created.push(toTestCaseDto(testCase, blob.size <= MAX_INPUT_PREVIEW_BYTES ? text : null))
+            }
 
             await this.markEdited(testset, manager)
-            return toTestCaseDto(testCase, blob.size <= MAX_INPUT_PREVIEW_BYTES ? text : null)
+            return created
         })
     }
 
@@ -592,6 +683,10 @@ export class TestsetsService {
                 }
             }
             if(dto.visibility !== undefined) testCase.visibility = dto.visibility
+            if(dto.group !== undefined){
+                if(testCase.origin !== TestCaseOrigin.MANUAL) throw new ConflictException('only manual cases can change group')
+                testCase.group_name = dto.group?.trim() || null
+            }
 
             const saved = await manager.save(testCase)
             await this.markEdited(testset, manager)
@@ -600,6 +695,18 @@ export class TestsetsService {
                 ? text ?? await this.blobsService.getText(saved.input_sha)
                 : null
             return toTestCaseDto(saved, preview)
+        })
+    }
+
+    // Visibilidad de todo un grupo; `group: null` son los casos manuales
+    async updateCasesVisibility(testsetId: number, dto: UpdateCasesVisibilityDto, staffUserId: number): Promise<{ updated: number }> {
+        const { testset } = await this.getTestsetForAuthor(testsetId, staffUserId)
+        this.assertEditable(testset)
+
+        return this.dataSource.transaction(async (manager) => {
+            const result = await manager.update(TestCase, { testset_id: testset.id, group_name: dto.group ?? IsNull() }, { visibility: dto.visibility })
+            await this.markEdited(testset, manager)
+            return { updated: result.affected ?? 0 }
         })
     }
 

@@ -12,7 +12,12 @@
 .tw__vis--pub { border-color: var(--oj-text); color: var(--oj-text); }
 .tw__summary { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--oj-text-muted); }
 .tw__row-actions { display: flex; justify-content: flex-end; flex-wrap: nowrap; white-space: nowrap; gap: 6px; }
-.tw__groups, .tw__case-fields { display: flex; flex-direction: column; gap: var(--oj-space-sm); }
+.tw__groups { display: flex; flex-direction: column; gap: var(--oj-space-sm); }
+/* Números y bool en columnas compactas; textos a dos columnas; arreglos (JSON) a todo el ancho */
+.tw__case-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: var(--oj-space-md); align-items: start; }
+/* Solo con espacio para dos columnas: en una sola, span 2 desbordaría */
+@media (min-width: 40rem) { .tw__case-fields > [data-kind='string'] { grid-column: span 2; } }
+.tw__case-fields > [data-kind='json'] { grid-column: 1 / -1; }
 .tw__group-row { display: flex; align-items: center; gap: var(--oj-space-sm); }
 .tw__group-row input { flex: 1; min-width: 0; }
 .tw__json { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--oj-font-mono); }
@@ -34,3 +39,12 @@
 
 /* Salida esperada ya calculada */
 .tw__built { font-size: 13px; color: var(--oj-success); }
+
+/* Casos agrupados: un <details> por grupo para que la lista no llene la vista */
+.tw__case-group { display: flex; flex-direction: column; gap: var(--oj-space-sm); }
+.tw__case-group[open] { padding-bottom: var(--oj-space-sm); }
+.tw__case-group-head {
+  display: flex; align-items: baseline; gap: var(--oj-space-sm); cursor: pointer;
+  padding: var(--oj-space-sm) var(--oj-space-md); background: var(--oj-bg-muted); border-radius: var(--oj-radius);
+}
+.tw__case-group[open] > .tw__case-group-head { margin-bottom: var(--oj-space-sm); }

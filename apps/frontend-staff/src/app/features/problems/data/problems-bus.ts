@@ -34,13 +34,13 @@ export class ProblemsBus {
   }
 }
 
-// Migaja de pan del problema: "<letra> · <título>".
+// Migaja de pan del problema: "<letra> · <título>" (sin letra antes de iniciar el concurso).
 export const problemBreadcrumbResolver: ResolveFn<string> = (route) => {
   const id = Number(route.paramMap.get('problemId'));
   return inject(ProblemsService)
     .get(id)
     .pipe(
-      map((p) => `${p.letter} · ${p.title}`),
+      map((p) => (p.letter ? `${p.letter} · ${p.title}` : p.title)),
       catchError(() => of('Problema')),
     );
 };

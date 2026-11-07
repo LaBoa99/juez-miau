@@ -1,13 +1,9 @@
-/* Tooltip de [ojTooltip]: aparece con hover y con foco de teclado */
-.oj-tooltip-host {
-  position: relative;
-}
+/* Globo único de [ojTooltip] (lo crea y mueve la directiva): aparece con hover y con foco de teclado */
 
 .oj-tooltip {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  z-index: 20;
+  /* top/left los pone la directiva con las coordenadas de la ventana */
+  position: fixed;
+  z-index: 50;
   width: max-content;
   max-width: 240px;
   padding: 6px 8px;
@@ -23,45 +19,35 @@
   text-transform: none;
   white-space: normal;
   pointer-events: none;
-  /* display:none mientras está escondido: así no ensancha la página cuando el elemento queda en el borde */
   display: none;
-  transform: translate(-50%, 0);
 }
 
-.oj-tooltip-host:hover > .oj-tooltip,
-.oj-tooltip-host:focus-visible > .oj-tooltip,
-.oj-tooltip-host:focus-within > .oj-tooltip {
+.oj-tooltip.oj-tooltip--visible {
   display: block;
   animation: oj-tooltip-in 120ms ease-out;
 }
 
-/* Pegado a un borde de la ventana: alineado al borde del elemento (lo decide la directiva) */
-.oj-tooltip.oj-tooltip--end {
-  left: auto;
-  right: 0;
-  transform: none;
+/* Ya visible y pasa a otro elemento: se desliza en vez de reaparecer */
+.oj-tooltip.oj-tooltip--moving {
+  animation: none;
+  transition: left 140ms ease, top 140ms ease;
 }
-.oj-tooltip.oj-tooltip--start {
-  left: 0;
-  transform: none;
+
+@media (prefers-reduced-motion: reduce) {
+  .oj-tooltip.oj-tooltip--visible,
+  .oj-tooltip.oj-tooltip--moving {
+    animation: none;
+    transition: none;
+  }
 }
 
 @keyframes oj-tooltip-in {
   from {
     opacity: 0;
-    transform: translate(-50%, 2px);
   }
 }
 
 .oj-tooltip-host:focus-visible {
   outline: 2px solid var(--oj-primary);
   outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .oj-tooltip-host:hover > .oj-tooltip,
-  .oj-tooltip-host:focus-visible > .oj-tooltip,
-  .oj-tooltip-host:focus-within > .oj-tooltip {
-    animation: none;
-  }
 }

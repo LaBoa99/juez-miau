@@ -17,3 +17,31 @@ export interface IProblemSignature {
     params: ISignatureParam[]
     returns: TypeRef
 }
+
+// Firma leída de la solución oficial (POST /testsets/:id/signature-detect). Un tipo null es uno que
+// el detector no entendió (o JavaScript, que no tiene tipos): el juez lo elige a mano
+export interface IDetectedSignature {
+    functionName: string
+    params: { name: string, type: TypeRef | null }[]
+    returns: TypeRef | null
+}
+
+export interface IDetectSignature {
+    languageId: string
+    source: string
+    // Si la solución tiene varias funciones candidatas, cuál es la del problema
+    functionName?: string
+}
+
+export interface ISignatureDetection {
+    id: string
+    status: 'queued' | 'running' | 'done' | 'failed'
+    candidates: IDetectedSignature[]
+    // Índice en `candidates` de la firma elegida: la única, o la que se llama `functionName`
+    chosen: number | null
+    // Resultado de compilar la solución con el driver de la elegida; null si no se pudo probar
+    // (varias candidatas, tipos sin resolver o un lenguaje sin compilador)
+    compiles: boolean | null
+    compileLog: string | null
+    error: string | null
+}

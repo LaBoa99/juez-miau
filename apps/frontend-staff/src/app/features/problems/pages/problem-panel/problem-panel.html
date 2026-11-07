@@ -9,8 +9,8 @@
   <header class="pp__header">
     <h1 class="pp__title">{{ title() }}</h1>
     <div class="pp__header-right">
-      @if (published()) {
-        <oj-badge tone="success">Publicado</oj-badge>
+      @if (!isNew() && detail(); as d) {
+        <oj-badge [tone]="(d.status | problemStatus).tone">{{ (d.status | problemStatus).label }}</oj-badge>
       }
       @if (!isNew()) {
         <oj-segmented [options]="viewOptions" [value]="view()" (valueChange)="onView($event!)" />
@@ -46,7 +46,13 @@
 
     @if (step() === 'datos') {
     @if (published() && canEdit()) {
-      <oj-alert tone="warning">El problema está publicado: los equipos ven los cambios del enunciado en cuanto guardas.</oj-alert>
+      <oj-alert tone="warning">El problema está en el concurso: los equipos ven los cambios del enunciado en cuanto guardas.</oj-alert>
+    }
+    @if (datosRestored()) {
+      <oj-alert tone="info">
+        Recuperamos lo que dejaste sin guardar en este paso.
+        <button ojButton variant="secondary" size="sm" type="button" (click)="discardDatosDraft()">Descartar borrador</button>
+      </oj-alert>
     }
     <form class="pp__box pp__form" [formGroup]="form" (ngSubmit)="save(true)">
       <div class="pp__row">
@@ -62,13 +68,40 @@
         </oj-form-field>
       </div>
 
-      <oj-form-field label="Enunciado" for="pp-statement">
-        <oj-markdown-editor inputId="pp-statement" [rows]="10" formControlName="statement" />
-      </oj-form-field>
+      <div class="pp__stmt">
+        <span class="pp__label">Enunciado{{ stmtMode() === 'pdf' ? ' (PDF)' : ' (markdown)' }}</span>
+        @if (stmtMode() === 'markdown') {
+          <oj-markdown-editor inputId="pp-statement" [rows]="10" formControlName="statement" />
+        } @else {
+          @if (canEdit()) {
+            <oj-file-drop accept=".pdf,application/pdf" (fileSelected)="onPdfFile($event)" />
+          }
+          <oj-alert tone="warning">
+            Si el PDF trae ejemplos de entrada y salida, deben ser iguales a los casos <strong>públicos</strong> (paso Casos):
+            los equipos ven el PDF y, debajo, esos casos públicos como ejemplos. Si no coinciden, el enunciado se contradice.
+          </oj-alert>
+          <p class="pp__muted">
+            @if (pdfFile(); as f) {
+              Se subirá al guardar: <span class="oj-mono">{{ f.name }}</span> · {{ (f.size / 1024).toFixed(0) }} KB
+            } @else if (hasPdf()) {
+              Ya hay un PDF guardado. Velo en Vista previa; sube otro para reemplazarlo.
+            } @else {
+              Aún no hay PDF. Los equipos lo verán dentro de la app, sin abrir el navegador.
+            }
+          </p>
+        }
+        @if (canEdit()) {
+          <div class="oj-actions">
+            <button ojButton variant="secondary" size="sm" type="button" (click)="onStmtMode(stmtMode() === 'pdf' ? 'markdown' : 'pdf')">
+              {{ stmtMode() === 'pdf' ? 'Utilizar versión markdown' : 'Utilizar versión PDF' }}
+            </button>
+          </div>
+        }
+      </div>
 
       <p class="pp__muted">
-        Lo que recibe y regresa la función lo ve el concursante en la firma (paso Firma) y en los ejemplos, que salen de
-        los casos públicos (paso Casos).
+        Lo que recibe y regresa la función lo ve el concursante en la firma (paso Solución y firma) y en los ejemplos, que
+        salen de los casos públicos (paso Casos).
       </p>
 
       <oj-form-field label="Puntos" for="pp-points" hint="Solo se define al crear el problema." class="pp__points">
@@ -89,8 +122,8 @@
     } @else {
       <div class="oj-actions oj-actions--between">
         <div class="oj-actions">
-          @if (isDraft()) {
-            <button ojButton variant="danger-outline" type="button" (click)="askDelete()">Eliminar borrador</button>
+          @if (!published()) {
+            <button ojButton variant="danger-outline" type="button" (click)="askDelete()">Eliminar problema</button>
           }
         </div>
         <div class="oj-actions">
@@ -107,10 +140,19 @@
       <nav class="oj-actions oj-actions--between pp__nav" aria-label="Pasos">
         <button ojButton variant="secondary" type="button" (click)="goPrev()">← Anterior</button>
         @if (step() === 'construir') {
-          @if (isDraft() && canEdit()) {
+          @if (canDecide()) {
+            @if (published()) {
+              <button ojButton variant="danger-outline" type="button" (click)="decide('disable')">Quitar del concurso</button>
+            } @else {
+              <button ojButton variant="success" type="button" class="pp__publish" [class.pp__locked]="!hasCases()"
+                      [attr.aria-disabled]="hasCases() ? null : 'true'" (click)="decide('accept')">
+                Aceptar para el concurso
+              </button>
+            }
+          } @else if (isDraft() && canEdit()) {
             <button ojButton variant="success" type="button" class="pp__publish" [class.pp__locked]="!hasCases()"
-                    [attr.aria-disabled]="hasCases() ? null : 'true'" (click)="publish()">
-              Publicar
+                    [attr.aria-disabled]="hasCases() ? null : 'true'" (click)="decide('propose')">
+              Proponer
             </button>
           }
         } @else {
@@ -118,7 +160,7 @@
         }
       </nav>
       @if (publishBlocked()) {
-        <oj-alert tone="warning">Para publicar, primero construye los casos de prueba.</oj-alert>
+        <oj-alert tone="warning">Para proponer o aceptar el problema, primero construye los casos de prueba.</oj-alert>
       }
     }
   } @else {
@@ -130,7 +172,15 @@
         @if (p.limits) {
           <span class="pp__limits oj-mono">{{ p.limits.timeLimitMs }} ms · {{ p.limits.memoryLimitMb }} MB</span>
         }
-        <div class="pp__md oj-md" [innerHTML]="renderMd(p.statement)"></div>
+        @if (p.hasStatementPdf) {
+          @if (previewPdfUrl(); as url) {
+            <iframe class="pp__pdf" [src]="url" title="Enunciado en PDF"></iframe>
+          } @else {
+            <p class="pp__muted">Cargando el PDF…</p>
+          }
+        } @else {
+          <div class="pp__md oj-md" [innerHTML]="renderMd(p.statement)"></div>
+        }
         @if (p.signature) {
           <h3 class="pp__preview-h">Función</h3>
           <pre class="pp__sample-block oj-mono">{{ signatureText(p.signature) }}</pre>
@@ -166,6 +216,16 @@
   }
 
   <oj-confirm-dialog
+    #modeDialog
+    title="Cambiar el formato del enunciado"
+    [message]="stmtMode() === 'pdf' ? 'Al guardar se quita el PDF y el enunciado queda en markdown.' : 'Al guardar se quita el enunciado en markdown y queda el PDF.'"
+    confirmLabel="Cambiar"
+    [danger]="true"
+    (confirmed)="applyStmtMode()"
+  />
+
+  <oj-confirm-dialog
+    #deleteDialog
     title="Eliminar problema"
     message="Se eliminará el problema. Esta acción no se puede deshacer."
     confirmLabel="Eliminar"

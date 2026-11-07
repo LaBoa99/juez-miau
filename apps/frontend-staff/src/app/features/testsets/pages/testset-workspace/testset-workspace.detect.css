@@ -1,0 +1,115 @@
+/* Paso Solución y firma: dos bloques numerados y la barra de lectura de la firma */
+.tw__block { display: flex; flex-direction: column; gap: var(--oj-space-md); }
+.tw__block + .tw__block { padding-top: var(--oj-space-lg); border-top: 1px solid var(--oj-border); }
+.tw__block-title { display: flex; align-items: center; gap: var(--oj-space-sm); margin: 0; font-size: 14px; font-weight: 600; }
+.tw__block-num {
+  display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: var(--oj-radius);
+  border: 1px solid var(--oj-border); font: 600 11px var(--oj-font-mono); color: var(--oj-text-muted);
+}
+
+.tw__detect { display: flex; flex-direction: column; gap: var(--oj-space-sm); }
+.tw__ok { font-size: 13px; color: var(--oj-success); }
+.tw__log-details summary { cursor: pointer; font-size: 12px; margin-top: var(--oj-space-xs); }
+.tw__log-details .tw__log { max-height: 12rem; overflow: auto; margin-top: var(--oj-space-xs); }
+
+/* Estado de la lectura: un círculo que gira mientras trabaja y luego muestra ✓ / ✕ / ! */
+.tw__status { display: flex; align-items: center; gap: var(--oj-space-sm); font-size: 13px; }
+.tw__status-icon {
+  display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; border-radius: 50%;
+  font: 700 11px var(--oj-font-sans); color: var(--oj-bg);
+}
+.tw__status[data-state='active'] .tw__status-icon {
+  border: 2px solid var(--oj-border); border-top-color: var(--oj-text); animation: tw-spin 0.8s linear infinite;
+}
+.tw__status[data-state='done'] .tw__status-icon { background: var(--oj-success); }
+.tw__status[data-state='error'] .tw__status-icon { background: var(--oj-danger); }
+.tw__status[data-state='warn'] .tw__status-icon { background: var(--oj-warning); }
+@keyframes tw-spin { to { transform: rotate(360deg); } }
+
+/* Pregunta "¿cuál función?": recuadro ámbar que entra deslizándose y resalta el borde dos veces */
+.tw__choose {
+  display: flex; flex-direction: column; gap: var(--oj-space-sm); padding: var(--oj-space-md);
+  border: 1px solid var(--oj-warning); border-left-width: 4px; border-radius: var(--oj-radius); background: var(--oj-warning-bg);
+  animation: tw-choose-in 240ms cubic-bezier(0.2, 0, 0, 1), tw-choose-pulse 900ms ease-out 240ms 2;
+}
+.tw__choose-label { font-size: 13px; font-weight: 600; }
+@keyframes tw-choose-in { from { opacity: 0; transform: translateY(-6px); } }
+@keyframes tw-choose-pulse { 50% { border-color: var(--oj-text); } }
+
+/* Firma detectada y comprobada: fija, con "Editar firma" */
+.tw__sig-card {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--oj-space-md);
+  padding: var(--oj-space-sm) var(--oj-space-md); border: 1px solid var(--oj-success); border-radius: var(--oj-radius); background: var(--oj-success-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tw__status[data-state='active'] .tw__status-icon { animation-duration: 2.4s; }
+  .tw__choose { animation: none; }
+}
+
+.tw__alert-actions { margin-top: var(--oj-space-sm); }
+
+/* Acciones de cada caso: solo ícono (el nombre va en el tooltip y en aria-label) para que la tabla no crezca */
+.tw__icon-btn { display: inline-grid; place-items: center; padding: 0; width: 26px; height: 26px; }
+.tw__icon { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.tw__case-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: var(--oj-space-md); }
+
+/* Tabla de casos: columnas compactas; las entradas se quedan con el espacio */
+.tw__cases .tw__col-num { width: 2.5rem; color: var(--oj-text-muted); text-align: right; }
+.tw__cases .tw__col-icon { width: 2rem; text-align: center; }
+/* max-width 0 + width 100%: la celda toma el sobrante y recorta con … en vez de ensanchar la tabla */
+.tw__cases .tw__summary { max-width: 0; width: 100%; }
+.tw__origin { display: inline-grid; place-items: center; color: var(--oj-text-muted); }
+.tw__out { display: inline-flex; align-items: center; gap: var(--oj-space-xs); white-space: nowrap; }
+.tw__out-ok { color: var(--oj-success); font-weight: 700; }
+
+/* Lista de casos: una tarjeta con un encabezado por grupo (colapsable) */
+.tw__cases-list { border: 1px solid var(--oj-border); border-radius: var(--oj-radius); }
+.tw__cases-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--oj-space-sm); padding: var(--oj-space-sm) var(--oj-space-md); }
+.tw__cases-empty { padding: 0 var(--oj-space-md) var(--oj-space-md); }
+.tw__group { border-top: 1px solid var(--oj-border); }
+.tw__group-head { display: flex; align-items: center; gap: var(--oj-space-sm); padding-right: var(--oj-space-sm); background: var(--oj-bg-muted); }
+.tw__group-toggle {
+  display: flex; flex: 1; align-items: baseline; gap: var(--oj-space-sm); min-width: 0; padding: var(--oj-space-sm) var(--oj-space-md);
+  border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.tw__chevron { align-self: center; width: 12px; height: 12px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; transition: transform 160ms ease; }
+.tw__group--open .tw__chevron { transform: rotate(90deg); }
+.tw__group-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 200ms ease; }
+.tw__group--open .tw__group-body { grid-template-rows: 1fr; }
+.tw__group-inner { overflow: hidden; min-height: 0; }
+/* Dentro de la tarjeta la tabla no lleva su propio marco */
+.tw__group-inner .oj-table-wrap { border: 0; border-top: 1px solid var(--oj-border); border-radius: 0; }
+.tw__add-title { margin-top: var(--oj-space-md); }
+@media (prefers-reduced-motion: reduce) {
+  .tw__chevron, .tw__group-body { transition: none; }
+}
+/* Editor de aleatorios: mismo chevron que la tabla, sin el triángulo del navegador */
+.tw__rand-group > summary { list-style: none; }
+.tw__rand-group > summary::-webkit-details-marker { display: none; }
+.tw__rand-group[open] > summary .tw__chevron { transform: rotate(90deg); }
+
+/* Spinner dentro de un botón de ícono mientras su acción está en curso */
+.tw__btn-spinner {
+  width: 12px; height: 12px; border: 2px solid var(--oj-border); border-top-color: var(--oj-text); border-radius: 50%;
+  animation: tw-spin 0.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .tw__btn-spinner { animation-duration: 2.4s; } }
+
+/* Construir: la lista vertical funciona como barra de progreso. El círculo de cada etapa muestra su
+   estado y la línea que la une con la siguiente se pinta de verde cuando la etapa terminó bien */
+.tw__pipe-item[data-state='done']::before { content: '✓'; border-color: var(--oj-success); color: var(--oj-success); font-family: var(--oj-font-sans); font-size: 12px; }
+.tw__pipe-item[data-state='warn']::before { content: '!'; border-color: var(--oj-warning); color: var(--oj-warning); font-family: var(--oj-font-sans); }
+.tw__pipe-item[data-state='error']::before { content: '✕'; border-color: var(--oj-danger); color: var(--oj-danger); font-family: var(--oj-font-sans); font-size: 12px; }
+.tw__pipe-item[data-state='active']::before { content: ''; border-color: var(--oj-border); border-top-color: var(--oj-text); animation: tw-spin 0.8s linear infinite; }
+.tw__pipe-item[data-state='active'] .tw__pipe-title { color: var(--oj-text); }
+.tw__pipe-item[data-state='todo'] .tw__pipe-title { color: var(--oj-text-muted); }
+.tw__pipe-item::after { transition: background-color 240ms ease; }
+.tw__pipe-item[data-state='done'] + .tw__pipe-item::after,
+.tw__pipe-item[data-state='warn'] + .tw__pipe-item::after { background: var(--oj-success); }
+.tw__pipe-warn { margin: 0; font-size: 13px; color: var(--oj-warning); }
+.tw__pipe-error { margin: 0; font-size: 13px; color: var(--oj-danger); }
+@media (prefers-reduced-motion: reduce) {
+  .tw__pipe-item[data-state='active']::before { animation-duration: 2.4s; }
+  .tw__pipe-item::after { transition: none; }
+}

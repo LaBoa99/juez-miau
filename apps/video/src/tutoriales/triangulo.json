@@ -1,0 +1,295 @@
+{
+  "id": "triangulo",
+  "titulo": "Crear un problema: triángulo en Java",
+  "pasos": [
+    {
+      "img": "01.png",
+      "voz": "Vamos a crear un problema completo: recibe una altura y regresa un triángulo de asteriscos.",
+      "caja": {
+        "x": 327,
+        "y": 406,
+        "w": 288,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 161
+    },
+    {
+      "img": "02.png",
+      "voz": "Primero los datos: el título…",
+      "caja": {
+        "x": 1129,
+        "y": 366,
+        "w": 454,
+        "h": 32
+      },
+      "accion": "escribir",
+      "frames": 73
+    },
+    {
+      "img": "03.png",
+      "voz": "El enunciado puede ser un PDF. Esta vez lo escribimos en markdown.",
+      "caja": {
+        "x": 663,
+        "y": 598,
+        "w": 186,
+        "h": 28
+      },
+      "accion": "clic",
+      "frames": 140
+    },
+    {
+      "img": "04.png",
+      "voz": "…y lo redactamos.",
+      "caja": {
+        "x": 663,
+        "y": 470,
+        "w": 457,
+        "h": 214
+      },
+      "accion": "escribir",
+      "frames": 45
+    },
+    {
+      "img": "05.png",
+      "voz": "Crea el problema y sigue.",
+      "caja": {
+        "x": 1465,
+        "y": 910,
+        "w": 135,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 51
+    },
+    {
+      "img": "06.png",
+      "voz": "Ahora la solución oficial. Elige Java…",
+      "caja": {
+        "x": 659,
+        "y": 428,
+        "w": 928,
+        "h": 32
+      },
+      "accion": "clic",
+      "frames": 100
+    },
+    {
+      "img": "07.png",
+      "voz": "…y pega el código.",
+      "caja": {
+        "x": 659,
+        "y": 571,
+        "w": 928,
+        "h": 214
+      },
+      "accion": "escribir",
+      "frames": 46
+    },
+    {
+      "img": "08.png",
+      "voz": "El juez lee la firma de la solución y la compila: triángulo recibe un entero y regresa una lista de líneas.",
+      "caja": {
+        "x": 646,
+        "y": 912,
+        "w": 954,
+        "h": 42
+      },
+      "accion": null,
+      "frames": 189
+    },
+    {
+      "img": "09.png",
+      "voz": "Guarda y sigue.",
+      "caja": {
+        "x": 1449,
+        "y": 966,
+        "w": 151,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 40
+    },
+    {
+      "img": "10.png",
+      "voz": "Los casos de prueba. Pega los ejemplos, uno por línea.",
+      "caja": {
+        "x": 1529,
+        "y": 829,
+        "w": 59,
+        "h": 28
+      },
+      "accion": "clic",
+      "frames": 120
+    },
+    {
+      "img": "11.png",
+      "voz": "Altura uno y altura tres.",
+      "caja": {
+        "x": 659,
+        "y": 906,
+        "w": 928,
+        "h": 174
+      },
+      "accion": "escribir",
+      "frames": 64
+    },
+    {
+      "img": "12.png",
+      "voz": "En el grupo ejemplos…",
+      "caja": {
+        "x": 659,
+        "y": 1048,
+        "w": 928,
+        "h": 32
+      },
+      "accion": "escribir",
+      "frames": 50
+    },
+    {
+      "img": "13.png",
+      "voz": "…y públicos: los equipos los verán en el enunciado.",
+      "caja": {
+        "x": 659,
+        "y": 1048,
+        "w": 928,
+        "h": 32
+      },
+      "accion": "clic",
+      "frames": 99
+    },
+    {
+      "img": "14.png",
+      "voz": "Agrégalos.",
+      "caja": {
+        "x": 1466,
+        "y": 1046,
+        "w": 121,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 39
+    },
+    {
+      "img": "15.png",
+      "voz": "Para cubrir más alturas, configura casos aleatorios.",
+      "caja": {
+        "x": 1498,
+        "y": 747,
+        "w": 90,
+        "h": 28
+      },
+      "accion": "clic",
+      "frames": 109
+    },
+    {
+      "img": "16.png",
+      "voz": "Cinco casos con alturas al azar entre uno y cien. Guarda y genera.",
+      "caja": {
+        "x": 1443,
+        "y": 1018,
+        "w": 144,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 139
+    },
+    {
+      "img": "17.png",
+      "voz": "Los casos quedan en grupos plegables. Abre uno para verlos.",
+      "caja": {
+        "x": 647,
+        "y": 335,
+        "w": 882,
+        "h": 29
+      },
+      "accion": "clic",
+      "frames": 132
+    },
+    {
+      "img": "18.png",
+      "voz": "Siguiente paso.",
+      "caja": {
+        "x": 1495,
+        "y": 1046,
+        "w": 105,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 42
+    },
+    {
+      "img": "19.png",
+      "voz": "Un solo botón verifica los casos con la solución oficial, mide su tiempo y construye.",
+      "caja": {
+        "x": 646,
+        "y": 792,
+        "w": 155,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 149
+    },
+    {
+      "img": "20.png",
+      "voz": "Todo salió bien: confirma para fijar las salidas esperadas.",
+      "caja": {
+        "x": 1069,
+        "y": 578,
+        "w": 89,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 119
+    },
+    {
+      "img": "21.png",
+      "voz": "Construido: cada etapa en verde.",
+      "caja": {
+        "x": 646,
+        "y": 491,
+        "w": 954,
+        "h": 380
+      },
+      "accion": null,
+      "frames": 77
+    },
+    {
+      "img": "22.png",
+      "voz": "Como administrador de la edición, lo aceptas para el concurso.",
+      "caja": {
+        "x": 1412,
+        "y": 1006,
+        "w": 188,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 110
+    },
+    {
+      "img": "23.png",
+      "voz": "En Vista previa ves el problema como lo verán los equipos…",
+      "caja": {
+        "x": 1505,
+        "y": 156,
+        "w": 94,
+        "h": 30
+      },
+      "accion": "clic",
+      "frames": 98
+    },
+    {
+      "img": "24.png",
+      "voz": "…con su enunciado, la función a programar y los ejemplos. Listo para el concurso.",
+      "caja": {
+        "x": 646,
+        "y": 203,
+        "w": 954,
+        "h": 368
+      },
+      "accion": null,
+      "frames": 160
+    }
+  ],
+  "tituloFrames": 76
+}

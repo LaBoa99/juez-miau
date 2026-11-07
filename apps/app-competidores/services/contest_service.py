@@ -6,6 +6,10 @@ class ContestService:
         """IContestView: edition, clock, languages y problems (vacío si el concurso no ha iniciado)."""
         return self.api.get("/contest")
 
+    def statement_pdf(self, problem_id):
+        """Bytes del enunciado en PDF; se abre en memoria, nunca se escribe a disco."""
+        return self.api.get_bytes(f"/contest/problems/{problem_id}/statement-pdf")
+
 
 def remaining_ms(clock, ms_since_received):
     """Tiempo restante. elapsedMs vale al momento de serverTime; solo corre mientras está RUNNING.

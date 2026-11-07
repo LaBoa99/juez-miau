@@ -24,3 +24,14 @@ export interface TestRunResult {
     compileLog: string | null
     cases: { ordinal: number, verdict: string, timeMs: number, memoryKb: number, message: string | null, input?: string, output?: string | null }[]
 }
+
+// Detectar la firma desde la solución oficial: el worker la lee y compila la solución con el
+// driver de esa firma para confirmarla. Tampoco guarda nada
+export const SIGNATURE_QUEUE = 'signature-detect'
+
+export interface SignatureJob {
+    testsetId: number
+    languageId: string
+    source: string
+    functionName?: string
+}

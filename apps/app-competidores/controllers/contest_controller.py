@@ -2,7 +2,7 @@ import time
 
 from PySide6.QtCore import QObject, QTimer, Signal, Slot
 
-from commands.load_contest import LoadContestCommand
+from commands.load_contest import LoadContestCommand, LoadStatementPdfCommand
 from services.contest_service import format_hms, is_frozen, remaining_ms
 
 CLOCK_NOTICES = {
@@ -31,6 +31,7 @@ class ContestController(QObject):
         self.ticker.start(1000)
 
         window.problems.refresh_requested.connect(self.load)
+        window.problems.pdf_requested.connect(self._load_pdf)
         realtime.clock_update.connect(self._on_clock)
         realtime.connected.connect(self.load)
 
@@ -42,6 +43,22 @@ class ContestController(QObject):
     @Slot()
     def load(self):
         self.invoker.run(LoadContestCommand(self.contest), self._loaded, self._failed)
+
+    @Slot(int)
+    def _load_pdf(self, problem_id):
+        self.invoker.run(LoadStatementPdfCommand(self.contest, problem_id), self._pdf_loaded, self._pdf_failed)
+
+    @Slot(object)
+    def _pdf_loaded(self, result):
+        self.window.problems.set_statement_pdf(*result)
+
+    @Slot(object)
+    def _pdf_failed(self, error):
+        self.window.problems.forget_pdf_requests()
+        if getattr(error, "status", None) == 401:
+            self.session_lost.emit(error.message)
+        else:
+            self.window.problems.show_message("No se pudo cargar el enunciado. Vuelve a abrir el problema o avisa al staff.", error=True)
 
     @Slot(object)
     def _loaded(self, view):

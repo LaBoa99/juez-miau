@@ -78,7 +78,7 @@ def wait_built(api, testset_id):
 
 def create_problem(api, edition_id, category, spec, language_ids):
     problem = api.call("POST", f"/editions/{edition_id}/problems", {
-        "categoryId": category["id"], "letter": spec["letter"], "title": spec["title"],
+        "categoryId": category["id"], "title": spec["title"],
         "statement": spec["statement"], "inputFormat": spec["inputFormat"], "outputFormat": spec["outputFormat"],
     })
     api.call("PATCH", f"/problems/{problem['id']}/signature", spec["signature"])
@@ -88,7 +88,7 @@ def create_problem(api, edition_id, category, spec, language_ids):
     api.call("PUT", f"/testsets/{problem['testsetId']}/ref-solution", {"languageId": language_ids["python"], "source": spec["ref"]})
     api.call("POST", f"/testsets/{problem['testsetId']}/build")
     wait_built(api, problem["testsetId"])
-    api.call("POST", f"/problems/{problem['id']}/publish")
+    api.call("POST", f"/problems/{problem['id']}/accept")
     print(f"  {category['code']} {spec['letter']}. {spec['title']}: publicado")
 
 
@@ -115,16 +115,17 @@ def main():
 
     existing = api.call("GET", f"/editions/{edition['id']}/problems")
     existing = existing.get("data", existing) if isinstance(existing, dict) else existing
-    taken = {(p["categoryId"], p["letter"]): p for p in existing}
+    # La letra se asigna al iniciar el concurso: se reconocen por título
+    taken = {(p["categoryId"], p["title"]): p for p in existing}
     print("Problemas (cada build tarda unos segundos):")
     for category in api.call("GET", f"/editions/{edition['id']}/categories"):
         for spec in PROBLEMS:
-            problem = taken.get((category["id"], spec["letter"]))
+            problem = taken.get((category["id"], spec["title"]))
             if not problem:
                 create_problem(api, edition["id"], category, spec, languages)
             elif problem["status"] != "published":
-                # Quedó a medias en una corrida anterior: se publica si su build ya terminó
-                api.call("POST", f"/problems/{problem['id']}/publish")
+                # Quedó a medias en una corrida anterior: se acepta si su build ya terminó
+                api.call("POST", f"/problems/{problem['id']}/accept")
                 print(f"  {category['code']} {spec['letter']}. {spec['title']}: publicado")
 
     start = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()

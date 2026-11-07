@@ -33,19 +33,25 @@ class ApiClient:
         self.server_url = public_url.rstrip("/")
         self.base_url = self.server_url + "/api/v1"
 
-    def request(self, method, path, json=None):
+    def request(self, method, path, json=None, raw=False):
         headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
         try:
             res = self.session.request(method, self.base_url + path, json=json, headers=headers, timeout=self.timeout)
         except requests.RequestException:
             raise ApiError(0, MESSAGES[0])
         if res.ok:
+            if raw:
+                return res.content
             return res.json() if res.content else None
         detail = _server_message(res)
         raise ApiError(res.status_code, MESSAGES.get(res.status_code) or detail, detail)
 
     def get(self, path):
         return self.request("GET", path)
+
+    def get_bytes(self, path):
+        """Para archivos (el enunciado en PDF): el cuerpo tal cual, sin decodificar JSON."""
+        return self.request("GET", path, raw=True)
 
     def post(self, path, json=None):
         return self.request("POST", path, json)

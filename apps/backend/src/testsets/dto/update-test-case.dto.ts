@@ -1,5 +1,5 @@
-import { IsEnum, IsObject, IsOptional } from 'class-validator';
-import { TestCaseVisibility, type IUpdateTestCase } from '@concurso/shared-types';
+import { IsEnum, IsObject, IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
+import { TestCaseVisibility, type IUpdateCasesVisibility, type IUpdateTestCase } from '@concurso/shared-types';
 
 export class UpdateTestCaseDto implements IUpdateTestCase {
 
@@ -11,4 +11,22 @@ export class UpdateTestCaseDto implements IUpdateTestCase {
     @IsOptional()
     @IsEnum(TestCaseVisibility)
     declare visibility?: TestCaseVisibility;
+
+    // Solo en casos manuales; null lo saca de su grupo
+    @IsOptional()
+    @ValidateIf((_, value) => value !== null)
+    @IsString()
+    @MaxLength(64)
+    declare group?: string | null;
+}
+
+export class UpdateCasesVisibilityDto implements IUpdateCasesVisibility {
+
+    // null = casos manuales
+    @ValidateIf((_, value) => value !== null)
+    @IsString()
+    declare group: string | null;
+
+    @IsEnum(TestCaseVisibility)
+    declare visibility: TestCaseVisibility;
 }

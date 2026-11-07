@@ -25,7 +25,7 @@ async function publicarProblema(t, ed) {
   if (p?.status === "published") return;
   if (!p) {
     p = await t.api("POST", `/editions/${ed.id}/problems`, {
-      categoryId: cat.id, letter: "A", title: "Suma de una lista",
+      categoryId: cat.id, title: "Suma de una lista",
       statement: "Dada una lista de enteros `nums`, regresa la suma de todos sus elementos.",
       inputFormat: "`nums`: lista de enteros.", outputFormat: "Un entero: la suma.",
     });
@@ -49,7 +49,7 @@ async function publicarProblema(t, ed) {
     }
     await t.sleep(1000);
   }
-  await t.api("POST", `/problems/${p.id}/publish`);
+  await t.api("POST", `/problems/${p.id}/accept`);
 }
 
 // Lo que haría un equipo desde su app durante el concurso. Solo hace lo que falte (se puede repetir).
@@ -255,6 +255,63 @@ export const GUIONES = {
       await t.paso("Deja una nota de lo que encontraste…", { en: "#al-note", escribir: "Revisado en el salón: era el proyector del aula." });
       await t.paso("…y márcala como resuelta.", { en: "texto=Marcar como resuelta", clic: true });
       await t.paso("Queda en Resueltas, con tu nota.", { en: "texto=Resueltas" });
+    },
+  },
+
+  // Video para el stakeholder (no es un tutorial del panel): un problema completo, de la nada a aceptado.
+  triangulo: {
+    titulo: "Crear un problema: triángulo en Java",
+    async grabar(t) {
+      const ed = await edicion(t, "Prueba flujo de problemas");
+      const enunciado = [
+        "Dada una `altura` (1 ≤ altura ≤ 100), dibuja un triángulo de asteriscos centrado.",
+        "",
+        "Regresa una lista de líneas: la fila *i* (empezando en 0) tiene `altura - i - 1` espacios y `2i + 1` asteriscos, sin espacios al final.",
+      ].join("\n");
+      const java = [
+        "class Main {",
+        "    static String[] triangulo(int altura) {",
+        "        String[] filas = new String[altura];",
+        "        for (int i = 0; i < altura; i++) {",
+        "            filas[i] = \" \".repeat(altura - i - 1) + \"*\".repeat(2 * i + 1);",
+        "        }",
+        "        return filas;",
+        "    }",
+        "}",
+      ].join("\n");
+
+      await t.ir(`/ediciones/${ed.id}/problemas`);
+      await t.paso("Vamos a crear un problema completo: recibe una altura y regresa un triángulo de asteriscos.", { en: "texto=+ Nuevo problema", clic: true });
+      await t.paso("Primero los datos: el título…", { en: "#pp-title", escribir: "Triángulo de asteriscos" });
+      await t.paso("El enunciado puede ser un PDF. Esta vez lo escribimos en markdown.", { en: "texto=Utilizar versión markdown", clic: true });
+      await t.paso("…y lo redactamos.", { en: "#pp-statement", escribir: enunciado });
+      await t.paso("Crea el problema y sigue.", { en: "texto=Crear y seguir →", clic: true });
+
+      await t.paso("Ahora la solución oficial. Elige Java…", { en: "#tw-lang", elegir: "java" });
+      await t.paso("…y pega el código.", { en: "#tw-src-code", escribir: java });
+      await t.esperar(".tw__sig-card", 120000);
+      await t.paso("El juez lee la firma de la solución y la compila: triángulo recibe un entero y regresa una lista de líneas.", { en: ".tw__sig-card" });
+      await t.paso("Guarda y sigue.", { en: "texto=Guardar y seguir →", clic: true });
+
+      await t.paso("Los casos de prueba. Pega los ejemplos, uno por línea.", { en: "texto=Pegar", clic: true });
+      await t.paso("Altura uno y altura tres.", { en: "#tw-paste", escribir: '{"altura": 1}\n{"altura": 3}' });
+      await t.paso("En el grupo ejemplos…", { en: "#tw-paste-group", escribir: "ejemplos" });
+      await t.paso("…y públicos: los equipos los verán en el enunciado.", { en: "#tw-paste-vis", elegir: "Públicos" });
+      await t.paso("Agrégalos.", { en: "texto=Agregar casos", clic: true });
+      await t.paso("Para cubrir más alturas, configura casos aleatorios.", { en: "texto=Configurar", clic: true });
+      await t.paso("Cinco casos con alturas al azar entre uno y cien. Guarda y genera.", { en: "texto=Guardar y generar", clic: true });
+      await t.esperar(".tw__group-toggle", 30000);
+      await t.paso("Los casos quedan en grupos plegables. Abre uno para verlos.", { en: ".tw__group-toggle", clic: true });
+      await t.paso("Siguiente paso.", { en: "texto=Siguiente →", clic: true });
+
+      await t.paso("Un solo botón verifica los casos con la solución oficial, mide su tiempo y construye.", { en: "texto=Verificar y construir", clic: true });
+      await t.esperar("oj-confirm-dialog [footer] button:last-child", 180000);
+      await t.paso("Todo salió bien: confirma para fijar las salidas esperadas.", { en: "oj-confirm-dialog [footer] button:last-child", clic: true });
+      await t.esperar("texto=Lista: las salidas esperadas quedaron fijas", 180000);
+      await t.paso("Construido: cada etapa en verde.", { en: ".tw__pipe" });
+      await t.paso("Como administrador de la edición, lo aceptas para el concurso.", { en: "texto=Aceptar para el concurso", clic: true });
+      await t.paso("En Vista previa ves el problema como lo verán los equipos…", { en: "texto=Vista previa", clic: true });
+      await t.paso("…con su enunciado, la función a programar y los ejemplos. Listo para el concurso.", { en: ".pp__preview" });
     },
   },
 

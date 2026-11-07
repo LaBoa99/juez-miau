@@ -104,10 +104,10 @@ export class ContestFixture {
     await this.app.close();
   }
 
-  // Crea el problema, lo construye con la solución oficial y lo publica. Regresa ids
+  // Crea el problema, lo construye con la solución oficial y lo acepta (antes de run(); la letra sale al iniciar). Regresa ids
   async publishProblem(spec: ProblemSpec): Promise<{ problemId: number, testsetId: number }> {
     const created = await this.api().post(`/api/v1/editions/${this.edition.id}/problems`).set(this.asAdmin()).send({
-      categoryId: this.category.id, letter: spec.letter, title: 'Problema ' + spec.letter, statement: 'Enunciado.',
+      categoryId: this.category.id, title: 'Problema ' + spec.letter, statement: 'Enunciado.',
       inputFormat: 'ver firma', outputFormat: 'ver firma',
     }).expect(201);
     const { id: problemId, testsetId } = created.body;
@@ -117,7 +117,7 @@ export class ContestFixture {
       await this.api().post(`/api/v1/testsets/${testsetId}/cases`).set(this.asAdmin()).send({ visibility: 'public', ...testCase }).expect(201);
     }
     await this.buildTestset(testsetId, spec.ref);
-    await this.api().post(`/api/v1/problems/${problemId}/publish`).set(this.asAdmin()).expect(200);
+    await this.api().post(`/api/v1/problems/${problemId}/accept`).set(this.asAdmin()).expect(200);
     return { problemId, testsetId };
   }
 

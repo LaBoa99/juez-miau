@@ -118,7 +118,7 @@
                   {{ problemsOk() === false ? '✕' : '✓' }}
                 </span>
                 <span>
-                  Al menos un problema publicado
+                  Al menos un problema aceptado
                   @if (problemsOk() === false) {
                     · <a [routerLink]="['/ediciones', id, 'problemas']">ir a Problemas</a>
                   }

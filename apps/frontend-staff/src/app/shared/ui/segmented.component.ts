@@ -69,10 +69,6 @@ import { TooltipDirective } from './tooltip.directive';
     .oj-seg__btn--active + .oj-seg__btn {
       border-left-color: transparent;
     }
-    /* Opciones sin ayuda: no se muestra el globo vacío */
-    .oj-seg__btn--plain ::ng-deep > .oj-tooltip {
-      display: none;
-    }
     .oj-seg__btn:disabled:not(.oj-seg__btn--active) {
       color: var(--oj-text-muted);
       cursor: not-allowed;

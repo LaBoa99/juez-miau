@@ -18,14 +18,19 @@ export class Problem {
     @Column()
     declare category_id: number
 
-    @Column({ type: 'text' })
-    declare letter: string
+    // null hasta que inicia el concurso (ContestClockService.start la asigna a los aceptados)
+    @Column({ type: 'text', nullable: true })
+    declare letter: string | null
 
     @Column({ type: 'text' })
     declare title: string
 
     @Column({ type: 'text' })
     declare statement_md: string
+
+    // Enunciado en PDF (blob); excluyente con statement_md
+    @Column({ type: 'char', length: 64, nullable: true })
+    declare statement_pdf_sha: string | null
 
     @Column({ type: 'text' })
     declare input_format: string

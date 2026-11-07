@@ -1,9 +1,12 @@
-from PySide6.QtCore import QPointF, Qt, QUrl, Signal
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPointF, Qt, QUrl, Signal
 from PySide6.QtGui import QColor, QDesktopServices, QGuiApplication, QIcon, QPainter, QPen, QPixmap, QTextCursor, QTextFormat
 from PySide6.QtWidgets import (
     QComboBox, QFileDialog, QHBoxLayout, QInputDialog, QMessageBox, QLabel, QListWidget, QListWidgetItem, QPushButton, QSplitter,
     QStackedWidget, QTextBrowser, QVBoxLayout, QWidget,
 )
+
+from PySide6.QtPdf import QPdfDocument
+from PySide6.QtPdfWidgets import QPdfView
 
 from services.submission_service import CODE_TO_EXTENSION, EXTENSION_TO_CODE, LANGUAGE_NAMES, problem_states
 from views.attempts_view import AttemptsView
@@ -34,10 +37,13 @@ class ProblemsView(QWidget):
     refresh_requested = Signal()
     submit_requested = Signal(int, str, str)  # problemId, ruta, languageId elegido
     template_requested = Signal(str, str)  # ruta, código
+    pdf_requested = Signal(int)  # problemId cuyo enunciado es PDF y aún no se descarga
 
     def __init__(self):
         super().__init__()
         self.problems = []
+        self.pdfs = {}  # problemId → bytes del enunciado en PDF (solo en memoria)
+        self.pdf_pending = set()  # descargas en curso, para no pedir dos veces el mismo
         self.languages = []
         self.submissions = []
         self.progress = {}
@@ -105,11 +111,23 @@ class ProblemsView(QWidget):
         self.body.document().setDocumentMargin(0)
         self.attempts = AttemptsView()
 
+        # Enunciado en PDF: se abre aquí mismo, sin navegador y sin escribirlo a disco
+        self.pdf_document = QPdfDocument(self)
+        self.pdf_buffer = None
+        self.pdf_view = QPdfView()
+        self.pdf_view.setAccessibleName("Enunciado")
+        self.pdf_view.setDocument(self.pdf_document)
+        self.pdf_view.setPageMode(QPdfView.PageMode.MultiPage)
+        self.pdf_view.setZoomMode(QPdfView.ZoomMode.FitToWidth)
+        self.pdf_view.hide()
+
         reading = QSplitter(Qt.Orientation.Vertical)
+        reading.addWidget(self.pdf_view)
         reading.addWidget(self.body)
         reading.addWidget(self.attempts)
-        reading.setStretchFactor(0, 1)
-        reading.setSizes([380, 300])
+        reading.setStretchFactor(0, 2)
+        reading.setStretchFactor(1, 1)
+        reading.setSizes([380, 380, 300])
         reading.setChildrenCollapsible(False)
 
         column = QWidget()
@@ -287,7 +305,38 @@ class ProblemsView(QWidget):
         self.message.hide()
         self.body.setMarkdown(problem_markdown(problem))
         tune_rhythm(self.body.document())
+        self._show_pdf(problem)
         self._refresh_attempts()
+
+    def set_statement_pdf(self, problem_id, data):
+        self.pdf_pending.discard(problem_id)
+        self.pdfs[problem_id] = data
+        problem = self._current()
+        if problem and problem["id"] == problem_id:
+            self._show_pdf(problem)
+
+    def forget_pdf_requests(self):
+        """Tras un error de red: al volver a abrir el problema se intenta de nuevo."""
+        self.pdf_pending.clear()
+
+    def _show_pdf(self, problem):
+        if not problem.get("hasStatementPdf"):
+            self.pdf_view.hide()
+            return
+        self.pdf_view.show()
+        data = self.pdfs.get(problem["id"])
+        if data is None:
+            self.pdf_document.close()
+            if problem["id"] not in self.pdf_pending:
+                self.pdf_pending.add(problem["id"])
+                self.pdf_requested.emit(problem["id"])
+            return
+        # El buffer debe vivir mientras el documento esté abierto
+        self.pdf_document.close()
+        self.pdf_buffer = QBuffer(self)
+        self.pdf_buffer.setData(QByteArray(data))
+        self.pdf_buffer.open(QIODevice.OpenModeFlag.ReadOnly)
+        self.pdf_document.load(self.pdf_buffer)
 
     # ── Acciones ───────────────────────────────────────────
 
@@ -363,7 +412,8 @@ def tune_rhythm(document):
 
 
 def problem_markdown(problem):
-    parts = [problem["statement"]]
+    # Con enunciado en PDF, aquí solo quedan los ejemplos (con su botón de copiar)
+    parts = [problem["statement"]] if problem.get("statement") else []
     if problem.get("inputFormat"):
         parts.append(f"### Entrada\n\n{problem['inputFormat']}")
     if problem.get("outputFormat"):

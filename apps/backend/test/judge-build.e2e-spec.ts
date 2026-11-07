@@ -87,7 +87,7 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Build del testset con la solución o
     token = await app.get(JwtService).signAsync({ sub: judge.id, type: 'staff' });
 
     const created = await api().post(`/api/v1/editions/${edition.id}/problems`).set(auth()).send({
-      categoryId: category.id, letter: 'A', title: 'Suma', statement: 'Suma los números y multiplica por k.',
+      categoryId: category.id, title: 'Suma', statement: 'Suma los números y multiplica por k.',
       inputFormat: 'nums: int[], k: long', outputFormat: 'long',
     }).expect(201);
     problemId = created.body.id;
@@ -140,6 +140,6 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Build del testset con la solución o
     expect(problem.current_testset_id).toBe(testsetId);
     const preview = await api().get(`/api/v1/problems/${problemId}/preview`).set(auth()).expect(200);
     expect(preview.body.samples[0]).toEqual({ input: '{"nums":[1,2,3],"k":9007199254740993}', output: '54043195528445958' });
-    await api().post(`/api/v1/problems/${problemId}/publish`).set(auth()).expect(200);
+    await api().post(`/api/v1/problems/${problemId}/propose`).set(auth()).expect(200);
   }, 90_000);
 });

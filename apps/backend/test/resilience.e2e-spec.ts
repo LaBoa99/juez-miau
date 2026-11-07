@@ -18,11 +18,18 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Resiliencia del juez: rejudge, TLE y
   let problemId: number;
   let testsetId: number;
   let submissionId: number;
+  let reviewed: number;
+  let reviewedTestset: number;
 
   beforeAll(async () => {
     await fixture.start('Resilience E2E');
     ({ problemId, testsetId } = await fixture.publishProblem({
       letter: 'A', signature, ref: buggyRef, cases: [{ input: { nums: [1, 2] } }, { input: { nums: [] }, visibility: 'hidden' }],
+    }));
+    // Con revisión manual; se acepta antes de iniciar porque con el concurso en curso ya no entran problemas
+    ({ problemId: reviewed, testsetId: reviewedTestset } = await fixture.publishProblem({
+      letter: 'B', signature, ref: fixedRef, cases: [{ input: { nums: [3] } }],
+      testset: { manualReview: true, reviewInstructions: 'No usar len()' },
     }));
     await fixture.run();
   }, 180_000);
@@ -77,10 +84,6 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Resiliencia del juez: rejudge, TLE y
   }, 120_000);
 
   it('con revisión manual el AC espera al juez; rechazarlo cuenta como WA y el equipo ve el comentario', async () => {
-    const { problemId: reviewed, testsetId: reviewedTestset } = await fixture.publishProblem({
-      letter: 'B', signature, ref: fixedRef, cases: [{ input: { nums: [3] } }],
-      testset: { manualReview: true, reviewInstructions: 'No usar len()' },
-    });
     expect((await fixture.repo(Testset).findOneByOrFail({ id: reviewedTestset })).manual_review).toBe(true);
 
     const submission = await fixture.submitAndWait(reviewed, 'python', correct);

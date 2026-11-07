@@ -33,9 +33,9 @@
                 [attr.aria-current]="selected() === (p.id + '') ? 'true' : null"
                 (click)="selectProblem(p.id)"
               >
-                <span class="pw__letter oj-mono">{{ p.letter }}</span>
+                <span class="pw__letter oj-mono" [attr.aria-label]="p.letter ? null : 'Sin letra'">{{ p.letter ?? '—' }}</span>
                 <span class="pw__title">{{ p.title }}</span>
-                <oj-badge [tone]="statusTone(p.status)">{{ statusLabel(p.status) }}</oj-badge>
+                <oj-badge [tone]="(p.status | problemStatus).tone">{{ (p.status | problemStatus).label }}</oj-badge>
               </button>
             } @empty {
               <p class="pw__empty">Sin problemas</p>

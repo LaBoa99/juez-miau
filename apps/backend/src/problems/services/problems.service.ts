@@ -1,5 +1,6 @@
 import {
     ProblemStatus,
+    StaffRole,
     TestCaseVisibility,
     TestsetStatus,
     type ICreateProblemResponse,
@@ -17,7 +18,6 @@ import { EditionsService } from '../../editions/services/editions.service.js';
 import { CategoriesService } from '../../editions/services/categories.service.js';
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js';
 import { Testset } from '../../testsets/entities/testset.entity.js';
-import { nextFreeLetter } from '../letters.js';
 import { TestCase } from '../../testsets/entities/test-case.entity.js';
 import { BlobsService } from '../../blobs/services/blobs.service.js';
 import { toSourceDto, toTestsetDto } from '../../testsets/mappers/testset.mapper.js';
@@ -84,7 +84,7 @@ export class ProblemsService {
                 ...(filters.categoryId && { category_id: filters.categoryId }),
             },
             relations: { current_testset: true },
-            order: { category_id: 'ASC', letter: 'ASC' },
+            order: { category_id: 'ASC', id: 'ASC' },
         })
 
         return problems.map((problem) => ({
@@ -100,27 +100,19 @@ export class ProblemsService {
     async create(editionId: number, dto: CreateProblemDto, staffUserId: number): Promise<ICreateProblemResponse> {
         const edition = await this.editionsService.getById(editionId)
         await this.editionStaffService.assertCanJudge(staffUserId, editionId)
+        this.editionsService.assertIsEditable(edition)
 
+        // Sin letra: se asigna al iniciar el concurso, solo a los problemas aceptados
         const category = await this.categoriesService.getByIdForEdition(dto.categoryId, editionId)
-        // La letra la pone el sistema; solo los scripts y tests la mandan.
-        // shortcut: dos altas simultáneas pueden elegir la misma letra y la segunda recibe 409 (por @Unique); reintentar si los jueces crean problemas en paralelo
-        let letter = dto.letter
-        if(letter === undefined){
-            const taken = await this.problemRepository.find({ select: { letter: true }, where: { edition_id: editionId, category_id: category.id } })
-            letter = nextFreeLetter(taken.map((p) => p.letter))
-        } else {
-            await this.assertLetterIsFree(editionId, category.id, letter)
-        }
 
         // El problema y su testset v1 vacío nacen juntos (RF-17)
         return this.dataSource.transaction(async (manager) => {
             const problem = await manager.save(manager.create(Problem, {
                 edition_id: edition.id,
                 category_id: category.id,
-                letter,
                 created_by: staffUserId,
                 title: dto.title,
-                statement_md: dto.statement,
+                statement_md: dto.statement ?? '',
                 input_format: dto.inputFormat ?? '',
                 output_format: dto.outputFormat ?? '',
                 ...(dto.points !== undefined && { points: dto.points }),
@@ -162,17 +154,45 @@ export class ProblemsService {
     async update(id: number, dto: UpdateProblemDto, staffUserId: number): Promise<IProblem> {
         const problem = await this.getByIdForAuthor(id, staffUserId)
 
-        if(dto.letter !== undefined && dto.letter !== problem.letter){
-            await this.assertLetterIsFree(problem.edition_id, problem.category_id, dto.letter, problem.id)
-            problem.letter = dto.letter
-        }
-
         if(dto.title !== undefined) problem.title = dto.title
         if(dto.statement !== undefined) problem.statement_md = dto.statement
+        // Markdown y PDF son excluyentes: escribir markdown quita el PDF
+        if(dto.statement?.trim()) problem.statement_pdf_sha = null
         if(dto.inputFormat !== undefined) problem.input_format = dto.inputFormat
         if(dto.outputFormat !== undefined) problem.output_format = dto.outputFormat
 
         return toProblemDto(await this.problemRepository.save(problem))
+    }
+
+    // ─── Enunciado en PDF (excluyente con el markdown) ───
+
+    async setStatementPdf(id: number, pdf: Buffer, staffUserId: number): Promise<IProblem> {
+        const problem = await this.getByIdForAuthor(id, staffUserId)
+        // Solo la cabecera: un PDF dañado lo detecta el visor, no el servidor
+        if(pdf.subarray(0, 5).toString('latin1') !== '%PDF-') throw new UnprocessableEntityException({ errors: ['the file is not a PDF'] })
+
+        return this.dataSource.transaction(async (manager) => {
+            const blob = await this.blobsService.put(pdf, manager)
+            problem.statement_pdf_sha = blob.sha
+            problem.statement_md = ''
+            return toProblemDto(await manager.save(problem))
+        })
+    }
+
+    async removeStatementPdf(id: number, staffUserId: number): Promise<void> {
+        const problem = await this.getByIdForAuthor(id, staffUserId)
+        problem.statement_pdf_sha = null
+        await this.problemRepository.save(problem)
+    }
+
+    async getStatementPdf(id: number, staffUserId: number): Promise<Buffer> {
+        return this.readStatementPdf(await this.getByIdForJudge(id, staffUserId))
+    }
+
+    // Sin revisar permisos: también lo usa la vista del equipo durante el concurso
+    async readStatementPdf(problem: Problem): Promise<Buffer> {
+        if(problem.statement_pdf_sha === null) throw new NotFoundException('problem #' + problem.id + ' has no PDF statement')
+        return this.blobsService.get(problem.statement_pdf_sha)
     }
 
     // El enunciado tal como lo verá el equipo (RF-27)
@@ -187,6 +207,7 @@ export class ProblemsService {
         return {
             title: problem.title,
             statement: problem.statement_md,
+            hasStatementPdf: problem.statement_pdf_sha !== null,
             inputFormat: problem.input_format,
             outputFormat: problem.output_format,
             signature: problem.signature,
@@ -213,30 +234,57 @@ export class ProblemsService {
         })
     }
 
-    // No ejecuta la solución de referencia: confía en que el build del testset lo dejó en `ready` (RF-21)
-    async publish(id: number, staffUserId: number): Promise<IPublishProblemResponse> {
+    // El autor (o un admin) lo propone: draft → ready. No ejecuta la solución de referencia:
+    // confía en que el build del testset lo dejó en `ready` (RF-21)
+    async propose(id: number, staffUserId: number): Promise<IPublishProblemResponse> {
         const problem = await this.getByIdForAuthor(id, staffUserId)
+        if(problem.status !== ProblemStatus.DRAFT) return { status: problem.status }
 
-        if(problem.status === ProblemStatus.PUBLISHED){
-            return { status: problem.status }
-        }
+        await this.assertPublishable(problem)
+        return this.setStatus(problem, ProblemStatus.READY)
+    }
 
+    // Admin de la edición o superadmin: ready → published (entra al concurso). Un draft se propone y acepta de una vez
+    async accept(id: number, staffUserId: number): Promise<IPublishProblemResponse> {
+        const problem = await this.getByIdForEditionAdmin(id, staffUserId)
+        if(problem.status === ProblemStatus.PUBLISHED) return { status: problem.status }
+
+        await this.assertPublishable(problem)
+        return this.setStatus(problem, ProblemStatus.PUBLISHED)
+    }
+
+    // Lo saca del concurso sin borrarlo: published → ready
+    async disable(id: number, staffUserId: number): Promise<IPublishProblemResponse> {
+        const problem = await this.getByIdForEditionAdmin(id, staffUserId)
+        if(problem.status !== ProblemStatus.PUBLISHED) return { status: problem.status }
+
+        return this.setStatus(problem, ProblemStatus.READY)
+    }
+
+    private async getByIdForEditionAdmin(id: number, staffUserId: number): Promise<Problem> {
+        const problem = await this.getById(id)
+        await this.editionStaffService.assertRole(staffUserId, problem.edition_id, [StaffRole.ADMIN])
+        // Qué entra al concurso se decide antes de iniciarlo; las letras se asignan al iniciar
+        this.editionsService.assertIsEditable(await this.editionsService.getById(problem.edition_id))
+        return problem
+    }
+
+    private async assertPublishable(problem: Problem): Promise<void> {
         const errors = await this.findPublishErrors(problem)
-        if(errors.length > 0){
-            throw new UnprocessableEntityException({ errors })
-        }
+        if(errors.length > 0) throw new UnprocessableEntityException({ errors })
+    }
 
-        problem.status = ProblemStatus.PUBLISHED
+    private async setStatus(problem: Problem, status: ProblemStatus): Promise<IPublishProblemResponse> {
+        problem.status = status
         await this.problemRepository.save(problem)
-
-        return { status: problem.status }
+        return { status }
     }
 
     async remove(id: number, staffUserId: number): Promise<void> {
         const problem = await this.getByIdForAuthor(id, staffUserId)
 
-        if(problem.status !== ProblemStatus.DRAFT){
-            throw new ConflictException('problem #' + id + ' can only be deleted while it is a draft')
+        if(problem.status === ProblemStatus.PUBLISHED){
+            throw new ConflictException('problem #' + id + ' is in the contest; take it out before deleting it')
         }
 
         await this.problemRepository.delete([ id ])
@@ -245,7 +293,7 @@ export class ProblemsService {
     private async findPublishErrors(problem: Problem): Promise<string[]> {
         const errors: string[] = []
 
-        if(!problem.statement_md.trim()) errors.push('statement is empty')
+        if(!problem.statement_md.trim() && problem.statement_pdf_sha === null) errors.push('statement is empty')
         if(!problem.signature) errors.push('signature is not defined')
 
         const testset = await this.findCurrentTestset(problem)
@@ -285,17 +333,4 @@ export class ProblemsService {
         return this.testsetRepository.findOne({ where: { id: problem.current_testset_id }})
     }
 
-    // La letra identifica al problema dentro de su categoría
-    private async assertLetterIsFree(editionId: number, categoryId: number, letter: string, exceptId?: number): Promise<void> {
-        const taken = await this.problemRepository.existsBy({
-            edition_id: editionId,
-            category_id: categoryId,
-            letter,
-            ...(exceptId !== undefined && { id: Not(exceptId) }),
-        })
-
-        if(taken){
-            throw new ConflictException('letter ' + letter + ' is already used in category #' + categoryId)
-        }
-    }
 }

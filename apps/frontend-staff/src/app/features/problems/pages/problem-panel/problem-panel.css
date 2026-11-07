@@ -141,3 +141,8 @@
 
 .pp__step-title { margin: 0; font-size: 16px; font-weight: 600; }
 .pp__nav { padding-top: var(--oj-space-md); border-top: 1px solid var(--oj-border); }
+
+/* Enunciado: markdown o PDF */
+.pp__stmt { display: flex; flex-direction: column; gap: var(--oj-space-sm); }
+.pp__label { font-size: 13px; font-weight: 600; }
+.pp__pdf { width: 100%; height: 70vh; border: 1px solid var(--oj-border); border-radius: var(--oj-radius); background: var(--oj-bg); }

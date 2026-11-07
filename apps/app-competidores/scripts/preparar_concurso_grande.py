@@ -150,7 +150,7 @@ def main():
     for category in categories:
         for letter, (title, statement, signature, cases, ref, wrong) in zip("ABCDEFGHIJ", PROBLEMS):
             problem = staff.call("POST", f"/editions/{eid}/problems", {
-                "categoryId": category["id"], "letter": letter, "title": title, "statement": statement,
+                "categoryId": category["id"], "title": title, "statement": statement,
                 "inputFormat": "Ver la firma de la función.", "outputFormat": "El valor que regresa la función."})
             staff.call("PATCH", f"/problems/{problem['id']}/signature", signature)
             for value, visibility in cases:
@@ -158,7 +158,7 @@ def main():
             staff.call("PUT", f"/testsets/{problem['testsetId']}/ref-solution", {"languageId": langs["python"], "source": ref})
             staff.call("POST", f"/testsets/{problem['testsetId']}/build")
             wait_built(staff, problem["testsetId"])
-            staff.call("POST", f"/problems/{problem['id']}/publish")
+            staff.call("POST", f"/problems/{problem['id']}/accept")
             problem_ids[category["id"]].append((problem["id"], ref, wrong))
             print(f"  {category['code']} {letter}. {title[:40]}")
 

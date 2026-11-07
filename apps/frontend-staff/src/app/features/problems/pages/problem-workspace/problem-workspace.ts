@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
-import { ICategory, IProblemListItem, ProblemStatus } from '@concurso/shared-types';
+import { ICategory, IProblemListItem } from '@concurso/shared-types';
+import { ProblemStatusPipe } from '../../../../shared/pipes/problem-status.pipe';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Badge } from '../../../../shared/ui/badge.component';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
@@ -17,7 +18,7 @@ interface Group {
 @Component({
   selector: 'oj-problem-workspace',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, ButtonDirective, Badge, ConfirmDialog],
+  imports: [RouterOutlet, ButtonDirective, Badge, ConfirmDialog, ProblemStatusPipe],
   providers: [ProblemsBus],
   templateUrl: './problem-workspace.html',
   styleUrl: './problem-workspace.css',
@@ -49,7 +50,8 @@ export class ProblemWorkspace {
       category,
       problems: problems
         .filter((p) => p.categoryId === category.id)
-        .sort((a, b) => a.letter.localeCompare(b.letter)),
+        // Sin letra hasta que inicia el concurso: entonces en orden de creación
+        .sort((a, b) => (a.letter ?? '').localeCompare(b.letter ?? '') || a.id - b.id),
     }));
   });
 
@@ -76,14 +78,6 @@ export class ProblemWorkspace {
   constructor() {
     this.bus.editionId = this.editionId;
     this.bus.load();
-  }
-
-  statusLabel(status: ProblemStatus): string {
-    return status === ProblemStatus.PUBLISHED ? 'Publicado' : 'Borrador';
-  }
-
-  statusTone(status: ProblemStatus): 'success' | 'neutral' {
-    return status === ProblemStatus.PUBLISHED ? 'success' : 'neutral';
   }
 
   selectProblem(id: number): void {

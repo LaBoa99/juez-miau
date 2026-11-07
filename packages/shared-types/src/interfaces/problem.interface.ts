@@ -11,23 +11,23 @@ export interface IProblemFilters {
 
 export interface ICreateProblem {
     categoryId: number
-    // La asigna el sistema (siguiente libre de la categoría) si no se manda
-    letter?: string
     title: string
-    statement: string // markdown
+    // markdown; vacío si el enunciado será un PDF
+    statement?: string
     // Opcionales: la firma y los ejemplos ya dicen qué entra y qué sale
     inputFormat?: string
     outputFormat?: string
     points?: number
 }
 
-export type IUpdateProblem = Partial<Pick<ICreateProblem, 'title' | 'statement' | 'inputFormat' | 'outputFormat' | 'letter'>>
+export type IUpdateProblem = Partial<Pick<ICreateProblem, 'title' | 'statement' | 'inputFormat' | 'outputFormat'>>
 
 // ─── Responses ───────────────────────────────────────────────
 
 export interface IProblemListItem {
     id: number
-    letter: string
+    // null hasta que inicia el concurso: entonces se asignan A, B, C… a los aceptados
+    letter: string | null
     title: string
     categoryId: number
     status: ProblemStatus
@@ -44,7 +44,8 @@ export interface IProblem {
     id: number
     editionId: number
     categoryId: number
-    letter: string
+    // null hasta que inicia el concurso: entonces se asignan A, B, C… a los aceptados
+    letter: string | null
     title: string
     statement: string
     inputFormat: string
@@ -53,6 +54,8 @@ export interface IProblem {
     status: ProblemStatus
     currentTestsetId: number | null
     signature: IProblemSignature | null
+    // El enunciado es el PDF (GET /problems/:id/statement-pdf) en vez de `statement`; son excluyentes
+    hasStatementPdf: boolean
 }
 
 export interface IProblemTestset {
@@ -116,6 +119,8 @@ export interface IProblemSample {
 export interface IProblemPreview {
     title: string
     statement: string
+    // Si es true, el enunciado es un PDF y `statement` viene vacío
+    hasStatementPdf: boolean
     inputFormat: string
     outputFormat: string
     signature: IProblemSignature | null

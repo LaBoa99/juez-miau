@@ -112,7 +112,6 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
 
     const created = await api().post(`/api/v1/editions/${edition.id}/problems`).set(as('judge')).send({
       categoryId: category.id,
-      letter: 'A',
       title: 'Suma',
       statement: 'Suma los números y agrega k.',
       inputFormat: 'nums: int[], k: long',
@@ -225,6 +224,63 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
     expect(res.body.visibility).toBe('public');
   });
 
+  it('generar con esquema conserva la visibilidad por grupo y semilla; PATCH cases/visibility cambia un grupo', async () => {
+    await api().post(`/api/v1/testsets/${testsetId}/generate`).set(as('judge')).send({ schema }).expect(200);
+    const visibility = async () => (await caseRepo.find({ where: { testset_id: testsetId }, order: { ordinal: 'ASC' } }))
+      .map((testCase) => [testCase.group_name, testCase.seed, testCase.visibility]);
+    expect((await visibility()).filter(([group]) => group === 'chicos')).toEqual([['chicos', 1, 'public'], ['chicos', 2, 'hidden'], ['chicos', 3, 'hidden']]);
+
+    const res = await api().patch(`/api/v1/testsets/${testsetId}/cases/visibility`).set(as('judge'))
+      .send({ group: 'grandes', visibility: 'public' }).expect(200);
+    expect(res.body).toEqual({ updated: 1 });
+    expect((await visibility()).find(([group]) => group === 'grandes')).toEqual(['grandes', 1, 'public']);
+
+    await api().patch(`/api/v1/testsets/${testsetId}/cases/visibility`).set(as('observer')).send({ group: 'grandes', visibility: 'hidden' }).expect(403);
+    await api().patch(`/api/v1/testsets/${testsetId}/cases/visibility`).set(as('judge')).send({ group: 'grandes', visibility: 'hidden' }).expect(200);
+  });
+
+  it('POST cases/bulk agrega todos o ninguno; POST cases/:id/pin vuelve manual un caso generado', async () => {
+    const before = await caseRepo.countBy({ testset_id: testsetId });
+    const invalid = await api().post(`/api/v1/testsets/${testsetId}/cases/bulk`).set(as('judge'))
+      .send({ cases: [{ input: { nums: [1], k: 1 } }, { input: { nums: 'x', k: 1 } }] }).expect(422);
+    expect(invalid.body.errors[0]).toMatch(/^case 2: /);
+    expect(await caseRepo.countBy({ testset_id: testsetId })).toBe(before);
+
+    const added = await api().post(`/api/v1/testsets/${testsetId}/cases/bulk`).set(as('judge'))
+      .send({ cases: [{ input: { nums: [1], k: 1 }, group: ' bordes ' }, { input: { nums: [2, 3], k: 0 }, visibility: 'hidden', group: 'bordes' }] }).expect(201);
+    expect(added.body.map((c: { ordinal: number, origin: string, group: string | null }) => [c.ordinal, c.origin, c.group]))
+      .toEqual([[before + 1, 'manual', 'bordes'], [before + 2, 'manual', 'bordes']]);
+    // Un grupo manual se hace público de una vez, igual que uno aleatorio
+    const grouped = await api().patch(`/api/v1/testsets/${testsetId}/cases/visibility`).set(as('judge')).send({ group: 'bordes', visibility: 'public' }).expect(200);
+    expect(grouped.body).toEqual({ updated: 2 });
+    const moved = await api().patch(`/api/v1/testsets/${testsetId}/cases/${added.body[0].id}`).set(as('judge')).send({ group: null }).expect(200);
+    expect(moved.body.group).toBeNull();
+
+    const generated = await caseRepo.findOneByOrFail({ testset_id: testsetId, origin: TestCaseOrigin.GENERATED, group_name: 'grandes' });
+    const pinned = await api().post(`/api/v1/testsets/${testsetId}/cases/${generated.id}/pin`).set(as('judge')).expect(200);
+    expect(pinned.body).toMatchObject({ origin: 'manual', group: null, seed: null });
+    await api().post(`/api/v1/testsets/${testsetId}/cases/${generated.id}/pin`).set(as('judge')).expect(409);
+
+    // Deja el testset como estaba para las pruebas siguientes
+    for (const id of [...added.body.map((c: { id: number }) => c.id), generated.id]) {
+      await api().delete(`/api/v1/testsets/${testsetId}/cases/${id}`).set(as('judge')).expect(204);
+    }
+    await api().post(`/api/v1/testsets/${testsetId}/generate`).set(as('judge')).expect(200);
+    expect(await caseRepo.countBy({ testset_id: testsetId })).toBe(before);
+  });
+
+  it('POST /testsets/:id/signature-detect encola la detección; GET la consulta', async () => {
+    const body = { languageId: enabledLanguage.id, source: 'def sumar(nums: list[int], k: int) -> int:\n    return sum(nums) + k\n' };
+    await api().post(`/api/v1/testsets/${testsetId}/signature-detect`).set(as('observer')).send(body).expect(403);
+    await api().post(`/api/v1/testsets/${testsetId}/signature-detect`).set(as('judge')).send({ ...body, languageId: disabledLanguage.id }).expect(422);
+
+    const started = await api().post(`/api/v1/testsets/${testsetId}/signature-detect`).set(as('judge')).send(body).expect(202);
+    expect(started.body).toMatchObject({ id: expect.any(String), status: 'queued', candidates: [] });
+    const polled = await api().get(`/api/v1/testsets/${testsetId}/signature-detect/${started.body.id}`).set(as('judge')).expect(200);
+    expect(['queued', 'running', 'done']).toContain(polled.body.status);
+    await api().get(`/api/v1/testsets/${testsetId}/signature-detect/no-existe`).set(as('judge')).expect(404);
+  });
+
   it('PUT /testsets/:id/ref-solution exige un lenguaje habilitado en la edición', async () => {
     await api().put(`/api/v1/testsets/${testsetId}/ref-solution`).set(as('judge'))
       .send({ languageId: disabledLanguage.id, source: 'def sumar(nums, k): return sum(nums) + k' }).expect(422);
@@ -278,8 +334,8 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
     expect(preview.body.samples).toHaveLength(2);
     expect(preview.body.samples[0]).toEqual({ input: '{"nums":[1,2,3],"k":9007199254740993}', output: '6' });
 
-    await api().post(`/api/v1/problems/${problemId}/publish`).set(as('judge')).expect(200);
-    // Con el problema publicado la firma ya no cambia
+    await api().post(`/api/v1/problems/${problemId}/propose`).set(as('judge')).expect(200);
+    // Con el problema propuesto la firma ya no cambia
     await api().patch(`/api/v1/problems/${problemId}/signature`).set(as('judge')).send(signature).expect(409);
   });
 });

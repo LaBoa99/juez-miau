@@ -1,8 +1,7 @@
-import { nextFreeLetter } from './letters.js';
+import { letterAt } from './letters.js';
 
-describe('nextFreeLetter', () => {
-  it('starts at A', () => expect(nextFreeLetter([])).toBe('A'));
-  it('takes the next one', () => expect(nextFreeLetter(['A', 'B'])).toBe('C'));
-  it('fills gaps first', () => expect(nextFreeLetter(['A', 'C'])).toBe('B'));
-  it('goes to two letters after Z', () => expect(nextFreeLetter([...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'])).toBe('AA'));
+describe('letterAt', () => {
+  it('starts at A', () => expect(letterAt(0)).toBe('A'));
+  it('goes to two letters after Z', () => expect(letterAt(26)).toBe('AA'));
+  it('fails past ZZ', () => expect(() => letterAt(26 + 26 * 26)).toThrow());
 });

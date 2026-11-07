@@ -5,7 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { Repository } from 'typeorm';
-import { StaffRole, TestCaseOrigin, TestCaseVisibility, TestsetStatus } from '@concurso/shared-types';
+import { EditionStatus, StaffRole, TestCaseOrigin, TestCaseVisibility, TestsetStatus } from '@concurso/shared-types';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
 import { StaffUser } from '../src/staff/entities/staff-user.entity.js';
@@ -44,7 +44,6 @@ describe('Problemas para staff (e2e)', () => {
   const as = (who: string) => ({ Authorization: `Bearer ${tokens[who]}` });
   const body = (overrides: object = {}) => ({
     categoryId: category.id,
-    letter: 'A',
     title: 'Suma de dos números',
     statement: 'Dados **a** y **b**, imprime su suma.',
     inputFormat: 'Dos enteros a y b.',
@@ -156,15 +155,24 @@ describe('Problemas para staff (e2e)', () => {
       });
     });
 
-    it('409: letra repetida en la misma categoría; la misma letra en otra categoría sí se permite', async () => {
-      await createProblem().expect(409);
-      await createProblem({ categoryId: otherCategory.id }).expect(201);
+    it('201: nace sin letra (se asigna al iniciar el concurso)', async () => {
+      const res = await createProblem({ categoryId: otherCategory.id }).expect(201);
+      expect((await problemRepo.findOneByOrFail({ id: res.body.id })).letter).toBeNull();
     });
 
-    it('400: categoría de otra edición, letra inválida o campos extra', async () => {
-      await createProblem({ categoryId: foreignCategory.id, letter: 'B' }).expect(400);
-      await createProblem({ letter: 'a1' }).expect(400);
-      await createProblem({ letter: 'B', status: 'published' }).expect(400);
+    it('400: categoría de otra edición o campos extra (la letra ya no se manda)', async () => {
+      await createProblem({ categoryId: foreignCategory.id }).expect(400);
+      await createProblem({ letter: 'B' }).expect(400);
+      await createProblem({ status: 'published' }).expect(400);
+    });
+
+    it('409: no se crean problemas con el concurso iniciado', async () => {
+      await editionRepo.update(edition.id, { status: EditionStatus.RUNNING });
+      try {
+        await createProblem().expect(409);
+      } finally {
+        await editionRepo.update(edition.id, { status: EditionStatus.DRAFT });
+      }
     });
 
     it('404: edición inexistente', async () => {
@@ -184,7 +192,7 @@ describe('Problemas para staff (e2e)', () => {
       expect(res.body).toEqual([
         {
           id: expect.any(Number),
-          letter: 'A',
+          letter: null,
           title: 'Suma de dos números',
           categoryId: category.id,
           status: 'draft',
@@ -199,7 +207,7 @@ describe('Problemas para staff (e2e)', () => {
     let testsetId: number;
 
     beforeAll(async () => {
-      const res = await createProblem({ letter: 'C', points: 5 }).expect(201);
+      const res = await createProblem({ points: 5 }).expect(201);
       problemId = res.body.id;
       testsetId = res.body.testsetId;
     });
@@ -211,7 +219,7 @@ describe('Problemas para staff (e2e)', () => {
         id: problemId,
         editionId: edition.id,
         categoryId: category.id,
-        letter: 'C',
+        letter: null,
         points: 5,
         status: 'draft',
         currentTestsetId: testsetId,
@@ -227,15 +235,15 @@ describe('Problemas para staff (e2e)', () => {
       await api().get(`/api/v1/problems/${problemId}`).set(as('observer')).expect(403);
     });
 
-    it('PATCH /problems/:id edita el texto y valida la letra', async () => {
+    it('PATCH /problems/:id edita el texto; la letra, los puntos y la categoría no', async () => {
       const res = await api()
         .patch(`/api/v1/problems/${problemId}`)
         .set(as('judge'))
-        .send({ title: 'Suma (v2)', statement: 'Nuevo enunciado', letter: 'D' })
+        .send({ title: 'Suma (v2)', statement: 'Nuevo enunciado' })
         .expect(200);
-      expect(res.body).toMatchObject({ title: 'Suma (v2)', statement: 'Nuevo enunciado', letter: 'D' });
+      expect(res.body).toMatchObject({ title: 'Suma (v2)', statement: 'Nuevo enunciado', letter: null });
 
-      await api().patch(`/api/v1/problems/${problemId}`).set(as('judge')).send({ letter: 'A' }).expect(409);
+      await api().patch(`/api/v1/problems/${problemId}`).set(as('judge')).send({ letter: 'A' }).expect(400);
       await api().patch(`/api/v1/problems/${problemId}`).set(as('judge')).send({ points: 10 }).expect(400);
       await api().patch(`/api/v1/problems/${problemId}`).set(as('judge')).send({ categoryId: otherCategory.id }).expect(400);
     });
@@ -246,6 +254,7 @@ describe('Problemas para staff (e2e)', () => {
       expect(res.body).toEqual({
         title: 'Suma (v2)',
         statement: 'Nuevo enunciado',
+        hasStatementPdf: false,
         inputFormat: 'Dos enteros a y b.',
         outputFormat: 'Un entero.',
         signature: null,
@@ -254,8 +263,24 @@ describe('Problemas para staff (e2e)', () => {
       });
     });
 
-    it('POST /problems/:id/publish → 422 con la lista de errores si el testset no está listo', async () => {
-      const res = await api().post(`/api/v1/problems/${problemId}/publish`).set(as('judge')).expect(422);
+    it('PUT/GET/DELETE statement-pdf: el PDF reemplaza al markdown y escribir markdown lo quita', async () => {
+      const pdf = Buffer.from('%PDF-1.4\n%fake\n');
+      await api().put(`/api/v1/problems/${problemId}/statement-pdf`).set(as('judge')).attach('file', Buffer.from('hola'), 'x.pdf').expect(422);
+      await api().put(`/api/v1/problems/${problemId}/statement-pdf`).set(as('observer')).attach('file', pdf, 'e.pdf').expect(403);
+
+      const res = await api().put(`/api/v1/problems/${problemId}/statement-pdf`).set(as('judge')).attach('file', pdf, 'e.pdf').expect(200);
+      expect(res.body).toMatchObject({ statement: '', hasStatementPdf: true });
+      const download = await api().get(`/api/v1/problems/${problemId}/statement-pdf`).set(as('judge')).buffer(true).expect(200);
+      expect(download.headers['content-type']).toBe('application/pdf');
+      expect(Buffer.from(download.body).equals(pdf)).toBe(true);
+
+      const patched = await api().patch(`/api/v1/problems/${problemId}`).set(as('judge')).send({ statement: 'Nuevo enunciado' }).expect(200);
+      expect(patched.body).toMatchObject({ statement: 'Nuevo enunciado', hasStatementPdf: false });
+      await api().get(`/api/v1/problems/${problemId}/statement-pdf`).set(as('judge')).expect(404);
+    });
+
+    it('POST /problems/:id/propose → 422 con la lista de errores si el testset no está listo', async () => {
+      const res = await api().post(`/api/v1/problems/${problemId}/propose`).set(as('judge')).expect(422);
 
       expect(res.body.errors).toEqual([
         'signature is not defined',
@@ -266,7 +291,7 @@ describe('Problemas para staff (e2e)', () => {
       expect((await problemRepo.findOneByOrFail({ id: problemId })).status).toBe('draft');
     });
 
-    it('POST /problems/:id/publish → 422 si solo hay casos ocultos; 200 con un caso público', async () => {
+    it('POST /problems/:id/propose → 422 si solo hay casos ocultos; 200 con un caso público', async () => {
       const refSolution = await app.get<Repository<RefSolution>>(getRepositoryToken(RefSolution)).save({
         problem_id: problemId,
         language_id: language.id,
@@ -293,15 +318,32 @@ describe('Problemas para staff (e2e)', () => {
         });
 
       await newCase(1, TestCaseVisibility.HIDDEN);
-      const hiddenOnly = await api().post(`/api/v1/problems/${problemId}/publish`).set(as('judge')).expect(422);
+      const hiddenOnly = await api().post(`/api/v1/problems/${problemId}/propose`).set(as('judge')).expect(422);
       expect(hiddenOnly.body.errors).toEqual(['testset v1 has no public test cases']);
 
       await newCase(2, TestCaseVisibility.PUBLIC);
-      const res = await api().post(`/api/v1/problems/${problemId}/publish`).set(as('judge')).expect(200);
-      expect(res.body).toEqual({ status: 'published' });
+      const res = await api().post(`/api/v1/problems/${problemId}/propose`).set(as('judge')).expect(200);
+      expect(res.body).toEqual({ status: 'ready' });
 
-      // Publicar de nuevo no cambia nada
-      await api().post(`/api/v1/problems/${problemId}/publish`).set(as('judge')).expect(200);
+      // Proponer de nuevo no cambia nada
+      await api().post(`/api/v1/problems/${problemId}/propose`).set(as('judge')).expect(200);
+    });
+
+    it('accept/disable: solo admin de la edición o superadmin, y solo antes de iniciar', async () => {
+      await api().post(`/api/v1/problems/${problemId}/accept`).set(as('judge')).expect(403);
+
+      await editionRepo.update(edition.id, { status: EditionStatus.RUNNING });
+      try {
+        await api().post(`/api/v1/problems/${problemId}/accept`).set(as('superadmin')).expect(409);
+      } finally {
+        await editionRepo.update(edition.id, { status: EditionStatus.DRAFT });
+      }
+
+      const accepted = await api().post(`/api/v1/problems/${problemId}/accept`).set(as('superadmin')).expect(200);
+      expect(accepted.body).toEqual({ status: 'published' });
+      const disabled = await api().post(`/api/v1/problems/${problemId}/disable`).set(as('superadmin')).expect(200);
+      expect(disabled.body).toEqual({ status: 'ready' });
+      await api().post(`/api/v1/problems/${problemId}/accept`).set(as('superadmin')).expect(200);
     });
 
     it('el detalle incluye la solución de referencia del testset vigente', async () => {
@@ -314,10 +356,10 @@ describe('Problemas para staff (e2e)', () => {
       });
     });
 
-    it('DELETE /problems/:id → 409 si está publicado, 204 si es borrador', async () => {
+    it('DELETE /problems/:id → 409 si está en el concurso, 204 si es borrador', async () => {
       await api().delete(`/api/v1/problems/${problemId}`).set(as('judge')).expect(409);
 
-      const draft = await createProblem({ letter: 'Z' }).expect(201);
+      const draft = await createProblem().expect(201);
       await api().delete(`/api/v1/problems/${draft.body.id}`).set(as('judge')).expect(204);
 
       expect(await problemRepo.findOneBy({ id: draft.body.id })).toBeNull();

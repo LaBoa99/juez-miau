@@ -77,7 +77,7 @@ export class SubmissionList {
   private readonly langMap = signal<Map<string, string>>(new Map());
 
   protected readonly categories = computed(() => this.ctx.edition()?.categories ?? []);
-  protected readonly problems = computed(() => [...this.problemMap().values()].sort((a, b) => a.letter.localeCompare(b.letter)));
+  protected readonly problems = computed(() => [...this.problemMap().values()].sort((a, b) => (a.letter ?? '').localeCompare(b.letter ?? '') || a.id - b.id));
 
   protected readonly categoryCtrl = this.fb.control<number | null>(null);
   protected readonly problemCtrl = this.fb.control<number | null>(null);

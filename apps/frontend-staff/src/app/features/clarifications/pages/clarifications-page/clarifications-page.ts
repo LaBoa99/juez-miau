@@ -65,7 +65,7 @@ export class ClarificationsPage {
   constructor() {
     this.load();
     this.problems.list(this.editionId).subscribe({
-      next: (rows) => this.problemLabels.set(new Map(rows.map((p) => [p.id, `${p.letter} · ${p.title}`]))),
+      next: (rows) => this.problemLabels.set(new Map(rows.map((p) => [p.id, p.letter ? `${p.letter} · ${p.title}` : p.title]))),
       error: () => {},
     });
 

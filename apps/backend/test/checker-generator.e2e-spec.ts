@@ -40,7 +40,7 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Checker y generador en código (e2e)
   beforeAll(async () => {
     await fixture.start('Checker E2E');
     const created = await fixture.api().post(`/api/v1/editions/${fixture.edition.id}/problems`).set(fixture.asAdmin()).send({
-      categoryId: fixture.category.id, letter: 'A', title: 'Dos que suman', statement: 'Encuentra dos índices.', inputFormat: 'x', outputFormat: 'x',
+      categoryId: fixture.category.id, title: 'Dos que suman', statement: 'Encuentra dos índices.', inputFormat: 'x', outputFormat: 'x',
     }).expect(201);
     ({ id: problemId, testsetId } = created.body);
     await fixture.api().patch(`/api/v1/problems/${problemId}/signature`).set(fixture.asAdmin()).send(signature).expect(200);
@@ -87,7 +87,7 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Checker y generador en código (e2e)
       [5, TestCaseOrigin.GENERATOR, 'grandes', 9],
     ]);
 
-    await fixture.api().post(`/api/v1/problems/${problemId}/publish`).set(fixture.asAdmin()).expect(200);
+    await fixture.api().post(`/api/v1/problems/${problemId}/accept`).set(fixture.asAdmin()).expect(200);
     await fixture.run();
   }, 180_000);
 
