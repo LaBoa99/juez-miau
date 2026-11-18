@@ -72,7 +72,7 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
 
         const [categories, teams, problems, submissions] = await Promise.all([
             this.categoryRepository.find({ where: { edition_id: edition.id }, order: { sort_order: 'ASC', id: 'ASC' } }),
-            this.teamRepository.find({ where: { edition_id: edition.id }, select: { id: true, name: true, category_id: true, suspended_at: true } }),
+            this.teamRepository.find({ where: { edition_id: edition.id }, select: { id: true, name: true, category_id: true, room_id: true, suspended_at: true } }),
             this.problemRepository.find({
                 where: { edition_id: edition.id, status: ProblemStatus.PUBLISHED },
                 select: { id: true, letter: true, title: true, category_id: true },

@@ -41,7 +41,9 @@ export class TeamMembersService {
         const repository = this.getThreadRepository(manager)
         const teamMember = await this.getById(id, manager)
 
-        repository.merge(teamMember, body)
+        // El DTO trae `name`, pero la columna es `full_name`
+        if(body.name !== undefined) teamMember.full_name = body.name.toUpperCase().trim()
+        if(body.career !== undefined) teamMember.career = body.career.toUpperCase().trim()
         
         return repository.save(teamMember)
     }

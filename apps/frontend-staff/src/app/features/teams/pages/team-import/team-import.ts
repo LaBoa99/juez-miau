@@ -28,7 +28,8 @@ export class TeamImport {
   protected readonly file = signal<File | null>(null);
   protected readonly validation = signal<ITeamImportValidation | null>(null);
   protected readonly credentials = signal<ITeamImportCredential[]>([]);
-  protected readonly createdOk = signal<number | null>(null);
+  protected readonly summary = signal<string | null>(null);
+  protected readonly updatedCount = signal(0);
 
   protected readonly validating = signal(false);
   protected readonly importing = signal(false);
@@ -47,10 +48,12 @@ export class TeamImport {
   }
 
   protected readonly canImport = computed(() => (this.validation()?.validRows ?? 0) > 0);
+  protected readonly toUpdate = computed(() => this.validation()?.preview.filter((p) => p.action === 'update').length ?? 0);
 
   onFile(file: File): void {
     this.file.set(file);
     this.error.set(null);
+    this.summary.set(null);
   }
 
   validate(): void {
@@ -87,11 +90,12 @@ export class TeamImport {
       next: (res) => {
         this.importing.set(false);
         this.imported.emit();
+        this.updatedCount.set(res.updated);
         if (res.credentials.length > 0) {
           this.credentials.set(res.credentials);
           this.step.set('credenciales');
         } else {
-          this.createdOk.set(res.created);
+          this.summary.set(`Se crearon ${res.created} equipos y se actualizaron ${res.updated}.`);
           this.reset();
         }
       },
@@ -118,7 +122,7 @@ export class TeamImport {
     const header = ['Equipo', 'Usuario', 'Password'];
     const lines = [header, ...this.credentials().map((c) => [c.teamName, c.username, c.password])];
     const csv = lines.map((r) => r.map(cell).join(',')).join('\r\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a');
     a.href = url;
     a.download = 'credenciales.csv';

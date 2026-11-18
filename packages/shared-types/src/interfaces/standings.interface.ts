@@ -21,6 +21,8 @@ export interface IStandingsRow {
     suspended: boolean
     teamId: number
     teamName: string
+    // Para filtrar el marcador por salón
+    roomId: number | null
     solved: number
     penalty: number
     cells: IStandingsCell[]

@@ -5,7 +5,7 @@ export const PENALTY_PER_REJECTION = 20
 // Rechazos que suman penalización; CE no cuenta (el código ni siquiera corrió)
 const REJECTED = new Set<Verdict>([Verdict.WA, Verdict.TLE, Verdict.MLE, Verdict.RE])
 
-export interface StandingsTeam { id: number, name: string, category_id: number, suspended?: boolean }
+export interface StandingsTeam { id: number, name: string, category_id: number, room_id?: number | null, suspended?: boolean }
 export interface StandingsProblem { id: number, letter: string | null, title: string, category_id: number }
 export interface StandingsCategory { id: number, code: string, name: string }
 export interface StandingsSubmission {
@@ -84,6 +84,7 @@ export function computeStandings(input: StandingsInput, freezeMs: number | null)
                     suspended: !!team.suspended,
                     teamId: team.id,
                     teamName: team.name,
+                    roomId: team.room_id ?? null,
                     solved: solvedCells.length,
                     penalty: solvedCells.reduce((total, cell) => total + cell.acMinute! + PENALTY_PER_REJECTION * cell.rejected, 0),
                     cells: teamCells,

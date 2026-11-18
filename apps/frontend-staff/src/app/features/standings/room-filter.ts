@@ -4,7 +4,6 @@ import type { IStandingsCategory, IStandingsRow } from '@concurso/shared-types';
 // posición se recalcula dentro del salón y los empates (misma posición en el backend) se conservan.
 export function filterByRoom(
   cat: IStandingsCategory,
-  roomOf: ReadonlyMap<number, number | null>,
   roomId: number | null,
 ): IStandingsCategory {
   if (roomId == null) return cat;
@@ -13,7 +12,7 @@ export function filterByRoom(
   // Último equipo con lugar: su posición en el backend y la nueva dentro del salón
   let prev: { backendRank: number; rank: number } | null = null;
   for (const row of cat.rows) {
-    if ((roomOf.get(row.teamId) ?? null) !== roomId) continue;
+    if (row.roomId !== roomId) continue;
     if (row.rank == null) {
       rows.push(row); // suspendido: sin lugar
       continue;

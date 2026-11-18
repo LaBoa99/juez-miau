@@ -7,6 +7,7 @@ import { TeamsService } from '../../teams/services/teams.service.js';
 import { CreateTeamDto } from '../../teams/dtos/create-team.dto.js';
 import { TeamFiltersDto } from '../../teams/dtos/team-filters.dto.js';
 import { Category } from '../entities/category.entity.js';
+import { Team } from '../../teams/entities/team.entity.js';
 import { EditionsService } from './editions.service.js';
 
 // Formato: NombreEquipo, Integrante1Nombre, Integrante1Carrera… hasta 3, Categoria, Usuario, Password
@@ -26,6 +27,66 @@ const REQUIRED_COLUMNS = [
     memberColumns(1).career,
     COLUMNS.category,
 ]
+
+// Formato alterno (el de inscripciones): una fila por participante, agrupadas por "Nombre Equipo".
+// Los que van solos traen Nombre Equipo = "Individual" (o Tipo = modalidad_individual): su equipo
+// lleva su nombre completo
+const PARTICIPANT = {
+    team: 'Nombre Equipo',
+    name: 'Nombre',
+    career: 'Carrera',
+    level: 'Nivel',
+    type: 'Tipo',
+} as const
+const PARTICIPANT_REQUIRED = [PARTICIPANT.team, PARTICIPANT.name, PARTICIPANT.career, PARTICIPANT.level]
+
+// Comparación de nombres y categorías: sin acentos, mayúsculas ni espacios de más
+const plain = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
+
+// Convierte participantes al formato de una fila por equipo; rowNumbers[i] es la fila real
+// (la del primer integrante) para que los errores apunten al archivo
+export function participantsToTeams(csvRows: CsvRow[]): { rows: CsvRow[], rowNumbers: number[], errors: ImportError[] } {
+    const groups = new Map<string, { row: number, teamName: string, level: string, members: { name: string, career: string }[], bad: boolean }>()
+    const errors: ImportError[] = []
+
+    csvRows.forEach((csvRow, index) => {
+        const row = index + 2
+        const value = (column: string) => csvRow[column] ?? ''
+        const individual = plain(value(PARTICIPANT.team)) === 'individual' || value(PARTICIPANT.type) === 'modalidad_individual'
+        const teamName = individual ? value(PARTICIPANT.name) : value(PARTICIPANT.team)
+        // Cada individual es su propio equipo, aunque dos se llamen igual (eso se marca después)
+        const key = individual ? '#' + row : plain(teamName)
+
+        let group = groups.get(key)
+        if(!group){
+            group = { row, teamName, level: value(PARTICIPANT.level), members: [], bad: false }
+            groups.set(key, group)
+        } else if(plain(group.level) !== plain(value(PARTICIPANT.level))){
+            errors.push({ row, column: PARTICIPANT.level, message: `El nivel no coincide con el de los demás integrantes de "${teamName}" (fila ${group.row})` })
+            group.bad = true
+        }
+        if(group.members.length === MAX_MEMBERS){
+            errors.push({ row, column: PARTICIPANT.team, message: `El equipo "${teamName}" tiene más de ${MAX_MEMBERS} integrantes` })
+            group.bad = true
+        }
+        group.members.push({ name: value(PARTICIPANT.name), career: value(PARTICIPANT.career) })
+    })
+
+    // Los equipos con error no se importan: los errores ya los explican
+    const rows: CsvRow[] = []
+    const rowNumbers: number[] = []
+    for(const group of groups.values()){
+        if(group.bad) continue
+        const teamRow: CsvRow = { [COLUMNS.teamName]: group.teamName, [COLUMNS.category]: group.level }
+        group.members.forEach((member, i) => {
+            teamRow[memberColumns(i + 1).name] = member.name
+            teamRow[memberColumns(i + 1).career] = member.career
+        })
+        rows.push(teamRow)
+        rowNumbers.push(group.row)
+    }
+    return { rows, rowNumbers, errors }
+}
 
 const MAX_TEAM_NAME_LENGTH = 255
 const USERNAME_ATTEMPTS = 20
@@ -47,6 +108,8 @@ interface ParsedTeamRow {
     teamName: string
     category: Category
     members: { name: string, career: string }[]
+    // Ya hay un equipo con ese nombre en la edición: se actualiza en vez de crear otro
+    existingTeamId: number | null
 }
 
 interface ValidationResult {
@@ -79,11 +142,13 @@ export class EditionTeamsService {
                 teamName: row.teamName,
                 category: { id: row.category.id, code: row.category.code, name: row.category.name },
                 members: row.members,
+                action: row.existingTeamId ? 'update' as const : 'create' as const,
             })),
         }
     }
 
-    // Registra solo las filas válidas
+    // Registra solo las filas válidas. Los equipos que ya existen (mismo nombre) se actualizan y
+    // conservan su usuario y contraseña, así que no salen en las credenciales
     async importFromCsv(editionId: number, csv: Buffer) {
         const edition = await this.editionService.getById(editionId)
         this.editionService.assertIsEditable(edition)
@@ -91,20 +156,28 @@ export class EditionTeamsService {
         const { rows, errors } = await this.validateRows(editionId, this.csvService.parse(csv))
         const credentials: ImportCredential[] = []
 
+        let updated = 0
+
         if(rows.length === 0){
-            return { created: 0, errors, credentials }
+            return { created: 0, updated, errors, credentials }
         }
 
         const usedUsernames = new Set<string>()
 
         await this.dataSource.transaction(async (manager) => {
             for(const row of rows){
+                if(row.existingTeamId){
+                    await this.teamsService.replaceRoster(row.existingTeamId, row.category, row.members, manager)
+                    updated++
+                    continue
+                }
+
                 const username = await this.generateUsername(editionId, row.teamName, usedUsernames)
 
                 const { team, password } = await this.teamsService.create(
                     edition,
                     row.category,
-                    null, // el salón se asigna después desde la edición
+                    null, // el salón sale de la categoría si tiene uno solo
                     { name: row.teamName, category_id: row.category.id, members: row.members },
                     { username, manager },
                 )
@@ -113,7 +186,7 @@ export class EditionTeamsService {
             }
         })
 
-        return { created: credentials.length, errors, credentials }
+        return { created: credentials.length, updated, errors, credentials }
     }
 
     // Alta rápida de un equipo (sin CSV). Usuario y contraseña se generan al crear.
@@ -135,7 +208,7 @@ export class EditionTeamsService {
                 name: team.name,
                 username: team.username,
                 category: { id: category.id, code: category.code, name: category.name },
-                room: null,
+                room: team.room ? { id: team.room.id, name: team.room.name } : null,
                 members: team.members.map((member) => ({ id: member.id, name: member.full_name, career: member.career })),
                 online: false,
                 suspended: false,
@@ -168,7 +241,9 @@ export class EditionTeamsService {
 
         // columnas: csv-parse ya garantiza que todas las filas tienen las mismas que la cabecera
         const header = csvRows.length > 0 ? Object.keys(csvRows[0]) : []
-        const missing = csvRows.length > 0 ? REQUIRED_COLUMNS.filter((column) => !header.includes(column)) : []
+        const byParticipant = header.includes(PARTICIPANT.team)
+        const required = byParticipant ? PARTICIPANT_REQUIRED : REQUIRED_COLUMNS
+        const missing = csvRows.length > 0 ? required.filter((column) => !header.includes(column)) : []
         if(csvRows.length === 0){
             errors.push({ row: 1, column: null, message: 'El archivo no contiene equipos' })
         }
@@ -179,16 +254,31 @@ export class EditionTeamsService {
             return { rows: [], errors }
         }
 
+        let rowNumbers: number[] | null = null
+        if(byParticipant){
+            const grouped = participantsToTeams(csvRows)
+            csvRows = grouped.rows
+            rowNumbers = grouped.rowNumbers
+            errors.push(...grouped.errors)
+        }
+
         const categories = await this.categoryRepository.find({ where: { edition_id: editionId } })
         const findCategory = (value: string) => {
-            const needle = value.toLowerCase()
-            return categories.find((c) => c.code.toLowerCase() === needle || c.name.toLowerCase() === needle)
+            const needle = plain(value)
+            return categories.find((c) => plain(c.code) === needle || plain(c.name) === needle)
         }
+
+        // Equipos que ya están en la edición, por nombre
+        const existing = new Map<string, number[]>()
+        for(const team of await this.dataSource.getRepository(Team).find({ select: { id: true, name: true }, where: { edition_id: editionId } })){
+            existing.set(plain(team.name), [...(existing.get(plain(team.name)) ?? []), team.id])
+        }
+        const seen = new Map<string, number>() // nombre → fila donde apareció primero
 
         const rows: ParsedTeamRow[] = []
 
         csvRows.forEach((csvRow, index) => {
-            const row = index + 2 // la fila 1 es la cabecera
+            const row = rowNumbers?.[index] ?? index + 2 // la fila 1 es la cabecera
             const rowErrors: ImportError[] = []
             const addError = (column: string | null, message: string) => rowErrors.push({ row, column, message })
             const value = (column: string) => csvRow[column] ?? ''
@@ -199,7 +289,12 @@ export class EditionTeamsService {
                 addError(COLUMNS.teamName, 'El nombre del equipo es obligatorio')
             } else if(teamName.length > MAX_TEAM_NAME_LENGTH){
                 addError(COLUMNS.teamName, `El nombre del equipo no puede exceder ${MAX_TEAM_NAME_LENGTH} caracteres`)
+            } else if(seen.has(plain(teamName))){
+                addError(COLUMNS.teamName, `El equipo "${teamName}" ya aparece en la fila ${seen.get(plain(teamName))}`)
+            } else if((existing.get(plain(teamName))?.length ?? 0) > 1){
+                addError(COLUMNS.teamName, `Hay varios equipos llamados "${teamName}" en la edición; no se sabe cuál actualizar`)
             }
+            if(teamName && !seen.has(plain(teamName))) seen.set(plain(teamName), row)
 
             // integrantes (1 a 3)
             const members: ParsedTeamRow['members'] = []
@@ -240,6 +335,7 @@ export class EditionTeamsService {
                 teamName,
                 category: category!,
                 members,
+                existingTeamId: existing.get(plain(teamName))?.[0] ?? null,
             })
         })
 

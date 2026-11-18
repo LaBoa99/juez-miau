@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Team } from '../entities/team.entity.js';
+import { TeamMember } from '../entities/team-member.entity.js';
 import { Brackets, DataSource, EntityManager, In, Repository } from 'typeorm';
 import { UpdateTeamDto } from '../dtos/update-team.dto.js';
 import { TeamMembersService } from './team-members.service.js';
@@ -70,7 +71,8 @@ export class TeamsService {
 
         team.edition = edition
         team.category = category
-        team.room = room
+        // Sin salón indicado: si la categoría tiene un solo salón en la edición, ese es el suyo
+        team.room = room ?? await this.onlyRoomOf(edition.id, category.id, options.manager)
         team.members = []
 
         await repository.save(team)
@@ -81,6 +83,30 @@ export class TeamsService {
         }
         
         return { team, password }
+    }
+
+    // Reimportar un equipo que ya existe: cambia categoría e integrantes; usuario y contraseña se
+    // quedan igual (pueden estar ya entregados)
+    async replaceRoster(teamId: number, category: Category, members: CreateTeamDto['members'], manager: EntityManager): Promise<Team> {
+        const repository = manager.getRepository(Team)
+        const team = await repository.findOneByOrFail({ id: teamId })
+        if(team.category_id !== category.id || team.room_id === null){
+            team.category_id = category.id
+            team.room_id = (await this.onlyRoomOf(team.edition_id, category.id, manager))?.id ?? null
+        }
+        await repository.save(team)
+
+        await manager.getRepository(TeamMember).delete({ team_id: team.id })
+        team.members = []
+        for(const member of members){
+            team.members.push(await this._teamMemberService.create(team, member, manager))
+        }
+        return team
+    }
+
+    private async onlyRoomOf(editionId: number, categoryId: number, manager?: EntityManager): Promise<Room | null> {
+        const rooms = await (manager ?? this._dataSource.manager).getRepository(Room).find({ where: { edition_id: editionId, category_id: categoryId }, take: 2 })
+        return rooms.length === 1 ? rooms[0] : null
     }
 
     // Usuario y contraseña en claro para entregar la credencial al equipo.

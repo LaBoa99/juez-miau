@@ -17,7 +17,6 @@ import { podium, podiumEmoji } from '../../podium';
 import { StandingsService } from '../../data/standings.service';
 import { ContestCountdown } from '../../../../shared/ui/contest-countdown.component';
 import { RoomsService } from '../../../editions/rooms/data/rooms.service';
-import { TeamsService } from '../../../teams/data/teams.service';
 import { filterByRoom } from '../../room-filter';
 
 @Component({
@@ -37,7 +36,6 @@ export class StandingsPage {
   private readonly rt = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly roomsService = inject(RoomsService);
-  private readonly teamsService = inject(TeamsService);
 
   protected readonly editionId = findEditionId(this.route);
 
@@ -51,9 +49,8 @@ export class StandingsPage {
   protected readonly suspending = signal<number | null>(null);
 
   protected readonly categories = computed(() => this.data()?.categories ?? []);
-  // Filtro por salón: el marcador no trae el salón, se cruza con la lista de equipos
+  // Filtro por salón: cada fila del marcador trae el salón del equipo
   protected readonly rooms = signal<{ id: number; name: string; categoryId: number | null }[]>([]);
-  private readonly roomOf = signal<Map<number, number | null>>(new Map());
   protected readonly roomId = signal<number | null>(null);
 
   // Un solo selector (salón = nivel): "Todos los salones" muestra cada categoría en su tabla; un
@@ -64,7 +61,7 @@ export class StandingsPage {
     const categoryId = this.rooms().find((r) => r.id === roomId)?.categoryId ?? null;
     return this.categories()
       .filter((c) => categoryId == null || c.categoryId === categoryId)
-      .map((c) => filterByRoom(c, this.roomOf(), roomId));
+      .map((c) => filterByRoom(c, roomId));
   });
   protected readonly roomEmpty = computed(() => this.shown().every((c) => c.rows.length === 0));
   protected readonly hasRows = computed(() => this.categories().some((c) => c.rows.length > 0));
@@ -84,10 +81,6 @@ export class StandingsPage {
     this.load();
     this.roomsService.list(this.editionId).subscribe({
       next: (rooms) => this.rooms.set(rooms.map((r) => ({ id: r.id, name: r.name, categoryId: r.category_id ?? null }))),
-      error: () => {},
-    });
-    this.teamsService.listAll(this.editionId).subscribe({
-      next: (teams) => this.roomOf.set(new Map(teams.map((t) => [t.id, t.room?.id ?? null]))),
       error: () => {},
     });
     this.clockService.get(this.editionId).subscribe({ next: (c) => this.clock.set(c), error: () => {} });

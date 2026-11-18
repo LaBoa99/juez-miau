@@ -54,6 +54,8 @@ export interface ITeamImportPreview {
     teamName: string
     category: ITeamCategoryRef
     members: { name: string; career: string }[]
+    // update: ya hay un equipo con ese nombre; se reemplazan categoría e integrantes y conserva sus credenciales
+    action: 'create' | 'update'
 }
 
 export interface ITeamImportValidation {
@@ -66,6 +68,7 @@ export interface ITeamImportCredential { teamName: string; username: string; pas
 
 export interface ITeamImportResult {
     created: number
+    updated: number
     errors: ITeamImportError[]
     credentials: ITeamImportCredential[]
 }

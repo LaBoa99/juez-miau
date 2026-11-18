@@ -15,8 +15,8 @@
       @if (error()) {
         <oj-alert tone="error">{{ error() }}</oj-alert>
       }
-      @if (createdOk() !== null) {
-        <oj-alert tone="success">Se crearon {{ createdOk() }} equipos.</oj-alert>
+      @if (summary(); as s) {
+        <oj-alert tone="success">{{ s }}</oj-alert>
       }
 
       <!-- Paso 1: Archivo -->
@@ -37,13 +37,40 @@
         <div class="imp__cards">
           <div class="imp__card imp__card--ok">
             <span class="imp__card-num oj-mono">{{ v.validRows }}</span>
-            <span class="imp__card-label">filas válidas</span>
+            <span class="imp__card-label">equipos válidos</span>
           </div>
+          @if (toUpdate(); as n) {
+            <div class="imp__card">
+              <span class="imp__card-num oj-mono">{{ n }}</span>
+              <span class="imp__card-label">ya existen (se actualizan integrantes y categoría; conservan usuario y contraseña)</span>
+            </div>
+          }
           <div class="imp__card imp__card--bad">
             <span class="imp__card-num oj-mono">{{ v.errors.length }}</span>
-            <span class="imp__card-label">filas con error (no se importan)</span>
+            <span class="imp__card-label">errores (esos equipos no se importan)</span>
           </div>
         </div>
+
+        @if (v.preview.length) {
+          <div class="oj-table-wrap">
+            <table class="oj-table">
+              <thead>
+                <tr><th>Fila</th><th>Equipo</th><th>Categoría</th><th>Integrantes</th><th>Acción</th></tr>
+              </thead>
+              <tbody>
+                @for (p of v.preview; track p.row) {
+                  <tr>
+                    <td class="oj-mono">{{ p.row }}</td>
+                    <td>{{ p.teamName }}</td>
+                    <td>{{ p.category.name }}</td>
+                    <td>{{ p.members.length }}</td>
+                    <td>{{ p.action === 'update' ? 'Actualizar' : 'Crear' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
 
         @if (v.errors.length) {
           <div class="oj-table-wrap">
@@ -67,7 +94,7 @@
         <div class="imp__actions">
           <button ojButton variant="secondary" type="button" (click)="chooseAnother()">Elegir otro archivo</button>
           <button ojButton variant="primary" type="button" [disabled]="!canImport() || importing()" (click)="doImport()">
-            {{ importing() ? 'Importando…' : 'Importar ' + v.validRows + ' filas válidas' }}
+            {{ importing() ? 'Importando…' : 'Importar ' + v.validRows + ' equipos' }}
           </button>
         </div>
       }
@@ -75,7 +102,7 @@
       <!-- Paso 3: Credenciales -->
       @if (step() === 'credenciales') {
         <oj-alert tone="warning">
-          Se crearon {{ credentials().length }} equipos. Guarda estas credenciales ahora: no se vuelven a mostrar.
+          Se crearon {{ credentials().length }} equipos{{ updatedCount() ? ' y se actualizaron ' + updatedCount() : '' }}. Descarga estas credenciales ahora; después también salen en el PDF del listado.
         </oj-alert>
         <div class="oj-table-wrap">
           <table class="oj-table">

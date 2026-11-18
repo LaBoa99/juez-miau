@@ -11,7 +11,6 @@ import { ProjectorService } from '../../data/projector.service';
 import { ContestCountdown } from '../../../../shared/ui/contest-countdown.component';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { RoomsService } from '../../../editions/rooms/data/rooms.service';
-import { TeamsService } from '../../../teams/data/teams.service';
 import { filterByRoom } from '../../../standings/room-filter';
 import { confetti, podium, podiumEmoji } from '../../../standings/podium';
 
@@ -33,7 +32,6 @@ export class Projector {
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   private readonly roomsService = inject(RoomsService);
-  private readonly teamsService = inject(TeamsService);
 
   private readonly editionId = toSignal(this.route.paramMap.pipe(map((p) => Number(p.get('editionId')))));
 
@@ -57,10 +55,9 @@ export class Projector {
   protected readonly finished = computed(() => this.clock()?.status === EditionStatus.FINISHED);
   protected readonly frozen = computed(() => this.clock()?.frozen ?? false);
 
-  // Filtro por salón: el marcador público no trae el salón; solo con sesión de staff en este
-  // navegador se puede cruzar con la lista de equipos (sin sesión se ve todo, como antes)
+  // Filtro por salón: cada fila del marcador trae su salón, pero los nombres de los salones solo
+  // se piden con sesión de staff en este navegador (sin sesión no hay selector y se ve todo)
   protected readonly rooms = signal<{ id: number; name: string; categoryId: number | null }[]>([]);
-  private readonly roomOf = signal<Map<number, number | null>>(new Map());
   protected readonly roomId = signal<number | null>(null);
   protected readonly roomName = computed(() => this.rooms().find((r) => r.id === this.roomId())?.name ?? null);
 
@@ -71,7 +68,7 @@ export class Projector {
   protected readonly current = computed<IStandingsCategory | null>(() => {
     const cats = this.categories();
     const cat = cats.find((c) => String(c.categoryId) === this.categorySeg()) ?? cats[0] ?? null;
-    return cat && filterByRoom(cat, this.roomOf(), this.roomId());
+    return cat && filterByRoom(cat, this.roomId());
   });
 
   constructor() {
@@ -124,10 +121,6 @@ export class Projector {
         next: (rooms) => this.rooms.set(rooms.map((r) => ({ id: r.id, name: r.name, categoryId: r.category_id ?? null }))),
         error: () => {},
       });
-      this.teamsService.listAll(id).subscribe({
-        next: (teams) => this.roomOf.set(new Map(teams.map((t) => [t.id, t.room?.id ?? null]))),
-        error: () => {},
-      });
     }
     this.rt.joinPublic(id);
     this.rt
@@ -164,12 +157,17 @@ export class Projector {
   onRoom(value: string): void {
     const id = value ? Number(value) : null;
     this.roomId.set(id);
-    // Cada salón es un nivel: se fija su categoría y se detiene la rotación
+    // Elegir un salón detiene la rotación (fuera de su nivel saldría vacío); "Todos" la reanuda.
+    // Cada salón es un nivel: si tiene categoría, se fija.
+    this.paused.set(id != null);
     const categoryId = this.rooms().find((r) => r.id === id)?.categoryId;
-    if (categoryId != null) {
-      this.categorySeg.set(String(categoryId));
-      this.paused.set(true);
-    }
+    if (categoryId != null) this.categorySeg.set(String(categoryId));
+  }
+
+  // Elegir la categoría a mano detiene la rotación para que no se cambie sola a los 20 s
+  onCategory(value: string | null | undefined): void {
+    this.categorySeg.set(value ?? '');
+    this.paused.set(true);
   }
 
   private rotate(): void {
