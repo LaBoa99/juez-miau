@@ -62,9 +62,14 @@ export class Projector {
   protected readonly roomName = computed(() => this.rooms().find((r) => r.id === this.roomId())?.name ?? null);
 
   protected readonly categories = computed(() => this.standings()?.categories ?? []);
-  protected readonly categoryOptions = computed(() =>
-    this.categories().map((c) => ({ value: String(c.categoryId), label: c.name })),
-  );
+  // Con un salón elegido solo cuentan las categorías que tienen equipos ahí (un salón sin
+  // categoría puede repartirse entre varios niveles)
+  protected readonly categoryOptions = computed(() => {
+    const roomId = this.roomId();
+    return this.categories()
+      .filter((c) => roomId == null || c.rows.some((r) => r.roomId === roomId))
+      .map((c) => ({ value: String(c.categoryId), label: c.name }));
+  });
   protected readonly current = computed<IStandingsCategory | null>(() => {
     const cats = this.categories();
     const cat = cats.find((c) => String(c.categoryId) === this.categorySeg()) ?? cats[0] ?? null;
@@ -157,10 +162,10 @@ export class Projector {
   onRoom(value: string): void {
     const id = value ? Number(value) : null;
     this.roomId.set(id);
-    // Elegir un salón detiene la rotación (fuera de su nivel saldría vacío); "Todos" la reanuda.
-    // Cada salón es un nivel: si tiene categoría, se fija.
-    this.paused.set(id != null);
-    const categoryId = this.rooms().find((r) => r.id === id)?.categoryId;
+    // Salón de un solo nivel: se fija su categoría y se detiene la rotación. Salón compartido: sigue
+    // rotando entre sus categorías (categoryOptions ya las filtra). "Todos" reanuda la rotación.
+    const categoryId = this.rooms().find((r) => r.id === id)?.categoryId ?? null;
+    this.paused.set(categoryId != null);
     if (categoryId != null) this.categorySeg.set(String(categoryId));
   }
 
