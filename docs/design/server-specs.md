@@ -32,7 +32,7 @@ Descargadas y probadas el 2026-09-29:
 |---|---|---|---|
 | C / C++ | `gcc:14` | GCC 14.4.0 | 2.15 GB |
 | Java | `eclipse-temurin:21-jdk` | OpenJDK 21.0.12 | 725 MB |
-| C# | `mcr.microsoft.com/dotnet/sdk:8.0` | .NET SDK 8.0.425 | 1.23 GB |
+| C# | `mcr.microsoft.com/dotnet/sdk:8.0.425` (fija: la 8.0.427 no compila sin root) | .NET SDK 8.0.425 | 1.23 GB |
 | JavaScript / TypeScript | `node:24-slim` | Node.js 24.21.0 | 330 MB |
 | **Total** | | | **≈ 4.4 GB** |
 
@@ -43,7 +43,7 @@ Descargarlas antes del concurso, no durante:
 ```bash
 docker pull gcc:14
 docker pull eclipse-temurin:21-jdk
-docker pull mcr.microsoft.com/dotnet/sdk:8.0
+docker pull mcr.microsoft.com/dotnet/sdk:8.0.425
 docker pull node:24-slim
 ```
 

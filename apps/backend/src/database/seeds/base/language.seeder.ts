@@ -13,7 +13,8 @@ const logger = new Logger('LanguageSeeder')
 // se usan estos valores
 const IMAGES = {
     gcc: ['JUDGE_IMAGE_GCC', 'gcc:14'],
-    dotnet: ['JUDGE_IMAGE_DOTNET', 'mcr.microsoft.com/dotnet/sdk:8.0'],
+    // Fija: el SDK 8.0.427 (nov 2026) falla al compilar con usuario sin root (IOException NuGet-Migrations)
+    dotnet: ['JUDGE_IMAGE_DOTNET', 'mcr.microsoft.com/dotnet/sdk:8.0.425'],
     java: ['JUDGE_IMAGE_JAVA', 'eclipse-temurin:21-jdk'],
     node: ['JUDGE_IMAGE_NODE', 'node:24-slim'],
     python: ['JUDGE_IMAGE_PYTHON', 'python:3.12-slim'],

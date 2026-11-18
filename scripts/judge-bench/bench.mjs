@@ -42,7 +42,7 @@ const LANGS = {
     c: { ext: 'c', image: 'gcc:14', compile: 'gcc Main.c -o main -O2 -std=gnu17 -lm', run: './main', mult: 1 },
     cpp: { ext: 'cpp', image: 'gcc:14', compile: 'g++ Main.cpp -o main -O2 -std=gnu++20', run: './main', mult: 1 },
     csharp: {
-        ext: 'cs', image: 'mcr.microsoft.com/dotnet/sdk:8.0', mult: 2, run: 'dotnet out/Main.dll',
+        ext: 'cs', image: 'mcr.microsoft.com/dotnet/sdk:8.0.425', mult: 2, run: 'dotnet out/Main.dll',
         compile: `printf '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><AssemblyName>Main</AssemblyName></PropertyGroup></Project>' > Main.csproj && dotnet build Main.csproj -c Release -o out --nologo -v q`,
     },
     java: { ext: 'java', image: 'eclipse-temurin:21-jdk', compile: 'javac -encoding UTF-8 Main.java', run: 'java -Xss64m -XX:+UseSerialGC -XX:MaxRAMPercentage=75 Main', mult: 2 },

@@ -17,7 +17,7 @@ import { detectSignatures } from '../testsets/generation/detect-signature.js'
 const LANGUAGES: Record<string, Pick<Language, 'code' | 'image_ref' | 'flags'>> = {
     c: { code: 'c', image_ref: 'gcc:14', flags: '-O2 -std=gnu17 -lm' },
     cpp: { code: 'cpp', image_ref: 'gcc:14', flags: '-O2 -std=gnu++20' },
-    csharp: { code: 'csharp', image_ref: 'mcr.microsoft.com/dotnet/sdk:8.0', flags: '' },
+    csharp: { code: 'csharp', image_ref: 'mcr.microsoft.com/dotnet/sdk:8.0.425', flags: '' },
     java: { code: 'java', image_ref: 'eclipse-temurin:21-jdk', flags: '' },
     javascript: { code: 'javascript', image_ref: 'node:24-slim', flags: '' },
     typescript: { code: 'typescript', image_ref: 'node:24-slim', flags: '' },
