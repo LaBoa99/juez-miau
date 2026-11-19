@@ -4,7 +4,19 @@
   "pasos": [
     {
       "img": "01.png",
-      "voz": "En Problemas ves los de cada categoría. Para crear uno, presiona Nuevo problema.",
+      "voz": "En Problemas ves los de cada categoría. Cada juez propone los suyos y el admin de la edición decide cuáles entran al concurso.",
+      "caja": {
+        "x": 320,
+        "y": 155,
+        "w": 302,
+        "h": 260
+      },
+      "accion": null,
+      "frames": 222
+    },
+    {
+      "img": "02.png",
+      "voz": "Para crear uno, presiona Nuevo problema.",
       "caja": {
         "x": 327,
         "y": 374,
@@ -12,11 +24,11 @@
         "h": 34
       },
       "accion": null,
-      "frames": 168
+      "frames": 86
     },
     {
-      "img": "02.png",
-      "voz": "Cada problema se arma en seis pasos. Primero los datos: categoría, título y enunciado.",
+      "img": "03.png",
+      "voz": "Cada problema se arma en cuatro pasos. Primero los datos: categoría, título y el enunciado, en markdown o en PDF.",
       "caja": {
         "x": 646,
         "y": 203,
@@ -24,67 +36,67 @@
         "h": 47
       },
       "accion": null,
-      "frames": 197
-    },
-    {
-      "img": "03.png",
-      "voz": "En Evaluación eliges cómo se compara la respuesta del equipo con la correcta, y los límites de tiempo y memoria.",
-      "caja": {
-        "x": 646,
-        "y": 266,
-        "w": 954,
-        "h": 20
-      },
-      "accion": null,
-      "frames": 178
+      "frames": 250
     },
     {
       "img": "04.png",
-      "voz": "La firma es la función que programan los equipos: su nombre, sus parámetros y lo que regresa.",
+      "voz": "Luego sube la solución oficial. De ella se lee sola la firma: la función que programan los equipos.",
       "caja": {
         "x": 646,
-        "y": 446,
+        "y": 418,
         "w": 954,
-        "h": 17
+        "h": 16
       },
       "accion": null,
-      "frames": 163
+      "frames": 196
     },
     {
       "img": "05.png",
-      "voz": "Sube la solución oficial: con ella se calculan las respuestas correctas.",
-      "caja": {
-        "x": 646,
-        "y": 475,
-        "w": 954,
-        "h": 74
-      },
-      "accion": null,
-      "frames": 129
-    },
-    {
-      "img": "06.png",
-      "voz": "Agrega los casos de prueba. Los públicos los ven los equipos; los ocultos, no.",
-      "caja": {
-        "x": 647,
-        "y": 476,
-        "w": 952,
-        "h": 190
-      },
-      "accion": null,
-      "frames": 168
-    },
-    {
-      "img": "07.png",
-      "voz": "Al final, construye los casos y publica el problema. Solo los publicados entran al concurso.",
+      "voz": "Agrega los casos de prueba: a mano, aleatorios o con un generador. Los públicos salen como ejemplos en el enunciado.",
       "caja": {
         "x": 646,
         "y": 446,
         "w": 954,
-        "h": 117
+        "h": 244
       },
       "accion": null,
-      "frames": 184
+      "frames": 225
+    },
+    {
+      "img": "06.png",
+      "voz": "Al final revisa cómo se comparan las respuestas y los límites, y construye: un solo botón verifica los casos con la solución oficial.",
+      "caja": {
+        "x": 646,
+        "y": 505,
+        "w": 954,
+        "h": 346
+      },
+      "accion": null,
+      "frames": 223
+    },
+    {
+      "img": "07.png",
+      "voz": "En Vista previa ves el problema tal como lo verán los equipos.",
+      "caja": {
+        "x": 1505,
+        "y": 156,
+        "w": 94,
+        "h": 30
+      },
+      "accion": "clic",
+      "frames": 105
+    },
+    {
+      "img": "08.png",
+      "voz": "…con su enunciado, la función que deben programar y los ejemplos.",
+      "caja": {
+        "x": 646,
+        "y": 203,
+        "w": 954,
+        "h": 493
+      },
+      "accion": null,
+      "frames": 112
     }
   ],
   "tituloFrames": 57

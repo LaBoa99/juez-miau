@@ -111,6 +111,14 @@ export async function abrir(base) {
       if (!ok) throw new Error(`No hay opción "${texto}" en ${q}`);
       await sleep(400);
     },
+    // input[type=file] (CSS): le pone el archivo como si lo eligieran en el diálogo
+    async subir(q, ruta) {
+      const { root } = await send("DOM.getDocument");
+      const { nodeId } = await send("DOM.querySelector", { nodeId: root.nodeId, selector: q });
+      if (!nodeId) throw new Error(`No apareció: ${q}`);
+      await send("DOM.setFileInputFiles", { nodeId, files: [ruta] });
+      await sleep(400);
+    },
     async captura() {
       const { data } = await send("Page.captureScreenshot", { format: "png" });
       return Buffer.from(data, "base64");

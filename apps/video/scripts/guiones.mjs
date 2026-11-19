@@ -1,5 +1,9 @@
+import { writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 // Guiones de los tutoriales del panel de staff. Cada paso es una captura con la frase que dice la voz;
-// `en` señala el elemento (CSS o "texto=..."), y `clic`, `escribir` o `elegir` actúan sobre él.
+// `en` señala el elemento (CSS o "texto=..."), y `clic`, `escribir`, `elegir` o `subir` (un archivo) actúan sobre él.
 // Los ids coinciden con apps/frontend-staff/src/app/features/tutorials/tutorials.data.ts.
 //
 // El orden importa: superadmin crea el "Concurso de práctica", los siguientes lo configuran, lo inician y
@@ -7,6 +11,7 @@
 
 const PRACTICA = "Concurso de práctica";
 const DEMO = "Edición Demo";
+const INSCRIPCIONES = "Concurso de prueba";
 
 async function edicion(t, nombre) {
   const eds = await t.api("GET", "/editions");
@@ -141,19 +146,42 @@ export const GUIONES = {
   equipos: {
     titulo: "Equipos",
     async grabar(t) {
-      const ed = await edicion(t, PRACTICA);
-      // shortcut: el backend no puede borrar un equipo con integrantes (500 por la llave de team_member);
-      // para regrabar hay que quitarlo a mano de la base mientras eso se corrige.
-      if ((await t.api("GET", `/editions/${ed.id}/teams`)).items.length) throw new Error(`"${PRACTICA}" ya tiene equipos`);
+      // Una edición en borrador desde cero en cada grabación (la anterior se borra con sus equipos)
+      const eds = await t.api("GET", "/editions");
+      for (const vieja of (eds.data ?? eds).filter((x) => x.name === INSCRIPCIONES && x.status === "DRAFT")) {
+        await t.api("DELETE", `/editions/${vieja.id}`);
+      }
+      const ed = await t.api("POST", "/editions", { name: INSCRIPCIONES, duration_ms: 7_200_000, freeze_duration_ms: 1_800_000, block_submissions_on_alert: false });
+      await t.api("POST", `/editions/${ed.id}/categories`, { code: "PRIN", name: "Principiantes" });
+      // El CSV de inscripciones: una fila por participante. Los Ajolotes ya existe (se actualiza) y Avanzados no es
+      // una categoría de la edición (sale como error).
+      const csv = join(tmpdir(), "inscripciones.csv");
+      writeFileSync(csv, [
+        "Nombre Equipo,Nombre,Carrera,Nivel",
+        "Los Ajolotes,Ana López,Ingeniería en Computación,Principiantes",
+        "Los Ajolotes,Luis Pérez,Ingeniería en Computación,Principiantes",
+        "Bits y Tacos,María Ruiz,Informática,Principiantes",
+        "Bits y Tacos,Jorge Díaz,Informática,Principiantes",
+        "Individual,Sofía Martínez,Ingeniería en Computación,Principiantes",
+        "Los Compiladores,Pedro Gómez,Electrónica,Avanzados",
+      ].join("\n") + "\n");
+
       await t.ir(`/ediciones/${ed.id}/equipos`);
-      await t.paso("Si tienes la lista de equipos en un archivo CSV, impórtala aquí de una vez.", { en: "texto=Importar desde CSV" });
-      await t.paso("Para agregar uno solo, presiona Agregar equipo.", { en: "texto=+ Agregar equipo", clic: true });
+      await t.paso("Para agregar un equipo, presiona Agregar equipo.", { en: "texto=+ Agregar equipo", clic: true });
       await t.paso("Escribe el nombre del equipo…", { en: "#add-team-name", escribir: "Los Ajolotes" });
       await t.paso("…elige su categoría…", { en: "#add-team-category", elegir: "Principiantes" });
       await t.paso("…y anota a cada integrante…", { en: 'input[aria-label="Nombre del integrante"]', escribir: "Ana López" });
       await t.paso("…con su carrera. Pueden ser hasta tres.", { en: 'input[aria-label="Carrera del integrante"]', escribir: "Ingeniería en Computación" });
       await t.paso("Guarda: el usuario y la contraseña se generan solos.", { en: 'oj-modal[title="Agregar equipo"] button[variant="primary"]', clic: true });
       await t.paso("Aquí está el equipo. Desde su fila lo editas, le das una contraseña nueva o lo suspendes.", { en: "table tbody tr" });
+      await t.paso("Si tienes las inscripciones en un archivo CSV, súbelo arriba, en Importar desde CSV.", { en: ".imp .oj-fd", subir: csv });
+      await t.paso("Valida el archivo.", { en: "texto=Validar archivo", clic: true });
+      await t.paso("Ves cuántos equipos son válidos, cuántos ya existen y cuántos errores hay.", { en: ".imp__cards" });
+      await t.paso("Los que ya existen se actualizan: cambian sus integrantes y su categoría, pero conservan usuario y contraseña.", { en: "texto=Actualizar" });
+      await t.paso("Cada error dice en qué fila está. Esos equipos no se importan: corrige el archivo y vuelve a subirlo.", { en: "texto=no existe en la edición" });
+      await t.paso("Importa los equipos válidos.", { en: ".imp__actions button[variant=primary]", clic: true });
+      await t.paso("Descarga las credenciales de los equipos nuevos.", { en: "texto=Descargar CSV" });
+      await t.paso("Presiona Listo.", { en: "texto=Listo", clic: true });
       await t.paso("Con Descargar todos obtienes un PDF con las credenciales de cada equipo, listo para imprimir.", { en: "texto=Descargar todos" });
     },
   },
@@ -164,19 +192,20 @@ export const GUIONES = {
       const demo = await edicion(t, DEMO);
       const [p] = await t.api("GET", `/editions/${demo.id}/problems`);
       await t.ir(`/ediciones/${demo.id}/problemas`);
-      await t.paso("En Problemas ves los de cada categoría. Para crear uno, presiona Nuevo problema.", { en: "texto=+ Nuevo problema" });
+      await t.paso("En Problemas ves los de cada categoría. Cada juez propone los suyos y el admin de la edición decide cuáles entran al concurso.", { en: ".pw__list" });
+      await t.paso("Para crear uno, presiona Nuevo problema.", { en: "texto=+ Nuevo problema" });
       const pasos = [
-        ["datos", "Cada problema se arma en seis pasos. Primero los datos: categoría, título y enunciado.", "oj-stepper"],
-        ["evaluacion", "En Evaluación eliges cómo se compara la respuesta del equipo con la correcta, y los límites de tiempo y memoria.", "texto=2. Evaluación"],
-        ["firma", "La firma es la función que programan los equipos: su nombre, sus parámetros y lo que regresa.", "texto=suma(nums"],
-        ["solucion", "Sube la solución oficial: con ella se calculan las respuestas correctas.", "oj-code-block"],
-        ["casos", "Agrega los casos de prueba. Los públicos los ven los equipos; los ocultos, no.", "table"],
-        ["construir", "Al final, construye los casos y publica el problema. Solo los publicados entran al concurso.", "texto=Requisitos"],
+        ["datos", "Cada problema se arma en cuatro pasos. Primero los datos: categoría, título y el enunciado, en markdown o en PDF.", "oj-stepper"],
+        ["solucion", "Luego sube la solución oficial. De ella se lee sola la firma: la función que programan los equipos.", "texto=Solución oficial"],
+        ["casos", "Agrega los casos de prueba: a mano, aleatorios o con un generador. Los públicos salen como ejemplos en el enunciado.", ".tw__cases-list"],
+        ["construir", "Al final revisa cómo se comparan las respuestas y los límites, y construye: un solo botón verifica los casos con la solución oficial.", ".tw__pipe"],
       ];
       for (const [paso, voz, en] of pasos) {
         await t.ir(`/ediciones/${demo.id}/problemas/${p.id}?paso=${paso}`);
         await t.paso(voz, { en });
       }
+      await t.paso("En Vista previa ves el problema tal como lo verán los equipos.", { en: "texto=Vista previa", clic: true });
+      await t.paso("…con su enunciado, la función que deben programar y los ejemplos.", { en: ".pp__preview" });
       // Lo mismo, por la API, en la edición de práctica para poder iniciarla
       const ed = await edicion(t, PRACTICA);
       await publicarProblema(t, ed);

@@ -53,14 +53,16 @@ try {
     mkdirSync(dir, { recursive: true });
     const pasos = [];
 
-    // paso(voz, { en, clic, escribir, elegir }): captura ANTES de la acción para que el video muestre el cursor llegando.
-    const paso = async (voz, { en, clic, escribir, elegir } = {}) => {
+    // paso(voz, { en, clic, escribir, elegir, subir }): captura ANTES de la acción para que el video muestre el cursor llegando.
+    // `subir`: ruta de un archivo para el input[type=file] dentro de `en` (CSS).
+    const paso = async (voz, { en, clic, escribir, elegir, subir } = {}) => {
       const caja = en ? await b.esperar(en) : null;
       await b.sleep(400);
       const img = `${String(pasos.length + 1).padStart(2, "0")}.png`;
       writeFileSync(join(dir, img), await b.captura());
-      pasos.push({ img, voz, caja, accion: escribir != null ? "escribir" : clic || elegir ? "clic" : null });
+      pasos.push({ img, voz, caja, accion: escribir != null ? "escribir" : clic || elegir || subir ? "clic" : null });
       if (escribir != null) await b.escribir(en, escribir);
+      else if (subir != null) await b.subir(`${en} input[type=file]`, subir);
       else if (elegir != null) await b.elegir(en, elegir);
       else if (clic) await b.clic(en);
       await b.sleep(900);

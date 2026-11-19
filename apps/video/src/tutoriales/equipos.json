@@ -4,19 +4,7 @@
   "pasos": [
     {
       "img": "01.png",
-      "voz": "Si tienes la lista de equipos en un archivo CSV, impórtala aquí de una vez.",
-      "caja": {
-        "x": 333,
-        "y": 223,
-        "w": 146,
-        "h": 19
-      },
-      "accion": null,
-      "frames": 157
-    },
-    {
-      "img": "02.png",
-      "voz": "Para agregar uno solo, presiona Agregar equipo.",
+      "voz": "Para agregar un equipo, presiona Agregar equipo.",
       "caja": {
         "x": 1321,
         "y": 365,
@@ -27,7 +15,7 @@
       "frames": 97
     },
     {
-      "img": "03.png",
+      "img": "02.png",
       "voz": "Escribe el nombre del equipo…",
       "caja": {
         "x": 692,
@@ -39,7 +27,7 @@
       "frames": 58
     },
     {
-      "img": "04.png",
+      "img": "03.png",
       "voz": "…elige su categoría…",
       "caja": {
         "x": 692,
@@ -51,7 +39,7 @@
       "frames": 49
     },
     {
-      "img": "05.png",
+      "img": "04.png",
       "voz": "…y anota a cada integrante…",
       "caja": {
         "x": 692,
@@ -63,7 +51,7 @@
       "frames": 62
     },
     {
-      "img": "06.png",
+      "img": "05.png",
       "voz": "…con su carrera. Pueden ser hasta tres.",
       "caja": {
         "x": 963,
@@ -75,7 +63,7 @@
       "frames": 89
     },
     {
-      "img": "07.png",
+      "img": "06.png",
       "voz": "Guarda: el usuario y la contraseña se generan solos.",
       "caja": {
         "x": 1147,
@@ -87,7 +75,7 @@
       "frames": 108
     },
     {
-      "img": "08.png",
+      "img": "07.png",
       "voz": "Aquí está el equipo. Desde su fila lo editas, le das una contraseña nueva o lo suspendes.",
       "caja": {
         "x": 321,
@@ -99,7 +87,103 @@
       "frames": 183
     },
     {
+      "img": "08.png",
+      "voz": "Si tienes las inscripciones en un archivo CSV, súbelo arriba, en Importar desde CSV.",
+      "caja": {
+        "x": 337,
+        "y": 266,
+        "w": 1246,
+        "h": 66
+      },
+      "accion": "clic",
+      "frames": 184
+    },
+    {
       "img": "09.png",
+      "voz": "Valida el archivo.",
+      "caja": {
+        "x": 1459,
+        "y": 345,
+        "w": 124,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 47
+    },
+    {
+      "img": "10.png",
+      "voz": "Ves cuántos equipos son válidos, cuántos ya existen y cuántos errores hay.",
+      "caja": {
+        "x": 337,
+        "y": 266,
+        "w": 1246,
+        "h": 89
+      },
+      "accion": null,
+      "frames": 129
+    },
+    {
+      "img": "11.png",
+      "voz": "Los que ya existen se actualizan: cambian sus integrantes y su categoría, pero conservan usuario y contraseña.",
+      "caja": {
+        "x": 1344,
+        "y": 394,
+        "w": 238,
+        "h": 31
+      },
+      "accion": null,
+      "frames": 190
+    },
+    {
+      "img": "12.png",
+      "voz": "Cada error dice en qué fila está. Esos equipos no se importan: corrige el archivo y vuelve a subirlo.",
+      "caja": {
+        "x": 687,
+        "y": 527,
+        "w": 896,
+        "h": 31
+      },
+      "accion": null,
+      "frames": 203
+    },
+    {
+      "img": "13.png",
+      "voz": "Importa los equipos válidos.",
+      "caja": {
+        "x": 1434,
+        "y": 571,
+        "w": 149,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 65
+    },
+    {
+      "img": "14.png",
+      "voz": "Descarga las credenciales de los equipos nuevos.",
+      "caja": {
+        "x": 1391,
+        "y": 422,
+        "w": 126,
+        "h": 34
+      },
+      "accion": null,
+      "frames": 87
+    },
+    {
+      "img": "15.png",
+      "voz": "Presiona Listo.",
+      "caja": {
+        "x": 1523,
+        "y": 422,
+        "w": 60,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 39
+    },
+    {
+      "img": "16.png",
       "voz": "Con Descargar todos obtienes un PDF con las credenciales de cada equipo, listo para imprimir.",
       "caja": {
         "x": 1466,
