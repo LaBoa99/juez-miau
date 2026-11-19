@@ -155,4 +155,20 @@ describe('Control de acceso: guard global, roles por edición y sesión de equip
       await api().get('/api/v1/auth/me').set(bearer(again)).expect(401);
     });
   });
+
+  describe('borrado', () => {
+    it('borra un equipo con integrantes y una edición en borrador con sus equipos', async () => {
+      const cat = (await api().post(`/api/v1/editions/${otherEdition.id}/categories`).set(bearer(superToken))
+        .send({ code: 'BOR', name: 'Borrar' }).expect(201)).body;
+      const make = async (name: string) => (await api().post(`/api/v1/editions/${otherEdition.id}/teams`).set(bearer(superToken))
+        .send({ name, category_id: cat.id, members: [{ name: 'Ana López', career: 'Computación' }] }).expect(201)).body.team;
+      const a = await make('Borrar A');
+      const b = await make('Borrar B');
+      await api().delete(`/api/v1/teams/${a.id}`).set(bearer(superToken)).expect(204);
+      await api().delete(`/api/v1/editions/${otherEdition.id}`).set(bearer(superToken)).expect(204);
+      const teams = app.get<Repository<Team>>(getRepositoryToken(Team));
+      expect(await teams.countBy({ id: a.id })).toBe(0);
+      expect(await teams.countBy({ id: b.id })).toBe(0);
+    });
+  });
 });

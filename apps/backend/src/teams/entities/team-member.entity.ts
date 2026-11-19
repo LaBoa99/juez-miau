@@ -16,7 +16,7 @@ export class TeamMember {
     @Column({ type: 'text' })
     declare career: string
 
-    @ManyToOne(() => Team, team => team.members)
+    @ManyToOne(() => Team, team => team.members, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'team_id' })
     declare team: Relation<Team>;
     

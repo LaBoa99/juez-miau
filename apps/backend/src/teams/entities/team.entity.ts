@@ -49,7 +49,7 @@ export class Team {
     @OneToMany(() => TeamMember, teamMember => teamMember.team)
     declare members: Relation<TeamMember[]>
 
-    @ManyToOne(() => Edition, edition => edition.teams)
+    @ManyToOne(() => Edition, edition => edition.teams, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'edition_id'})
     declare edition: Relation<Edition>
 
