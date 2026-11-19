@@ -1,3 +1,5 @@
+import re
+
 from PySide6.QtCore import QPointF, Qt, QUrl, Signal
 from PySide6.QtGui import QColor, QDesktopServices, QGuiApplication, QIcon, QPainter, QPen, QPixmap, QTextCursor, QTextFormat
 from PySide6.QtWidgets import (
@@ -292,9 +294,14 @@ class ProblemsView(QWidget):
     # ── Acciones ───────────────────────────────────────────
 
     def _on_link(self, url: QUrl):
-        # copy:<índice>:<input|output>
+        # copy:<índice>:<input|output> son los botones de los ejemplos; cualquier otro enlace del enunciado se abre fuera
+        if url.scheme() != "copy":
+            QDesktopServices.openUrl(url)
+            return
         _, index, field = url.toString().split(":")
-        QGuiApplication.clipboard().setText(self._current()["samples"][int(index)][field])
+        value = self._current()["samples"][int(index)][field]
+        # Se copia lo mismo que se ve (la entrada sin la estructura JSON)
+        QGuiApplication.clipboard().setText(case_input_text(value) if field == "input" else value)
         self.show_message("Ejemplo copiado.")
 
     def _language_code(self):
@@ -362,8 +369,66 @@ def tune_rhythm(document):
         block = block.next()
 
 
+def type_text(type_ref):
+    """TypeRef del backend -> "int", "int[]", "string[][]"... (igual que el panel de staff)."""
+    depth = 0
+    while type_ref["type"] == "array":
+        type_ref, depth = type_ref["items"], depth + 1
+    return type_ref["type"] + "[]" * depth
+
+
+def signature_text(signature):
+    params = ", ".join(f"{p['name']}: {type_text(p['type'])}" for p in signature["params"])
+    return f"{signature['functionName']}({params}) -> {type_text(signature['returns'])}"
+
+
+def case_input_text(json_text):
+    """Presentación de la entrada de un ejemplo: llega como JSON canónico ({"nums":[2,7],"k":9}) y se
+    muestra un parámetro por línea ("nums = [2,7]", "k = 9"), sin la estructura JSON. Se corta el
+    texto en vez de parsearlo para no perder precisión en los long."""
+    text = json_text.strip()
+    if not (text.startswith("{") and text.endswith("}")):
+        return json_text
+    parts, depth, in_string, start, body, i = [], 0, False, 0, text[1:-1], 0
+    while i < len(body):
+        ch = body[i]
+        if in_string:
+            if ch == "\\":
+                i += 1
+            elif ch == '"':
+                in_string = False
+        elif ch == '"':
+            in_string = True
+        elif ch in "[{":
+            depth += 1
+        elif ch in "]}":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append(body[start:i])
+            start = i + 1
+        i += 1
+    if body[start:].strip():
+        parts.append(body[start:])
+    lines = []
+    for part in parts:
+        match = re.match(r'\s*"((?:[^"\\]|\\.)*)"\s*:\s*(.*)$', part, re.S)
+        if not match:
+            return json_text
+        lines.append(f"{match.group(1)} = {match.group(2).strip()}")
+    return "\n".join(lines)
+
+
+def code_block(text):
+    """Bloque de código que no se rompe si el texto trae ```: la cerca es más larga que cualquier racha de `."""
+    longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
+    fence = "`" * max(3, longest + 1)
+    return f"{fence}\n{text}\n{fence}"
+
+
 def problem_markdown(problem):
     parts = [problem["statement"]]
+    if problem.get("signature"):
+        parts.append(f"### Función\n\n{code_block(signature_text(problem['signature']))}")
     if problem.get("inputFormat"):
         parts.append(f"### Entrada\n\n{problem['inputFormat']}")
     if problem.get("outputFormat"):
@@ -371,7 +436,7 @@ def problem_markdown(problem):
     for i, sample in enumerate(problem.get("samples") or []):
         parts.append(
             f"### Ejemplo {i + 1}\n\n"
-            f"**Entrada** · [Copiar](copy:{i}:input)\n\n```\n{sample['input']}\n```\n\n"
-            f"**Salida esperada** · [Copiar](copy:{i}:output)\n\n```\n{sample['output']}\n```"
+            f"**Entrada** · [Copiar](copy:{i}:input)\n\n{code_block(case_input_text(sample['input']))}\n\n"
+            f"**Salida esperada** · [Copiar](copy:{i}:output)\n\n{code_block(sample['output'])}"
         )
     return "\n\n".join(parts)
