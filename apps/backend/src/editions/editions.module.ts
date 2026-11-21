@@ -5,7 +5,6 @@ import { EditionCategoriesController } from './controllers/edition-categories.co
 import { EditionRoomsController } from './controllers/edition-rooms.controller.js';
 import { RoomsController } from './controllers/rooms.controller.js';
 import { RoomObserversController } from './controllers/room-observers.controller.js';
-import { RoomProyectorsController } from './controllers/room-proyectors.controller.js';
 import { CategoriesController } from './controllers/categories.controller.js';
 import { EditionStaffController } from './controllers/edition-staff.controller.js';
 import { EditionsService } from './services/editions.service.js';
@@ -13,7 +12,6 @@ import { EditionCategoriesService } from './services/edition-categories.service.
 import { EditionRoomsService } from './services/edition-rooms.service.js';
 import { RoomsService } from './services/rooms.service.js';
 import { RoomObserversService } from './services/room-observers.service.js';
-import { RoomProyectorsService } from './services/room-proyectors.service.js';
 import { CategoriesService } from './services/categories.service.js';
 import { EditionStaffService } from './services/edition-staff.service.js';
 import { Edition } from './entities/edition.entity.js';
@@ -50,7 +48,6 @@ import { EditionLanguagesService } from './services/edition-languages.service.js
     EditionRoomsController,
     RoomsController,
     RoomObserversController,
-    RoomProyectorsController,
     CategoriesController,
     EditionStaffController,
     EditionTeamsController,
@@ -62,7 +59,6 @@ import { EditionLanguagesService } from './services/edition-languages.service.js
     EditionRoomsService,
     RoomsService,
     RoomObserversService,
-    RoomProyectorsService,
     CategoriesService,
     EditionStaffService,
     EditionTeamsService,

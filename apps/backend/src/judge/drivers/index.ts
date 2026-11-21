@@ -6,6 +6,7 @@ import { buildJavaProgram, javaType } from './java.driver.js'
 import { buildCSharpProgram, csharpType } from './csharp.driver.js'
 import { buildCProgram, cType } from './c.driver.js'
 import { buildCppProgram, cppType } from './cpp.driver.js'
+import { describeType } from './starter-notes.js'
 
 export { RESULT_PATH, type DriverProgram } from './driver.types.js'
 
@@ -59,7 +60,39 @@ function pyType(type: TypeRef): string {
     return type.type === 'array' ? 'list[' + pyType(type.items) + ']' : PY_SCALARS[type.type]
 }
 
+// Plantilla de modo función: el esqueleto con un encabezado que dice qué no tocar y qué regresar, y en el cuerpo
+// dónde escribir y un return del tipo correcto (así compila tal cual)
 export function starterCode(languageCode: string, signature: IProblemSignature): string | null {
+    const skeleton = functionSkeleton(languageCode, signature)
+    if(skeleton === null) return null
+
+    const comment = languageCode === 'python' ? '#' : '//'
+    const indent = languageCode === 'java' || languageCode === 'csharp' ? '        ' : '    '
+    const header = [
+        comment + ' NO TOCAR el nombre de la función ' + signature.functionName + ' ni sus parámetros, ni cambiar su orden.',
+        comment + ' No leas datos ni imprimas: solo regresa (return) ' + describeType(signature.returns, languageCode) + '.',
+        '',
+    ]
+    const body = [
+        indent + comment + ' Escribe tu código aquí',
+        indent + 'return ' + placeholder(languageCode, signature.returns) + (languageCode === 'python' ? '' : ';'),
+    ]
+    return [...header, ...withBody(skeleton, languageCode, signature.functionName, body)].join('\n')
+}
+
+// Mete el cuerpo en la función del esqueleto (en Python reemplaza el pass; en C# la llave va en la línea siguiente)
+function withBody(skeleton: string, languageCode: string, functionName: string, body: string[]): string[] {
+    const lines = skeleton.split('\n')
+    if(languageCode === 'python'){
+        lines.splice(lines.findIndex((line) => line.trim() === 'pass'), 1, ...body)
+    } else {
+        const signatureLine = lines.findIndex((line) => line.includes(functionName + '('))
+        lines.splice(signatureLine + (languageCode === 'csharp' ? 2 : 1), 0, ...body)
+    }
+    return lines
+}
+
+function functionSkeleton(languageCode: string, signature: IProblemSignature): string | null {
     const name = signature.functionName
     const params = (format: (type: TypeRef, param: string) => string) =>
         signature.params.map((param) => format(param.type, param.name)).join(', ')
@@ -157,7 +190,7 @@ const GENERATOR_STARTER: IProblemSignature = {
 }
 
 export function generatorTemplate(languageCode: string, caseSignature: IProblemSignature): string | null {
-    const skeleton = starterCode(languageCode, GENERATOR_STARTER)
+    const skeleton = functionSkeleton(languageCode, GENERATOR_STARTER)
     if(skeleton === null) return null
 
     const comment = languageCode === 'python' ? '#' : '//'
@@ -175,14 +208,7 @@ export function generatorTemplate(languageCode: string, caseSignature: IProblemS
         indent + 'return ' + call + '(' + args + ')' + (languageCode === 'python' ? '' : ';'),
     ]
 
-    const lines = skeleton.split('\n')
-    if(languageCode === 'python'){
-        lines.splice(lines.findIndex((line) => line.trim() === 'pass'), 1, ...body)
-    } else {
-        const signatureLine = lines.findIndex((line) => line.includes('generate('))
-        // En C# la llave va en la línea siguiente
-        lines.splice(signatureLine + (languageCode === 'csharp' ? 2 : 1), 0, ...body)
-    }
+    const lines = withBody(skeleton, languageCode, 'generate', body)
 
     // caso(...) de prueba para el IDE y para correrlo en tu máquina; el juez quita el bloque
     const local = [

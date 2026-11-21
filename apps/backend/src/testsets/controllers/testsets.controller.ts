@@ -1,10 +1,10 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Put, Req } from '@nestjs/common';
-import type { ISignatureDetection, ITestRun, IGenerateTestsetResponse, IProblemSource, IProblemTestset, ITestCase, ITestCaseContent, ITestsetDetail, ITestsetSummary } from '@concurso/shared-types';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, ParseUUIDPipe, Patch, Post, Put, Query, Req } from '@nestjs/common';
+import type { IGeneratorTemplate, ISignatureDetection, ITestRun, IGenerateTestsetResponse, IProblemSource, IProblemTestset, ITestCase, ITestCaseContent, ITestsetDetail, ITestsetSummary } from '@concurso/shared-types';
 import type { AuthenticatedRequest } from '../../auth/guards/jwt-auth.guard.js';
 import { TestsetsService } from '../services/testsets.service.js';
 import { UpdateTestsetDto } from '../dto/update-testset.dto.js';
 import { CreateTestCaseDto, CreateTestCasesDto } from '../dto/create-test-case.dto.js';
-import { UpdateCasesVisibilityDto, UpdateTestCaseDto } from '../dto/update-test-case.dto.js';
+import { RemoveCasesGroupDto, UpdateCasesVisibilityDto, UpdateTestCaseDto } from '../dto/update-test-case.dto.js';
 import { GenerateTestsetDto } from '../dto/generate-testset.dto.js';
 import { SetCheckerDto, SetGeneratorDto } from '../dto/set-generator.dto.js';
 import { SetRefSolutionDto } from '../dto/set-ref-solution.dto.js';
@@ -116,6 +116,16 @@ export class TestsetsController {
         return this.testsetsService.startSignatureDetection(id, dto, req.user.sub);
     }
 
+    // Plantilla del concurso en el lenguaje elegido, para probar una solución como la escribiría un equipo
+    @Get(':id/starter-template')
+    getStarterTemplate(
+        @Param('id', ParseIntPipe) id: number,
+        @Query('languageId', ParseUUIDPipe) languageId: string,
+        @Req() req: AuthenticatedRequest,
+    ): Promise<IGeneratorTemplate> {
+        return this.testsetsService.getStarterTemplate(id, languageId, req.user.sub);
+    }
+
     @Get(':id/signature-detect/:jobId')
     getSignatureDetection(
         @Param('id', ParseIntPipe) id: number,
@@ -170,6 +180,17 @@ export class TestsetsController {
         @Req() req: AuthenticatedRequest,
     ): Promise<{ updated: number }> {
         return this.testsetsService.updateCasesVisibility(id, dto, req.user.sub);
+    }
+
+    // Borra un grupo de casos (y su configuración aleatoria); POST porque lleva cuerpo
+    @Post(':id/cases/remove-group')
+    @HttpCode(HttpStatus.OK)
+    removeCasesGroup(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: RemoveCasesGroupDto,
+        @Req() req: AuthenticatedRequest,
+    ): Promise<{ removed: number }> {
+        return this.testsetsService.removeCasesGroup(id, dto.group, req.user.sub);
     }
 
     @Get(':id/cases/:caseId')

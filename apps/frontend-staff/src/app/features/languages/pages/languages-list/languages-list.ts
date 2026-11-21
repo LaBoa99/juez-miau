@@ -3,6 +3,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ICreateLanguage, ILanguage } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
+import { Icon } from '../../../../shared/ui/icon.component';
+import { TooltipDirective } from '../../../../shared/ui/tooltip.directive';
 import { FormField } from '../../../../shared/ui/form-field.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { EmptyState } from '../../../../shared/ui/empty-state.component';
@@ -19,7 +21,7 @@ const RANGE = 'Debe ser un número entre 0.01 y 99.99.';
 @Component({
   selector: 'oj-languages-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, PageHeader, ButtonDirective, FormField, Alert, EmptyState, Badge, Modal],
+  imports: [ReactiveFormsModule, PageHeader, ButtonDirective, Icon, TooltipDirective, FormField, Alert, EmptyState, Badge, Modal],
   templateUrl: './languages-list.html',
   styleUrl: './languages-list.css',
 })

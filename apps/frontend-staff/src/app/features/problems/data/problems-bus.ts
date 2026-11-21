@@ -17,6 +17,8 @@ export class ProblemsBus {
   readonly error = signal(false);
   // El panel la marca cuando su formulario tiene cambios sin guardar.
   readonly dirty = signal(false);
+  // Navegación del workspace (con el aviso de cambios sin guardar); el panel la usa para regresar a la tabla
+  navigate: (path: string) => void = () => {};
 
   load(): void {
     this.loading.set(true);

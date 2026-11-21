@@ -19,11 +19,16 @@
           @for (c of rows(); track c.id) {
             <tr>
               <td class="oj-mono">{{ c.code }}</td>
-              <td>{{ c.name }}</td>
+              <td>
+                {{ c.name }}
+                @if (c.full_program) {
+                  <oj-badge tone="neutral" class="tab__badge">Programa completo</oj-badge>
+                }
+              </td>
               <td>
                 <div class="tab__row-actions">
-                  <button ojButton variant="secondary" size="sm" type="button" (click)="openEdit(c)">Editar</button>
-                  <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDelete(c)">Eliminar</button>
+                  <button ojButton variant="secondary" size="sm" class="oj-btn--icon" type="button" [attr.aria-label]="'Editar categoría ' + c.name" ojTooltip="Editar" (click)="openEdit(c)"><oj-icon name="edit" /></button>
+                  <button ojButton variant="danger-outline" size="sm" class="oj-btn--icon" type="button" [attr.aria-label]="'Eliminar categoría ' + c.name" ojTooltip="Eliminar" (click)="askDelete(c)"><oj-icon name="delete" /></button>
                 </div>
               </td>
             </tr>
@@ -48,6 +53,14 @@
     <input id="cat-name" type="text" formControlName="name" />
   </oj-form-field>
 
+    <label class="tab__check">
+      <input type="checkbox" formControlName="full_program" />
+      <span>
+        Categoría especial: programa completo
+        <span class="tab__check-hint">Para principiantes: mandan un programa que lee con input() e imprime la respuesta, sin escribir una función. Solo se cambia mientras la categoría no tenga problemas.</span>
+      </span>
+    </label>
+
   <div class="tab__actions">
     <button ojButton variant="primary" type="submit" [disabled]="saving()">
       {{ saving() ? 'Guardando…' : 'Agregar' }}
@@ -66,6 +79,13 @@
     <oj-form-field label="Nombre" for="cat-edit-name">
       <input id="cat-edit-name" type="text" formControlName="name" />
     </oj-form-field>
+      <label class="tab__check">
+        <input type="checkbox" formControlName="full_program" />
+        <span>
+          Categoría especial: programa completo
+          <span class="tab__check-hint">Para principiantes: mandan un programa que lee con input() e imprime la respuesta, sin escribir una función. Solo se cambia mientras la categoría no tenga problemas.</span>
+        </span>
+      </label>
   </form>
   <div footer>
     <button ojButton variant="secondary" type="button" (click)="closeEdit()">Cancelar</button>

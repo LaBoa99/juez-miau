@@ -53,6 +53,13 @@ subtitle=""
           <strong>Por qué está en revisión:</strong> {{ reason }}
         </div>
 
+        @if (instructions(); as text) {
+          <div class="rev__rule">
+            <strong>Qué debe revisar el juez</strong>
+            <p class="rev__rule-text">{{ text }}</p>
+          </div>
+        }
+
         <form class="rev__decision" (submit)="$event.preventDefault(); openConfirm()">
           <h3 class="rev__decision-title">Decisión del juez</h3>
 

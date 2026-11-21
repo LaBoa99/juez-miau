@@ -41,6 +41,12 @@
 .tw__sig-row input { flex: 1; min-width: 0; }
 .tw__sig-return { display: flex; gap: var(--oj-space-sm); }
 
+/* Oferta de casos aleatorios (modal) */
+.tw__offer { display: flex; flex-direction: column; gap: var(--oj-space-sm); font-size: 13px; }
+.tw__offer-lead { margin: 0; }
+.tw__offer-list { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: var(--oj-space-2xs); }
+.tw__offer .tw__muted { margin: 0; font-size: 12px; }
+
 /* Evaluación */
 .tw__eval-fields { display: flex; flex-direction: column; gap: var(--oj-space-md); }
 

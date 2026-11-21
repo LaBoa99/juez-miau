@@ -58,3 +58,29 @@
   flex-direction: column;
   gap: 16px;
 }
+
+/* Casilla con explicación debajo (p. ej. Categoría especial) */
+.tab__check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--oj-space-sm);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tab__check input {
+  margin-top: 2px;
+}
+
+.tab__check-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--oj-text-muted);
+}
+
+.tab__badge {
+  margin-left: var(--oj-space-sm);
+  vertical-align: 1px;
+}

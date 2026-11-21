@@ -40,6 +40,10 @@ export class TestRunModal {
   protected readonly starting = signal(false);
   protected readonly lang = new FormControl<string | null>(null, [Validators.required]);
   protected readonly source = signal('');
+  // Última plantilla pegada: se puede reemplazar sin perder código escrito por la persona
+  private readonly pastedTemplate = signal('');
+  protected readonly canPasteTemplate = computed(() => !this.source().trim() || this.source() === this.pastedTemplate());
+  protected readonly templateBusy = signal(false);
   protected readonly DONE = SubmissionStatus.DONE;
 
   protected readonly running = computed(() => {
@@ -99,6 +103,34 @@ export class TestRunModal {
     this.start({ languageId: this.lang.value!, source: this.source() });
   }
 
+  // Plantilla del concurso (la que reciben los equipos) en el lenguaje elegido: se pega en el código o se descarga
+  protected useTemplate(action: 'paste' | 'download'): void {
+    const languageId = this.lang.value;
+    if (!languageId || (action === 'paste' && !this.canPasteTemplate())) return;
+    this.templateBusy.set(true);
+    this.error.set(null);
+    this.service.starterTemplate(this.testsetId(), languageId).subscribe({
+      next: ({ fileName, source }) => {
+        this.templateBusy.set(false);
+        if (action === 'paste') {
+          this.pastedTemplate.set(source);
+          this.source.set(source);
+          return;
+        }
+        const url = URL.createObjectURL(new Blob([source], { type: 'text/plain' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        this.templateBusy.set(false);
+        this.error.set(backendMessage(err, 'No se pudo generar la plantilla.'));
+      },
+    });
+  }
+
   // En un traceback lo útil es el final ("ValueError: ..."); el texto completo va en el title
   protected lastLine(message: string | null): string {
     return message?.trim().split('\n').at(-1) ?? '';
@@ -124,6 +156,7 @@ export class TestRunModal {
     this.error.set(null);
     this.lang.reset(null);
     this.source.set('');
+    this.pastedTemplate.set('');
   }
 
   private start(dto: { useRefSolution?: boolean; verify?: boolean; languageId?: string; source?: string }): void {

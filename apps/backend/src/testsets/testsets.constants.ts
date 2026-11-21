@@ -1,3 +1,4 @@
+import type { IProblemSignature } from '@concurso/shared-types'
 // Cola que consume el worker (fase 3): ejecuta la solución oficial y deja el testset READY o FAILED
 export const TESTSET_BUILD_QUEUE = 'testset-build'
 
@@ -34,4 +35,6 @@ export interface SignatureJob {
     languageId: string
     source: string
     functionName?: string
+    // Firma ya fija (problema fuera de borrador): no se lee una nueva, se comprueba que la solución compile con ella
+    fixed?: IProblemSignature
 }

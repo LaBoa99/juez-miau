@@ -1,7 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, type Relation } from "typeorm";
 import type { ICategory } from "@concurso/shared-types";
 import { Edition } from "./edition.entity.js";
-import { Room } from "./room.entity.js";
 import { Team } from "../../teams/entities/team.entity.js";
 
 @Entity()
@@ -22,8 +21,9 @@ export class Category implements ICategory {
     @Column({ type: 'smallint', unsigned: true, default: 0 })
     declare sort_order: number
 
-    @OneToMany(() => Room, room => room.category)
-    declare rooms: Relation<Room[]>
+    // Categoría especial: sus problemas se evalúan como programa completo (programa-completo.md)
+    @Column({ type: 'boolean', default: false })
+    declare full_program: boolean
 
     @OneToMany(() => Team, team => team.category)
     declare teams: Relation<Team[]>

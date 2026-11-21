@@ -197,6 +197,17 @@ export function mapType(languageCode: string, raw: string): TypeRef | null {
     const type = raw.replace(/std::/g, '').replace(/&/g, '').replace(/\s+/g, ' ').trim()
     if(!type) return null
 
+    // Literal["par", "impar"] / Literal[1, 2] / Literal[True]: el tipo de sus valores
+    const literal = /^(?:typing\.)?Literal\[(.+)\]$/.exec(type)?.[1]
+    if(literal !== undefined){
+        const values = splitTopLevel(literal)
+        // Los textos llegan en blanco (clean() borra el contenido de las comillas)
+        if(values.every((value) => !value.trim() || /^(['"]).*\1$/.test(value))) return { type: 'string' }
+        if(values.every((value) => /^-?\d+$/.test(value))) return { type: 'int' }
+        if(values.every((value) => /^(?:True|False)$/.test(value))) return { type: 'bool' }
+        return null
+    }
+
     // Uniones (int | float, Union[int, float], number | bigint): el tipo numérico más amplio
     const union = /^(?:typing\.)?Union\[(.+)\]$/.exec(type)?.[1].split(',') ?? splitUnion(type)
     if(union.length > 1){

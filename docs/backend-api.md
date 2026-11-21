@@ -108,26 +108,18 @@ Alta/listado bajo la edición; edición/borrado por id. Tipos: `IRoom`, `IRoomLi
 
 | Método | Ruta | Quién | Body | Respuesta |
 |---|---|---|---|---|
-| GET | `/editions/:editionId/rooms` | `RequireEditionRole(ANY)` | — | `IRoomListItem[]` (con `observers`) |
-| POST | `/editions/:editionId/rooms` | `RequireEditionRole([ADMIN])` | `{ name (≤255), category_id? (int≥1 o null) }` | `IRoom` |
+| GET | `/editions/:editionId/rooms` | `RequireEditionRole(ANY)` | — | `IRoomListItem[]` (con `observers` y `categories`) |
+| POST | `/editions/:editionId/rooms` | `RequireEditionRole([ADMIN])` | `{ name (≤255), category_ids? (int≥1[], únicos) }` | `IRoom` |
 | PATCH | `/rooms/:id` | `RequireEditionRole([ADMIN], scope=room)` | `Partial<ICreateRoom>` | `IRoom` |
 | DELETE | `/rooms/:id` | `RequireEditionRole([ADMIN], scope=room)` | — | 204 |
 
-`IRoom` = `{ id, edition_id, category_id (number\|null), name }`. `category_id` null = salón sin categoría.
+`IRoom` = `{ id, edition_id, name }`. `category_ids` (tabla `room_category`) dice qué categorías se sientan en el salón; solo sirve para proponer salón a los equipos nuevos (alta sin `room_id` e importación del CSV): si la edición tiene un solo salón, ese; si no, el salón de su categoría con menos equipos (reparte parejo); si ninguno tiene su categoría, sin salón. Mandar `category_ids` en el PATCH reemplaza la lista. 404 si una categoría no es de la edición.
 
 ### Observadores del salón (`/rooms/:roomId/observers`)
 | Método | Ruta | Quién | Body | Respuesta |
 |---|---|---|---|---|
 | POST | `/rooms/:roomId/observers` | `RequireEditionRole([ADMIN], scope=room)` | `{ staff_user_id (int≥1) }` | `IRoomObserver` |
 | DELETE | `/rooms/:roomId/observers/:staffUserId` | `RequireEditionRole([ADMIN], scope=room)` | — | 204 |
-
-### Token de proyector (`/rooms/:roomId/board-token`)
-| Método | Ruta | Quién | Respuesta |
-|---|---|---|---|
-| POST | `/rooms/:roomId/board-token` | `RequireEditionRole([ADMIN], scope=room)` | `IProjectorTokenResponse` = `{ token, url, qr_png (base64) }` |
-| DELETE | `/rooms/:roomId/board-token` | `RequireEditionRole([ADMIN], scope=room)` | 204 |
-
-El token en claro solo se devuelve al generarlo (en BD va su hash). **El backend todavía NO valida este token** (ver `## no-existe`).
 
 ---
 
@@ -163,15 +155,15 @@ Alta/listado/importación bajo la edición; operaciones por id en `/teams/:id`. 
 | Método | Ruta | Quién | Body | Respuesta | Errores |
 |---|---|---|---|---|---|
 | GET | `/editions/:editionId/teams?categoryId&roomId&search&page&pageSize` | `RequireEditionRole(ANY)` | — | `ITeamsPage` = `{ items: ITeamListItem[], total }` | — |
-| POST | `/editions/:editionId/teams/import/validate` | `RequireEditionRole([ADMIN])` | `multipart/form-data` campo `file` (CSV ≤5 MB) | `ITeamImportValidation` = `{ validRows, errors[], preview[] }` | 422 archivo inválido/grande. |
+| POST | `/editions/:editionId/teams/import/validate` | `RequireEditionRole([ADMIN])` | `multipart/form-data` campo `file` (CSV ≤5 MB) | `ITeamImportValidation` = `{ validRows, errors[], preview[] }` | 422 archivo inválido/grande. El CSV se lee en UTF-8; si no lo es, en Windows-1252 (Excel en Windows), y se deshace la doble codificación (`JosÃ©` → `José`). Un texto que ya trae `�` sale como error de su fila. |
 | POST | `/editions/:editionId/teams/import` | `RequireEditionRole([ADMIN])` | `file` (CSV ≤5 MB) | `ITeamImportResult` = `{ created, errors[], credentials[] }` | 422 |
 | GET | `/teams/:id` | `RequireEditionRole(ANY, scope=team)` | — | equipo | 404 |
-| PATCH | `/teams/:id` | `RequireEditionRole([ADMIN], scope=team)` | `IUpdateTeam` (`name?`, `room_id?`, `members?`) | equipo | — |
+| PATCH | `/teams/:id` | `RequireEditionRole([ADMIN], scope=team)` | `IUpdateTeam` (`name?`, `category_id?`, `room_id?`, `members?`) | equipo | 409 si cambia `category_id` fuera de borrador |
 | POST | `/teams/:id/reset-password` | `RequireEditionRole([ADMIN], scope=team)` | — | `{ …, password }` (contraseña nueva en claro) | 404 |
 | DELETE | `/teams/:id` | `RequireEditionRole([ADMIN], scope=team)` | — | 204 | — |
 | DELETE | `/teams/:id/sessions` | `RequireEditionRole([ADMIN], scope=team)` | — | 204 (cierra sesiones del equipo) | — |
 
-**`ICreateTeam`:** `name` (1–255), `category_id` (int+), `members: { name, career, semestre? }[]`. **`IUpdateTeam`:** miembros con `id` = editar, sin `id` = alta. `username` es único por edición (el login lo busca entre ediciones activas). `ITeamListItem` incluye `online` (sesión activa con heartbeat).
+**`ICreateTeam`:** `name` (1–255), `category_id` (int+), `room_id?` (int+; sin él se propone según la categoría, ver `## rooms`), `members: { name, career, semestre? }[]`. **`IUpdateTeam`:** miembros con `id` = editar, sin `id` = alta. `username` es único por edición (el login lo busca entre ediciones activas). `ITeamListItem` incluye `online` (sesión activa con heartbeat).
 
 ---
 
@@ -225,7 +217,7 @@ Alta/listado bajo la edición; detalle/edición por id; la firma vive en `/probl
 **Reglas:**
 - Al crear nace también su **testset v1 vacío** (DRAFT); `testsetId` lo identifica.
 - `letter` única por categoría dentro de la edición.
-- **Estados** (`ProblemStatus`): `draft` → `published`. Eliminar solo en `draft`.
+- **Estados** (`ProblemStatus`): `draft` → `ready` (`POST /problems/:id/propose`) → `published` (`/accept`); `published` → `ready` (`/disable`, quitarlo del concurso); `ready`/`published` → `draft` (`POST /problems/:id/back-to-draft`, body `{ reason? (≤500) }`; desde `ready` el autor o un admin, desde `published` el admin con las reglas de `/disable`; 409 si ya tiene envíos). El motivo queda en `IProblem.draftReason` hasta que se propone o acepta otra vez. Regresar a borrador es la única forma de volver a cambiar la firma. Eliminar solo en `draft`.
 - **Firma (`IProblemSignature`)** (`PATCH /problems/:problemId/signature`, en `## testsets`): `{ functionName, params:[{name, type}], returns }`. `type` es `TypeRef`: `{type:'int'|'long'|'float'|'bool'|'string'}` o `{type:'array', items:TypeRef}` (arrays anidables hasta `MAX_TYPE_DEPTH`). Validaciones: `functionName` y cada `name` son identificadores (letras/dígitos/`_`, ≤64), sin palabras reservadas de C/C++/Java/Python/TS/C#, sin duplicados, y ningún parámetro igual al nombre de la función; **≤16 parámetros**. Solo se puede cambiar mientras el problema es **draft** y su testset actual es **editable** (DRAFT/FAILED), y los casos/esquema existentes deben seguir siendo compatibles con la nueva firma (si no, 422 con la lista).
 - **Publicar valida** (422 `{errors}`): `statement`, `inputFormat` u `outputFormat` vacíos; firma sin definir; sin testset actual; el testset actual no está `ready`; sin solución de referencia; sin casos; sin casos públicos; casos sin salida esperada.
 - `IProblemPreview` (vista del equipo): sin solución, generador, semilla ni casos ocultos; `samples` = casos públicos ya con salida; `limits` = `{timeLimitMs, memoryLimitMb}` del testset actual.
@@ -252,7 +244,8 @@ Firma y nueva versión bajo `/problems/:problemId`; el resto bajo `/testsets/:id
 | POST | `/testsets/:id/cases` | juez | `ICreateTestCase` | `ITestCase` | 422 input inválido. |
 | GET | `/testsets/:id/cases/:caseId` | juez | — | `ITestCaseContent` | 404 |
 | PATCH | `/testsets/:id/cases/:caseId` | juez | `IUpdateTestCase` | `ITestCase` | 409/422 |
-| DELETE | `/testsets/:id/cases/:caseId` | juez | — | 204 | — |
+| DELETE | `/testsets/:id/cases/:caseId` | juez | — | 204 (uno aleatorio también quita su semilla del esquema: no vuelve al regenerar; un grupo sin semillas sale del esquema) | — |
+| POST | `/testsets/:id/cases/remove-group` | juez | `{ group: string \| null }` (null = sin grupo) | `{ removed }`; borra los casos del grupo y su grupo del esquema | — |
 
 > Ninguna lleva decorador de rol: el servicio exige que el usuario sea **ADMIN o JUDGE** de la edición del problema.
 
@@ -416,7 +409,7 @@ No existe un `PublicModule` con controlador; las rutas sin sesión viven en sus 
 - `GET /public/editions/:editionId/standings` → `IStandings` congelado (ver `## standings`).
 - `GET /health` (ver `## health`).
 
-El proyector (`/proyector/:editionId`) consume estas rutas públicas y el socket público; **no** hay validación del token de proyector todavía.
+El proyector (`/proyector/:editionId`) consume estas rutas públicas y el socket público, sin token: es público por diseño.
 
 ---
 
@@ -465,7 +458,6 @@ Lo que el frontend podría pedir y el backend **no** ofrece hoy:
 - **`is_superadmin` en `/auth/me` y en el login:** `IStaffUser.isSuperadmin` existe en el tipo pero el backend **no lo envía**; llega `undefined` y se trata como `false`. El gating de superadmin en la UI no funciona hasta que se exponga.
 - **Editar un lenguaje:** `PATCH /languages/:uuid` solo **alterna `active`**. No hay endpoint para editar `compile_cmd`, `run_cmd`, `image_ref`, `time_multiplier`, etc. (existe `UpdateLanguageDto` pero ninguna ruta lo usa).
 - **Activar una versión de testset ya `ready`:** no hay endpoint; el vigente solo cambia construyendo una versión editable (ver `## testsets`).
-- **Validación del token de proyector:** se genera y se guarda su hash, pero **ninguna ruta lo valida**; el proyector usa las rutas `/public/...` por `editionId`, sin token.
 - **Listado público de ediciones, resultados públicos agregados o vista por salón:** no existen (el filtro por salón se arma en el cliente con equipo→salón).
 - **Lectura de heartbeats / vista de monitoreo de conexión:** no hay endpoint; la pérdida se ve como alerta `HEARTBEAT_LOST`.
 - **Catálogo de problemas general / "agregar desde catálogo":** no existe; los problemas se crean por edición.

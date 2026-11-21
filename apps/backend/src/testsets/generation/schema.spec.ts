@@ -58,6 +58,14 @@ describe('validateSchema', () => {
         expect(validateSchema(signature, { params: { nums: schema.params.nums }, groups: schema.groups })).toEqual(['schema.params.word: missing'])
     })
 
+    it('rechaza un charset con saltos de línea (descuadran la entrada de programa completo)', () => {
+        const errors = validateSchema(signature, {
+            params: { nums: schema.params.nums, word: { type: 'string', length: [1, 3], charset: 'a-z\n' } },
+            groups: schema.groups,
+        })
+        expect(errors).toEqual(expect.arrayContaining([expect.stringContaining('charset: cannot include line breaks')]))
+    })
+
     it('limita el tamaño de un caso', () => {
         const errors = validateSchema(signature, {
             ...schema,

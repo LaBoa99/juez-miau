@@ -477,7 +477,15 @@ def code_block(text):
 def problem_markdown(problem):
     # Con enunciado en PDF, aquí solo quedan la firma y los ejemplos (con su botón de copiar)
     parts = [problem["statement"]] if problem.get("statement") else []
-    if problem.get("signature"):
+    if problem.get("signature") and problem.get("fullProgram"):
+        # Categoría especial: programa completo que lee de la entrada; los ejemplos ya vienen como texto
+        order = ", ".join(f"`{p['name']}`" for p in problem["signature"]["params"])
+        parts.append(
+            "### Programa completo\n\n"
+            f"No escribas una función: tu programa lee los datos con input() en este orden: {order}, "
+            "e imprime la respuesta al final. Con **Descargar plantilla** recibes la lectura ya escrita."
+        )
+    elif problem.get("signature"):
         parts.append(f"### Función\n\n{code_block(signature_text(problem['signature']))}")
     if problem.get("inputFormat"):
         parts.append(f"### Entrada\n\n{problem['inputFormat']}")

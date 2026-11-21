@@ -13,6 +13,7 @@ import {
 } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
+import { Icon } from '../../../../shared/ui/icon.component';
 import { Badge } from '../../../../shared/ui/badge.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { EmptyState } from '../../../../shared/ui/empty-state.component';
@@ -36,7 +37,7 @@ type VerdictSeg = 'all' | 'ac' | 'bad' | 'limit' | 'pending';
     ReactiveFormsModule,
     RouterLink,
     PageHeader,
-    ButtonDirective,
+    ButtonDirective, Icon,
     Badge,
     Alert,
     EmptyState,

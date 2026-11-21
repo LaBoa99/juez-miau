@@ -4,6 +4,7 @@ import { Repository } from 'typeorm'
 import { EditionStatus, ProblemStatus, type IContestProblem, type IContestView } from '@concurso/shared-types'
 import { toClockDto } from '../contest-clock/clock.js'
 import { hasDriver, starterCode } from '../judge/drivers/index.js'
+import { programStarterCode } from '../judge/drivers/program-starter.js'
 import { Problem } from '../problems/entities/problem.entity.js'
 import { ProblemsService } from '../problems/services/problems.service.js'
 import { Team } from '../teams/entities/team.entity.js'
@@ -42,16 +43,20 @@ export class ContestService {
             edition: { id: edition.id, name: edition.name },
             clock: toClockDto(edition),
             languages: languages.map((language) => ({ id: language.id, code: language.code, compilerVersion: language.compiler_version })),
-            problems: await Promise.all(problems.map(async (problem): Promise<IContestProblem> => ({
-                id: problem.id,
-                letter: problem.letter ?? '—',
-                points: problem.points,
-                ...await this.problemsService.buildPreview(problem),
-                starterCode: Object.fromEntries(languages.flatMap((language) => {
-                    const code = problem.signature && starterCode(language.code, problem.signature)
-                    return code ? [[language.code, code]] : []
-                })),
-            }))),
+            problems: await Promise.all(problems.map(async (problem): Promise<IContestProblem> => {
+                const preview = await this.problemsService.buildPreview(problem)
+                const template = preview.fullProgram ? programStarterCode : starterCode
+                return {
+                    id: problem.id,
+                    letter: problem.letter ?? '—',
+                    points: problem.points,
+                    ...preview,
+                    starterCode: Object.fromEntries(languages.flatMap((language) => {
+                        const code = problem.signature && template(language.code, problem.signature)
+                        return code ? [[language.code, code]] : []
+                    })),
+                }
+            })),
         }
     }
 

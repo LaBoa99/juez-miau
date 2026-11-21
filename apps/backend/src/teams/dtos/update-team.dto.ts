@@ -2,7 +2,7 @@ import { ICreateTeamMember, IUpdateCategory, IUpdateTeam } from "@concurso/share
 import { PartialType, OmitType } from "@nestjs/swagger"; // Añadimos OmitType
 import { CreateTeamDto } from "./create-team.dto.js";
 import { Type } from "class-transformer";
-import { IsOptional, IsArray, ValidateNested, IsNumber, IsInt, IsPositive } from "class-validator";
+import { IsOptional, IsArray, ValidateNested } from "class-validator";
 import { UpdateTeamMemberDto } from "./update-team-member.dto.js";
 
 
@@ -15,10 +15,5 @@ export class UpdateTeamDto extends PartialType(TeamWithoutMembers) implements IU
     @ValidateNested({ each: true })
     @Type(() => UpdateTeamMemberDto) 
     members ?: UpdateTeamMemberDto[]; 
-
-    @IsOptional()
-    @IsInt()
-    @IsPositive()
-    room_id ?: number
 
 }

@@ -122,18 +122,28 @@ function fromRandom(node: RandomNode, label: string, errors: string[]): SchemaNo
 
 // Grupos editables -> esquema del backend. Cada grupo lleva sus rangos completos como overrides;
 // las semillas se numeran 1..N entre todos los grupos.
-export function groupsToSchema(groups: RandomGroup[], paramNames: string[]): { schema: ITestsetSchema; errors: string[]; total: number } {
+// Con `previous`, cada grupo conserva sus semillas (sus casos no cambian y un caso que se borró no vuelve);
+// solo los casos de más reciben semillas nuevas
+export function groupsToSchema(
+  groups: RandomGroup[],
+  paramNames: string[],
+  previous: ITestsetSchema | null = null,
+): { schema: ITestsetSchema; errors: string[]; total: number } {
   const errors: string[] = [];
   const names = groups.map((g) => g.name.trim());
   if (names.some((n) => !n)) errors.push('Cada grupo necesita un nombre.');
   const dup = names.find((n, i) => n && names.indexOf(n) !== i);
   if (dup) errors.push(`El grupo "${dup}" está repetido. Usa nombres distintos.`);
 
-  let seed = 0;
+  let seed = Math.max(0, ...(previous?.groups ?? []).flatMap((g) => g.seeds));
+  let total = 0;
   const out: ISchemaGroup[] = groups.map((g, gi) => {
     const count = Number(g.count);
     if (!Number.isInteger(count) || count < 1) errors.push(`Grupo "${names[gi] || gi + 1}": la cantidad de casos debe ser un entero de 1 en adelante.`);
-    const seeds = Array.from({ length: Number.isInteger(count) && count > 0 ? count : 0 }, () => ++seed);
+    const wanted = Number.isInteger(count) && count > 0 ? count : 0;
+    const kept = (previous?.groups.find((p) => p.name === names[gi])?.seeds ?? []).slice(0, wanted);
+    const seeds = [...kept, ...Array.from({ length: wanted - kept.length }, () => ++seed)];
+    total += seeds.length;
     const overrides = Object.fromEntries(
       paramNames.map((p) => [p, fromRandom(g.params[p], `Grupo "${names[gi] || gi + 1}", ${p}`, errors)]),
     ) as ISchemaGroup['overrides'];
@@ -141,5 +151,5 @@ export function groupsToSchema(groups: RandomGroup[], paramNames: string[]): { s
   });
 
   const params = (out[0]?.overrides ?? {}) as Record<string, SchemaNode>;
-  return { schema: { params, groups: out }, errors, total: seed };
+  return { schema: { params, groups: out }, errors, total };
 }

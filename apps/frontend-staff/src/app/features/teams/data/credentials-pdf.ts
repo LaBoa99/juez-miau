@@ -21,7 +21,7 @@ async function loadLogoDataUrl(): Promise<string | null> {
   }
 }
 
-function teamPage(c: ITeamImportCredential, logo: string | null, generatedAt: string): Content[] {
+function teamPage(c: ITeamImportCredential, logo: string | null, generatedAt: string, instructions: readonly string[]): Content[] {
   const header: Content = logo
     ? { image: logo, width: 140, alignment: 'center', margin: [0, 0, 0, 12] }
     : { text: 'Centro Universitario de los Valles', bold: true, fontSize: 13, alignment: 'center', margin: [0, 0, 0, 12] };
@@ -43,15 +43,17 @@ function teamPage(c: ITeamImportCredential, logo: string | null, generatedAt: st
       margin: [0, 0, 0, 16],
     },
     { text: 'Indicaciones', bold: true, margin: [0, 0, 0, 4] },
-    { ul: [...TEAM_LOGIN_INSTRUCTIONS], margin: [0, 0, 0, 16] },
+    { ul: [...instructions], margin: [0, 0, 0, 16] },
     { text: `Generado el ${generatedAt}`, fontSize: 9, color: '#666666', alignment: 'center' },
   ];
 }
 
-// Genera y descarga el PDF (una página por equipo). No guarda nada en disco del repo ni en storage.
+// Genera y descarga el PDF (una página por equipo o usuario de staff; teamName es el nombre que encabeza
+// la página). No guarda nada en disco del repo ni en storage.
 export async function downloadCredentialsPdf(
   creds: ITeamImportCredential[],
   fileName: string,
+  instructions: readonly string[] = TEAM_LOGIN_INSTRUCTIONS,
 ): Promise<{ logoMissing: boolean }> {
   const [pdfMakeMod, vfsMod] = await Promise.all([
     import('pdfmake/build/pdfmake'),
@@ -77,7 +79,7 @@ export async function downloadCredentialsPdf(
 
   // Cada equipo en su propia página: un stack por equipo con salto antes (salvo el primero).
   const content: Content[] = creds.map((c, i) => ({
-    stack: teamPage(c, logo, generatedAt),
+    stack: teamPage(c, logo, generatedAt, instructions),
     pageBreak: i > 0 ? 'before' : undefined,
   }));
 

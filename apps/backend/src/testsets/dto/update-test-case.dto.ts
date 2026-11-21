@@ -30,3 +30,11 @@ export class UpdateCasesVisibilityDto implements IUpdateCasesVisibility {
     @IsEnum(TestCaseVisibility)
     declare visibility: TestCaseVisibility;
 }
+
+export class RemoveCasesGroupDto {
+
+    // null = los casos sin grupo
+    @ValidateIf((_, value) => value !== null)
+    @IsString()
+    declare group: string | null;
+}

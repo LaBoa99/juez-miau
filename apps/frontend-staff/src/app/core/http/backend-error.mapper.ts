@@ -26,17 +26,29 @@ const PATTERNS: readonly [RegExp, string][] = [
   [/signature .* can only change while it is a draft/i, 'La firma solo se puede cambiar mientras el problema es borrador.'],
   [/new version can only be created from a ready testset/i, 'Solo se puede crear una versión nueva desde una versión lista.'],
   [/reserved word/i, 'Un nombre usa una palabra reservada de algún lenguaje.'],
+  // ── Programa completo: cada texto va en su propia línea ──
+  [/in a full program a string cannot contain line breaks/i, 'En programa completo un texto no puede tener saltos de línea: cada texto va en su propia línea.'],
+  [/charset: cannot include line breaks/i, 'Los caracteres de un texto aleatorio no pueden incluir saltos de línea.'],
   [/duplicated parameter/i, 'Hay nombres de parámetro repetidos.'],
   [/at most 16 parameters/i, 'La firma admite como máximo 16 parámetros.'],
   [/must be an identifier/i, 'Un nombre no es válido: usa letras, dígitos y _ (hasta 64).'],
+  // ── Categoría especial: programa completo ──
+  [/full_program can only change while it has none/i, 'La categoría ya tiene problemas: solo se puede marcar o desmarcar como especial mientras no tenga.'],
+  [/is full-program: its problems can only use compareMode program/i, 'Esta categoría es especial: sus problemas se evalúan como programa completo.'],
+  [/compareMode program is only for full-program categories/i, 'Programa completo solo se usa en categorías especiales.'],
   // ── Problema / edición ──
+  [/problems can only change before it starts or while it is paused/i, 'Los problemas solo se agregan o quitan antes de iniciar el concurso o con el concurso en pausa.'],
+  [/has submissions; take it out of the contest instead/i, 'El problema ya tiene envíos: quítalo del concurso en lugar de eliminarlo.'],
   [/letter .* is already used/i, 'Esa letra ya está usada en la categoría.'],
   [/can only be deleted while it is a draft/i, 'Solo se puede eliminar mientras es borrador.'],
-  [/is in the contest; take it out before deleting/i, 'Está en el concurso: quítalo antes de eliminarlo.'],
   [/would have more than \d+ cases|already has \d+ cases/i, 'Se pasaría del máximo de casos de prueba de la versión.'],
   [/only cases generated from the schema can be pinned/i, 'Solo los casos aleatorios se pueden fijar como manuales.'],
   [/^case \d+: /i, 'Algún caso no coincide con la firma: revisa los nombres y los tipos de los parámetros.'],
   [/can only be modified before it starts/i, 'Solo se puede modificar antes de que inicie el concurso.'],
+  [/has submissions; it can no longer go back to draft/i, 'El problema ya tiene envíos: ya no puede regresar a borrador ni cambiar su firma.'],
+  // ── Equipos / salones ──
+  [/team category can only change while the edition is a draft/i, 'La categoría del equipo solo se puede cambiar mientras la edición está en borrador.'],
+  [/category .*not found in this edition/i, 'Una de las categorías ya no existe en la edición. Recarga la página.'],
   [/can only be deleted while it is a draft/i, 'Solo se puede eliminar mientras es borrador.'],
   // ── Programar edición (el backend ya los manda en español; se normalizan) ──
   [/problemas publicados|no published problems/i, 'Falta publicar al menos un problema.'],
@@ -49,7 +61,6 @@ const PATTERNS: readonly [RegExp, string][] = [
   [/language .* is not enabled|not enabled in this contest/i, 'El lenguaje no está habilitado en este concurso.'],
   [/cannot be sent to review/i, 'Solo se puede mandar a revisión un envío ya juzgado que no esté en revisión.'],
   [/is not pending review/i, 'El envío ya no está pendiente de revisión.'],
-  [/belongs to another category/i, 'El salón es de otra categoría.'],
   [/blocked until the staff reviews an alert/i, 'Los envíos están bloqueados hasta que el staff revise una alerta del equipo.'],
   // ── Email / recursos ──
   [/email .* ya está registrado|already registered/i, 'Ese correo ya está registrado.'],

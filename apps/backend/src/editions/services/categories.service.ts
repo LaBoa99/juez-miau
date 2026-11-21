@@ -68,6 +68,7 @@ export class CategoriesService {
         category.edition_id = edition.id
         category.code = dto.code
         category.name = dto.name
+        category.full_program = dto.full_program ?? false
         category.sort_order = nextIndex + 1
 
         return this.categoryRepository.save(category)
@@ -79,16 +80,19 @@ export class CategoriesService {
         const edition = await this.editionService.getById(category.edition_id)
         this.editionService.assertIsEditable(edition)
 
+        // Sus problemas ya tienen el modo de evaluación de antes (programa-completo.md §1)
+        if(dto.full_program !== undefined && dto.full_program !== category.full_program
+            && await this.categoryRepository.manager.existsBy(Problem, { category_id: id })){
+            throw new ConflictException('category #' + id + ' has problems; full_program can only change while it has none')
+        }
+
         this.categoryRepository.merge(category, dto)
 
         return this.categoryRepository.save(category)
     }
 
     async remove(id: number): Promise<void> {
-        const category = await this.categoryRepository.findOne({
-            where: { id },
-            relations: { rooms: true }
-        })
+        const category = await this.categoryRepository.findOneBy({ id })
 
         if(!category){
             throw new NotFoundException('category not found #' + id)
@@ -103,10 +107,6 @@ export class CategoriesService {
 
         if(await this.categoryRepository.manager.existsBy(Problem, { category_id: id })){
             throw new ConflictException('category #' + id + ' has problems assigned')
-        }
-
-        if(category.rooms.length > 0){
-            throw new ConflictException('category #' + id + ' has rooms assigned')
         }
 
         await this.categoryRepository.delete([ id ])

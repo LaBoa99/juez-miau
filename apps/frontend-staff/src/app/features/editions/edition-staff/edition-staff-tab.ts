@@ -3,6 +3,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { IEditionStaff, IStaffListItem, StaffRole } from '@concurso/shared-types';
 import { ButtonDirective } from '../../../shared/ui/button.directive';
+import { Icon } from '../../../shared/ui/icon.component';
+import { TooltipDirective } from '../../../shared/ui/tooltip.directive';
 import { FormField } from '../../../shared/ui/form-field.component';
 import { Alert } from '../../../shared/ui/alert.component';
 import { EmptyState } from '../../../shared/ui/empty-state.component';
@@ -14,7 +16,7 @@ import { withMessage } from '../../../shared/validators';
 @Component({
   selector: 'oj-edition-staff-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, FormField, Alert, EmptyState],
+  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, Icon, TooltipDirective, FormField, Alert, EmptyState],
   templateUrl: './edition-staff-tab.html',
   styleUrl: '../tab.css',
 })

@@ -57,13 +57,13 @@ export class Projector {
 
   // Filtro por salón: cada fila del marcador trae su salón, pero los nombres de los salones solo
   // se piden con sesión de staff en este navegador (sin sesión no hay selector y se ve todo)
-  protected readonly rooms = signal<{ id: number; name: string; categoryId: number | null }[]>([]);
+  protected readonly rooms = signal<{ id: number; name: string }[]>([]);
   protected readonly roomId = signal<number | null>(null);
   protected readonly roomName = computed(() => this.rooms().find((r) => r.id === this.roomId())?.name ?? null);
 
   protected readonly categories = computed(() => this.standings()?.categories ?? []);
-  // Con un salón elegido solo cuentan las categorías que tienen equipos ahí (un salón sin
-  // categoría puede repartirse entre varios niveles)
+  // Con un salón elegido solo cuentan las categorías que tienen equipos ahí (un salón puede
+  // tener equipos de varias categorías)
   protected readonly categoryOptions = computed(() => {
     const roomId = this.roomId();
     return this.categories()
@@ -123,7 +123,7 @@ export class Projector {
     this.fetch(id);
     if (this.auth.isAuthenticated()) {
       this.roomsService.list(id).subscribe({
-        next: (rooms) => this.rooms.set(rooms.map((r) => ({ id: r.id, name: r.name, categoryId: r.category_id ?? null }))),
+        next: (rooms) => this.rooms.set(rooms.map((r) => ({ id: r.id, name: r.name }))),
         error: () => {},
       });
     }
@@ -162,11 +162,11 @@ export class Projector {
   onRoom(value: string): void {
     const id = value ? Number(value) : null;
     this.roomId.set(id);
-    // Salón de un solo nivel: se fija su categoría y se detiene la rotación. Salón compartido: sigue
-    // rotando entre sus categorías (categoryOptions ya las filtra). "Todos" reanuda la rotación.
-    const categoryId = this.rooms().find((r) => r.id === id)?.categoryId ?? null;
-    this.paused.set(categoryId != null);
-    if (categoryId != null) this.categorySeg.set(String(categoryId));
+    // Salón con una sola categoría: se fija y se detiene la rotación. Con varias: sigue rotando entre
+    // ellas (categoryOptions ya las filtra). "Todos" reanuda la rotación.
+    const opts = this.categoryOptions();
+    this.paused.set(id != null && opts.length === 1);
+    if (id != null && opts.length === 1) this.categorySeg.set(opts[0].value);
   }
 
   // Elegir la categoría a mano detiene la rotación para que no se cambie sola a los 20 s

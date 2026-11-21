@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { Observable, Subscription, catchError, of, switchMap, takeWhile, timer } from 'rxjs';
+import { Observable, Subscription, catchError, forkJoin, of, switchMap, takeWhile, timer } from 'rxjs';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
@@ -641,7 +641,8 @@ export class TestsetWorkspace {
 
   detectSignature(functionName?: string): void {
     const t = this.testset();
-    if (!t || !this.signatureEditable() || !this.sourceText() || !this.sourceLang.value) return;
+    // Con la firma fija también corre: el worker comprueba que la solución nueva compile con ella
+    if (!t || !this.editable() || !this.sourceText() || !this.sourceLang.value) return;
     this.detectSub?.unsubscribe();
     this.sigEditing.set(false);
     this.detection.set({ id: '', status: 'queued', candidates: [], chosen: null, compiles: null, compileLog: null, error: null });
@@ -655,9 +656,14 @@ export class TestsetWorkspace {
       .subscribe({
         next: (d) => {
           this.detection.set(d);
-          if (d.status === 'done' && d.chosen !== null) this.applyDetected(d.candidates[d.chosen]);
+          if (d.status === 'done' && d.chosen !== null && this.signatureEditable()) this.applyDetected(d.candidates[d.chosen]);
+          // Falló el servicio, no el código: el mismo texto se puede volver a leer
+          if (d.status === 'failed') this.lastDetected = '';
         },
-        error: () => this.detection.set({ id: '', status: 'failed', candidates: [], chosen: null, compiles: null, compileLog: null, error: 'request' }),
+        error: () => {
+          this.lastDetected = '';
+          this.detection.set({ id: '', status: 'failed', candidates: [], chosen: null, compiles: null, compileLog: null, error: 'request' });
+        },
       });
   }
 
@@ -700,12 +706,19 @@ export class TestsetWorkspace {
     const d = this.detection();
     if (!d || d.status === 'queued' || d.status === 'running') return 'active';
     if (d.status === 'failed' || d.compiles === false) return 'error';
+    if (!this.signatureEditable()) return d.compiles ? 'done' : 'warn';
     if (d.candidates.length === 0 || d.chosen === null || d.compiles === null) return 'warn';
     return 'done';
   });
   protected readonly statusIcon = computed(() => ({ active: '', done: '✓', error: '✕', warn: '!' })[this.statusState()]);
   protected readonly progressText = computed(() => {
     const d = this.detection();
+    // Firma fija: no se lee, solo se comprueba
+    if (!this.signatureEditable()) {
+      if (!d || d.status === 'queued' || d.status === 'running') return 'Comprobando la solución con la firma del problema…';
+      if (d.status === 'failed') return 'No se pudo comprobar la solución.';
+      return d.compiles ? 'Tu solución compila con la firma del problema.' : 'La solución no compila con la firma del problema.';
+    }
     if (!d || d.status === 'queued') return 'Leyendo la firma de la solución…';
     if (d.status === 'running') return 'Compilando la solución con la firma leída…';
     if (d.status === 'failed') return 'No se pudo leer la firma.';
@@ -747,12 +760,14 @@ export class TestsetWorkspace {
   }
 
   // ─── Evaluación ───
-  // Tarjetas con título y "cuándo usarla"; la seleccionada muestra sus campos.
+  // Tres bloques: cómo se compara (tarjetas), revisión manual y límites (docs/design/programa-completo.md §6).
+  // En una categoría especial el backend fija "Programa completo" y no hay tarjetas que elegir.
   protected readonly evalCards = [
     { mode: CompareMode.EXACT, title: 'Exacta', when: 'La salida debe coincidir carácter por carácter.' },
     { mode: CompareMode.TOLERANCE, title: 'Con tolerancia', when: 'Para resultados con decimales; acepta una diferencia pequeña.' },
     { mode: CompareMode.CHECKER, title: 'Checker', when: 'Cuando hay varias respuestas válidas; un programa decide.' },
   ];
+  protected readonly fullProgram = computed(() => this.testset()?.compareMode === CompareMode.PROGRAM);
   protected readonly evalMode = signal<CompareMode>(CompareMode.EXACT);
   protected readonly evalSaving = signal(false);
   protected readonly evalError = signal<string | null>(null);
@@ -760,6 +775,8 @@ export class TestsetWorkspace {
     timeLimitMs: [1000, [Validators.required]],
     memoryLimitMb: [256, [Validators.required]],
     floatTolerance: [null as number | null],
+    manualReview: [false],
+    reviewInstructions: [''],
   });
   // Checker: se sube dentro del formulario de evaluación (solo con la tarjeta "Checker").
   protected readonly checkerLang = this.fb.control<string | null>(null);
@@ -771,7 +788,13 @@ export class TestsetWorkspace {
     if (!t) return;
     this.evalError.set(null);
     this.evalMode.set(t.compareMode);
-    this.evalForm.reset({ timeLimitMs: t.timeLimitMs, memoryLimitMb: t.memoryLimitMb, floatTolerance: t.floatTolerance });
+    this.evalForm.reset({
+      timeLimitMs: t.timeLimitMs,
+      memoryLimitMb: t.memoryLimitMb,
+      floatTolerance: t.floatTolerance,
+      manualReview: t.manualReview,
+      reviewInstructions: t.reviewInstructions ?? '',
+    });
     this.checkerLang.reset(null);
     this.checkerText.set('');
     this.checkerFileName.set('');
@@ -818,9 +841,17 @@ export class TestsetWorkspace {
     }
 
     this.evalSaving.set(true);
+    const instructions = raw.reviewInstructions?.trim() || null;
     const patch = () =>
       this.service
-        .update(t.id, { compareMode: mode, timeLimitMs: raw.timeLimitMs!, memoryLimitMb: raw.memoryLimitMb!, floatTolerance: tolerance })
+        .update(t.id, {
+          compareMode: mode,
+          timeLimitMs: raw.timeLimitMs!,
+          memoryLimitMb: raw.memoryLimitMb!,
+          floatTolerance: tolerance,
+          manualReview: !!raw.manualReview,
+          reviewInstructions: raw.manualReview ? instructions : null,
+        })
         .subscribe({
           next: () => {
             this.evalSaving.set(false);
@@ -860,13 +891,16 @@ export class TestsetWorkspace {
     const t = this.testset();
     const label = this.compareLabel(this.compareMode());
     if (!t) return label;
-    if (this.compareMode() === CompareMode.TOLERANCE) return `${label} (${t.floatTolerance ?? '—'})`;
-    if (this.compareMode() === CompareMode.CHECKER) return `${label} · ${t.checkerId != null ? 'checker cargado' : 'sin checker'}`;
-    return `${label} · ${t.timeLimitMs} ms · ${t.memoryLimitMb} MB`;
+    const parts = [label];
+    if (this.compareMode() === CompareMode.TOLERANCE) parts[0] += ` (${t.floatTolerance ?? '—'})`;
+    if (this.compareMode() === CompareMode.CHECKER) parts.push(t.checkerId != null ? 'checker cargado' : 'sin checker');
+    if (t.manualReview) parts.push('Revisión manual');
+    parts.push(`${t.timeLimitMs} ms`, `${t.memoryLimitMb} MB`);
+    return parts.join(' · ');
   }
 
   compareLabel(mode: CompareMode): string {
-    return { exact: 'Exacta', tolerance: 'Con tolerancia', checker: 'Checker' }[mode] ?? mode;
+    return { exact: 'Exacta', tolerance: 'Con tolerancia', checker: 'Checker', program: 'Programa completo' }[mode] ?? mode;
   }
 
   constructor() {
@@ -886,6 +920,15 @@ export class TestsetWorkspace {
         this.openPanel.set(null);
         this.initStep(step);
       });
+    });
+
+    // En Casos, cuando ya están el testset y la firma (la firma recién guardada llega después de entrar al paso)
+    effect(() => {
+      if (this.step() !== 'casos') return;
+      this.testset();
+      this.hasParams();
+      this.editable();
+      untracked(() => this.offerRandomCases());
     });
 
     effect(() => this.affects.emit(this.affectedSteps()));
@@ -928,10 +971,12 @@ export class TestsetWorkspace {
       untracked(() => this.saveSolutionDraft());
     });
 
-    // Lee la firma sola al cambiar el código, el archivo o el lenguaje (en cualquier orden)
+    // Lee la firma sola al cambiar el código, el archivo o el lenguaje (en cualquier orden), y al regresar a
+    // borrador (la firma deja de estar fija y se vuelve a leer)
     effect(() => {
       this.sourceText();
       this.sourceLangValue();
+      this.signatureEditable();
       untracked(() => this.scheduleDetection());
     });
     this.destroyRef.onDestroy(() => this.detectTimer && clearTimeout(this.detectTimer));
@@ -961,6 +1006,26 @@ export class TestsetWorkspace {
 
   languageCode(id: string | null): string {
     return this.languages().find((l) => l.id === id)?.code ?? (id ? '#' + id.slice(0, 6) : '—');
+  }
+
+  protected readonly backingToDraft = signal(false);
+
+  // Propuesto → borrador: la firma se puede volver a cambiar; habrá que proponerlo otra vez
+  backToDraft(): void {
+    this.backingToDraft.set(true);
+    this.signatureError.set(null);
+    this.problemsService.backToDraft(this.problemId()).subscribe({
+      next: () => {
+        this.backingToDraft.set(false);
+        this.lastDetected = '';
+        this.detection.set(null);
+        this.loadProblem();
+      },
+      error: (err) => {
+        this.backingToDraft.set(false);
+        this.signatureError.set(message(err, 'No se pudo regresar el problema a borrador.'));
+      },
+    });
   }
 
   private loadProblem(): void {
@@ -1326,7 +1391,7 @@ export class TestsetWorkspace {
   saveRandom(): void {
     const t = this.testset();
     if (!t) return;
-    const { schema, errors, total } = groupsToSchema(this.randGroups(), (this.signature()?.params ?? []).map((p) => p.name));
+    const { schema, errors, total } = groupsToSchema(this.randGroups(), (this.signature()?.params ?? []).map((p) => p.name), t.schema);
     const manual = t.cases.filter((c) => c.origin === TestCaseOrigin.MANUAL).length;
     if (manual + total > 500) errors.push(`Serían ${manual + total} casos en total; el máximo es 500.`);
     if (errors.length > 0) {
@@ -1346,6 +1411,69 @@ export class TestsetWorkspace {
         error: (err) => {
           this.randSaving.set(false);
           this.randErrors.set([message(err, 'No se pudieron generar los casos aleatorios. Revisa los rangos.')]);
+          this.loadTestset(t.id);
+        },
+      });
+  }
+
+  // ─── Oferta de casos aleatorios ───
+  // La primera vez que se entra a Casos sin ningún caso: un modal ofrece crear 5 aleatorios (2 públicos) con los
+  // rangos por defecto. Se ofrece una sola vez por versión, se elija lo que se elija.
+  private readonly randomOfferModal = viewChild.required<Modal>('randomOfferModal');
+  protected readonly randomOfferSaving = signal(false);
+  protected readonly randomOfferError = signal<string | null>(null);
+  private readonly offerKey = (testsetId: number) => `casos-aleatorios-ofrecidos:${testsetId}`;
+  // También en memoria: sin localStorage (modo privado) no se vuelve a abrir en cada recarga del testset
+  private readonly offeredTestsets = new Set<number>();
+
+  private offerRandomCases(): void {
+    const t = this.testset();
+    if (!t || this.offeredTestsets.has(t.id) || !this.editable() || !this.hasParams() || t.cases.length > 0 || t.schema) return;
+    if (loadDraft(this.offerKey(t.id))) return;
+    this.offeredTestsets.add(t.id);
+    this.randomOfferError.set(null);
+    this.randomOfferModal().open();
+  }
+
+  // Cerrar el modal (botón, ×, Esc o fondo) cuenta como ya ofrecido
+  dismissRandomOffer(): void {
+    const t = this.testset();
+    if (t) saveDraft(this.offerKey(t.id), true);
+    this.randomOfferModal().close();
+  }
+
+  createRandomOffer(then: 'stay' | 'next'): void {
+    const t = this.testset();
+    const params = this.signature()?.params ?? [];
+    if (!t) return;
+    const { schema } = groupsToSchema(schemaToGroups(null, params), params.map((p) => p.name));
+    this.randomOfferSaving.set(true);
+    this.randomOfferError.set(null);
+    this.service
+      .generate(t.id, { schema })
+      .pipe(
+        switchMap(() => this.service.get(t.id)),
+        // Los 2 primeros quedan públicos: son los ejemplos del enunciado
+        switchMap((detail) =>
+          forkJoin(
+            [...detail.cases]
+              .sort((a, b) => a.ordinal - b.ordinal)
+              .slice(0, 2)
+              .map((c) => this.service.updateCase(t.id, c.id, { visibility: TestCaseVisibility.PUBLIC }, true)),
+          ),
+        ),
+      )
+      .subscribe({
+        next: () => {
+          this.randomOfferSaving.set(false);
+          this.dismissRandomOffer();
+          this.loadTestset(t.id);
+          this.changed.emit();
+          if (then === 'next') this.next.emit();
+        },
+        error: (err) => {
+          this.randomOfferSaving.set(false);
+          this.randomOfferError.set(message(err, 'No se pudieron crear los casos aleatorios.'));
           this.loadTestset(t.id);
         },
       });
@@ -1374,6 +1502,10 @@ export class TestsetWorkspace {
   protected readonly caseFieldErrors = signal<Record<string, string>>({});
   private readonly deleteCaseDialog = viewChild.required<ConfirmDialog>('deleteCaseDlg');
   private pendingDeleteCase: ITestCase | null = null;
+  protected readonly deleteCaseMessage = signal('');
+  private readonly deleteGroupDialog = viewChild.required<ConfirmDialog>('deleteGroupDlg');
+  private pendingDeleteGroup: { key: string | null; label: string } | null = null;
+  protected readonly deleteGroupMessage = signal('');
 
   private buildCaseControls(): void {
     const sig = this.signature();
@@ -1617,13 +1749,39 @@ export class TestsetWorkspace {
 
   askDeleteCase(c: ITestCase): void {
     this.pendingDeleteCase = c;
+    this.deleteCaseMessage.set(
+      c.origin === TestCaseOrigin.GENERATED
+        ? 'Se eliminará el caso. Es aleatorio: sale de su grupo y no vuelve al regenerar. Esta acción no se puede deshacer.'
+        : 'Se eliminará el caso. Esta acción no se puede deshacer.',
+    );
     this.deleteCaseDialog().open();
+  }
+
+  askDeleteGroup(g: { key: string | null; label: string; cases: ITestCase[] }): void {
+    this.pendingDeleteGroup = g;
+    const n = g.cases.length;
+    const random = g.cases.some((c) => c.origin === TestCaseOrigin.GENERATED) ? ' También se quita su configuración de casos aleatorios.' : '';
+    this.deleteGroupMessage.set(`Se eliminarán ${n} ${n === 1 ? 'caso' : 'casos'} de «${g.label}».${random} Esta acción no se puede deshacer.`);
+    this.deleteGroupDialog().open();
+  }
+
+  removeGroupCases(): void {
+    const t = this.testset();
+    const g = this.pendingDeleteGroup;
+    if (!t || !g) return;
+    // El editor de aleatorios se arma del esquema: cerrarlo evita guardar el grupo borrado otra vez
+    if (this.openPanel() === 'aleatorios') this.openPanel.set(null);
+    this.service.removeCasesGroup(t.id, g.key).subscribe({
+      next: () => this.loadTestset(t.id),
+      error: (err) => this.actionError.set(message(err, 'No se pudo eliminar el grupo.')),
+    });
   }
 
   removeCase(): void {
     const t = this.testset();
     const c = this.pendingDeleteCase;
     if (!t || !c) return;
+    if (c.origin === TestCaseOrigin.GENERATED && this.openPanel() === 'aleatorios') this.openPanel.set(null);
     this.service.removeCase(t.id, c.id).subscribe({
       next: () => this.loadTestset(t.id),
       error: (err) => this.actionError.set(message(err, 'No se pudo eliminar el caso.')),

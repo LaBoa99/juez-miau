@@ -7,6 +7,7 @@ import { TeamsService } from '../../teams/services/teams.service.js';
 import { CreateTeamDto } from '../../teams/dtos/create-team.dto.js';
 import { TeamFiltersDto } from '../../teams/dtos/team-filters.dto.js';
 import { Category } from '../entities/category.entity.js';
+import { Room } from '../entities/room.entity.js';
 import { Team } from '../../teams/entities/team.entity.js';
 import { EditionsService } from './editions.service.js';
 
@@ -177,7 +178,7 @@ export class EditionTeamsService {
                 const { team, password } = await this.teamsService.create(
                     edition,
                     row.category,
-                    null, // el salón sale de la categoría si tiene uno solo
+                    null, // el salón lo propone el backend según la categoría (reparte parejo)
                     { name: row.teamName, category_id: row.category.id, members: row.members },
                     { username, manager },
                 )
@@ -199,8 +200,14 @@ export class EditionTeamsService {
             throw new NotFoundException(`La categoría no existe en la edición`)
         }
 
+        // Sin salón elegido, el backend propone uno según la categoría
+        const room = dto.room_id === undefined ? null : await this.dataSource.getRepository(Room).findOneBy({ id: dto.room_id, edition_id: editionId })
+        if(dto.room_id !== undefined && !room){
+            throw new NotFoundException('room #' + dto.room_id + ' not found in this edition')
+        }
+
         const username = await this.generateUsername(editionId, dto.name, new Set())
-        const { team, password } = await this.teamsService.create(edition, category, null, dto, { username })
+        const { team, password } = await this.teamsService.create(edition, category, room, dto, { username })
 
         return {
             team: {
@@ -253,6 +260,15 @@ export class EditionTeamsService {
         if(errors.length > 0){
             return { rows: [], errors }
         }
+
+        // "�" = el archivo ya traía el texto dañado (acentos o ñ perdidos): no se puede adivinar qué decía
+        csvRows.forEach((csvRow, index) => {
+            for(const [column, text] of Object.entries(csvRow)){
+                if(text.includes('\uFFFD')){
+                    errors.push({ row: index + 2, column, message: `"${text}" tiene caracteres dañados (�): corrige los acentos o la ñ en el archivo` })
+                }
+            }
+        })
 
         let rowNumbers: number[] | null = null
         if(byParticipant){

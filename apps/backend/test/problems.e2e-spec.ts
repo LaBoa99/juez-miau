@@ -197,6 +197,7 @@ describe('Problemas para staff (e2e)', () => {
           categoryId: category.id,
           status: 'draft',
           currentTestsetVersion: 1,
+          createdBy: judge.id,
         },
       ]);
     });
@@ -255,6 +256,7 @@ describe('Problemas para staff (e2e)', () => {
         title: 'Suma (v2)',
         statement: 'Nuevo enunciado',
         hasStatementPdf: false,
+        fullProgram: false,
         inputFormat: 'Dos enteros a y b.',
         outputFormat: 'Un entero.',
         signature: null,
@@ -346,6 +348,19 @@ describe('Problemas para staff (e2e)', () => {
       await api().post(`/api/v1/problems/${problemId}/accept`).set(as('superadmin')).expect(200);
     });
 
+    it('back-to-draft: desde el concurso solo el admin; el motivo queda hasta proponerlo otra vez', async () => {
+      const url = `/api/v1/problems/${problemId}`;
+      await api().post(`${url}/back-to-draft`).set(as('judge')).send({ reason: 'x' }).expect(403);
+
+      const res = await api().post(`${url}/back-to-draft`).set(as('superadmin')).send({ reason: '  Falta un caso con n = 0  ' }).expect(200);
+      expect(res.body).toEqual({ status: 'draft' });
+      expect((await api().get(url).set(as('judge')).expect(200)).body.draftReason).toBe('Falta un caso con n = 0');
+
+      await api().post(`${url}/propose`).set(as('judge')).expect(200);
+      expect((await api().get(url).set(as('judge')).expect(200)).body.draftReason).toBeNull();
+      await api().post(`${url}/accept`).set(as('superadmin')).expect(200);
+    });
+
     it('el detalle incluye la solución de referencia del testset vigente', async () => {
       const res = await api().get(`/api/v1/problems/${problemId}`).set(as('judge')).expect(200);
 
@@ -356,8 +371,8 @@ describe('Problemas para staff (e2e)', () => {
       });
     });
 
-    it('DELETE /problems/:id → 409 si está en el concurso, 204 si es borrador', async () => {
-      await api().delete(`/api/v1/problems/${problemId}`).set(as('judge')).expect(409);
+    it('DELETE /problems/:id → 403 al juez si está en el concurso (solo el admin lo borra), 204 si es borrador', async () => {
+      await api().delete(`/api/v1/problems/${problemId}`).set(as('judge')).expect(403);
 
       const draft = await createProblem().expect(201);
       await api().delete(`/api/v1/problems/${draft.body.id}`).set(as('judge')).expect(204);

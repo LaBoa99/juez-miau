@@ -1,15 +1,34 @@
+<header class="home__head">
+  <h2 class="home__title">{{ canDecide() ? 'Qué entra al concurso' : 'Problemas de la edición' }}</h2>
+  @if (bus.problems().length > 0) {
+    <label class="home__filter" for="home-filter">
+      Mostrar
+      <select id="home-filter" [value]="filter()" (change)="filter.set($any($event.target).value)">
+        @for (o of filterOptions(); track o.value) {
+          <option [value]="o.value">{{ o.label }}</option>
+        }
+      </select>
+    </label>
+  }
+</header>
+
 @if (bus.problems().length === 0) {
   <oj-empty-state message="Aún no hay problemas. Crea el primero.">
     <button ojButton variant="secondary" type="button" (click)="nuevo()">Nuevo problema</button>
   </oj-empty-state>
-} @else if (!canDecide()) {
-  <p class="home__hint">Selecciona un problema de la lista. Cuando esté listo, propónlo: el admin de la edición decide si entra al concurso.</p>
 } @else {
-  <header class="home__head">
-    <h2 class="home__title">Qué entra al concurso</h2>
-    <oj-segmented [options]="filterOptions" [value]="filter()" (valueChange)="filter.set($any($event))" />
-  </header>
-  <p class="home__hint">Los jueces proponen sus problemas y tú decides cuáles entran. Las letras se asignan al iniciar el concurso.</p>
+  <p class="home__hint">
+    @if (paused() && canDecide()) {
+      El concurso está en pausa: puedes agregar y quitar problemas. Uno que aceptes toma la siguiente letra de su
+      categoría y los equipos lo ven al reanudar. Uno con envíos no se elimina: quítalo del concurso.
+    } @else if (canDecide()) {
+      Los jueces proponen sus problemas y tú decides cuáles entran. Las letras se asignan al iniciar el concurso.
+    } @else if (isAdmin()) {
+      El concurso está en marcha: puedes abrir y editar los problemas. Para agregar o quitar, pausa el concurso.
+    } @else {
+      Cuando tu problema esté listo, propónlo desde su paso 4: el admin de la edición decide si entra al concurso.
+    }
+  </p>
   @if (error(); as e) {
     <oj-alert tone="error">{{ e }}</oj-alert>
   }
@@ -34,11 +53,19 @@
               <td><oj-badge [tone]="(p.status | problemStatus).tone">{{ (p.status | problemStatus).label }}</oj-badge></td>
               <td>
                 <div class="oj-actions oj-actions--end">
-                  <button ojButton variant="secondary" size="sm" type="button" (click)="open(p)">Abrir</button>
-                  @if (p.status === 'published') {
-                    <button ojButton variant="danger-outline" size="sm" type="button" [disabled]="busyId() === p.id" (click)="decide(p, 'disable')">Quitar</button>
-                  } @else {
-                    <button ojButton variant="success" size="sm" type="button" [disabled]="busyId() === p.id" (click)="decide(p, 'accept')">Aceptar</button>
+                  <button ojButton variant="secondary" size="sm" class="oj-btn--icon" type="button" [attr.aria-label]="'Abrir ' + p.title" ojTooltip="Abrir" (click)="open(p)"><oj-icon name="view" /></button>
+                  @if (canDecide()) {
+                    @if (p.status === 'published') {
+                      <button ojButton variant="secondary" size="sm" type="button" [disabled]="busyId() === p.id" (click)="decide(p, 'disable')">Quitar</button>
+                    } @else {
+                      <button ojButton variant="success" size="sm" type="button" [disabled]="busyId() === p.id" (click)="decide(p, 'accept')">Aceptar</button>
+                    }
+                    @if (p.status !== 'draft') {
+                      <button ojButton variant="secondary" size="sm" type="button" [disabled]="busyId() === p.id" (click)="askBackToDraft(p)">Regresar a borrador</button>
+                    }
+                  }
+                  @if (canDelete(p)) {
+                    <button ojButton variant="danger-outline" size="sm" class="oj-btn--icon" type="button" [attr.aria-label]="'Eliminar ' + p.title" ojTooltip="Eliminar" [disabled]="busyId() === p.id" (click)="askDelete(p)"><oj-icon name="delete" /></button>
                   }
                 </div>
               </td>
@@ -49,3 +76,30 @@
     </div>
   }
 }
+
+<oj-modal [title]="'Regresar a borrador · ' + (draftTarget()?.title ?? '')" size="sm">
+  <div class="home__draft">
+    @if (draftError()) {
+      <oj-alert tone="error">{{ draftError() }}</oj-alert>
+    }
+    <p class="home__hint">
+      Sale de los propuestos@if (draftTarget()?.status === 'published') { y del concurso}. Quien lo hizo verá el motivo al
+      abrirlo y tendrá que proponerlo otra vez. Ya no se puede si el problema tiene envíos.
+    </p>
+    <oj-form-field label="Motivo" for="home-draft-reason">
+      <textarea id="home-draft-reason" rows="4" maxlength="500" [value]="draftReason()" (input)="draftReason.set($any($event.target).value)"></textarea>
+    </oj-form-field>
+  </div>
+  <div footer>
+    <button ojButton variant="secondary" type="button" (click)="draftModal().close()">Cancelar</button>
+    <button ojButton variant="primary" type="button" [disabled]="busyId() !== null" (click)="backToDraft()">Regresar a borrador</button>
+  </div>
+</oj-modal>
+
+<oj-confirm-dialog
+  title="Eliminar problema"
+  [message]="deleteMessage()"
+  confirmLabel="Eliminar"
+  [danger]="true"
+  (confirmed)="remove()"
+/>

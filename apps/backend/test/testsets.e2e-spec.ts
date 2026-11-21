@@ -260,13 +260,34 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
     const pinned = await api().post(`/api/v1/testsets/${testsetId}/cases/${generated.id}/pin`).set(as('judge')).expect(200);
     expect(pinned.body).toMatchObject({ origin: 'manual', group: null, seed: null });
     await api().post(`/api/v1/testsets/${testsetId}/cases/${generated.id}/pin`).set(as('judge')).expect(409);
+    // Su semilla sale del esquema ("grandes" solo tenía una, así que sale el grupo): al regenerar no vuelve una copia
+    const afterPin = await api().get(`/api/v1/testsets/${testsetId}`).set(as('judge')).expect(200);
+    expect(afterPin.body.schema.groups.map((g: { name: string }) => g.name)).toEqual(['chicos']);
 
     // Deja el testset como estaba para las pruebas siguientes
     for (const id of [...added.body.map((c: { id: number }) => c.id), generated.id]) {
       await api().delete(`/api/v1/testsets/${testsetId}/cases/${id}`).set(as('judge')).expect(204);
     }
-    await api().post(`/api/v1/testsets/${testsetId}/generate`).set(as('judge')).expect(200);
+    await api().post(`/api/v1/testsets/${testsetId}/generate`).set(as('judge')).send({ schema }).expect(200);
     expect(await caseRepo.countBy({ testset_id: testsetId })).toBe(before);
+  });
+
+  it('borrar un caso aleatorio quita su semilla (no vuelve al regenerar); remove-group borra el grupo y su configuración', async () => {
+    const url = `/api/v1/testsets/${testsetId}`;
+    const second = await caseRepo.findOneByOrFail({ testset_id: testsetId, origin: TestCaseOrigin.GENERATED, group_name: 'chicos', seed: 2 });
+    await api().delete(`${url}/cases/${second.id}`).set(as('judge')).expect(204);
+    await api().post(`${url}/generate`).set(as('judge')).expect(200);
+    const seeds = (await caseRepo.find({ where: { testset_id: testsetId, group_name: 'chicos' }, order: { seed: 'ASC' } })).map((c) => c.seed);
+    expect(seeds).toEqual([1, 3]);
+
+    await api().post(`${url}/cases/remove-group`).set(as('observer')).send({ group: 'grandes' }).expect(403);
+    const removed = await api().post(`${url}/cases/remove-group`).set(as('judge')).send({ group: 'grandes' }).expect(200);
+    expect(removed.body).toEqual({ removed: 1 });
+    const detail = await api().get(url).set(as('judge')).expect(200);
+    expect(detail.body.schema.groups.map((g: { name: string, seeds: number[] }) => [g.name, g.seeds])).toEqual([['chicos', [1, 3]]]);
+
+    // Deja el testset como estaba para las pruebas siguientes
+    await api().post(`${url}/generate`).set(as('judge')).send({ schema }).expect(200);
   });
 
   it('POST /testsets/:id/signature-detect encola la detección; GET la consulta', async () => {

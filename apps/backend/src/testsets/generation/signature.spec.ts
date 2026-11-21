@@ -1,5 +1,5 @@
 import type { IProblemSignature } from '@concurso/shared-types'
-import { normalizeInput, validateSignature } from './signature.js'
+import { findLineBreaks, normalizeInput, validateSignature } from './signature.js'
 
 const valid: IProblemSignature = {
     functionName: 'sumar',
@@ -71,5 +71,20 @@ describe('normalizeInput', () => {
     it('no confunde llaves heredadas del prototipo con parámetros', () => {
         const proto: IProblemSignature = { functionName: 'f', params: [{ name: 'constructor', type: { type: 'int' } }], returns: { type: 'int' } }
         expect(normalizeInput(proto, {}).errors).toEqual(['input.constructor: missing'])
+    })
+})
+
+describe('findLineBreaks', () => {
+    it('señala los strings con salto de línea, también dentro de arrays', () => {
+        const signature: IProblemSignature = {
+            functionName: 'f',
+            params: [{ name: 'nombre', type: { type: 'string' } }, { name: 'palabras', type: { type: 'array', items: { type: 'string' } } }, { name: 'n', type: { type: 'int' } }],
+            returns: { type: 'int' },
+        }
+        expect(findLineBreaks(signature, { nombre: '  ana ', palabras: ['', 'a b'], n: 3 })).toEqual([])
+        expect(findLineBreaks(signature, { nombre: 'a\nb', palabras: ['ok', 'x\r'], n: 3 })).toEqual([
+            'input.nombre: in a full program a string cannot contain line breaks',
+            'input.palabras[1]: in a full program a string cannot contain line breaks',
+        ])
     })
 })

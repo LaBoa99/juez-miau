@@ -25,6 +25,10 @@
   line-height: 1;
 }
 
+.rooms__muted {
+  color: var(--oj-text-muted);
+}
+
 /* Sin observador: ámbar 12px */
 .rooms__no-obs {
   font-size: 12px;
@@ -64,31 +68,4 @@
   margin: 0;
   font-size: 12px;
   color: var(--oj-text-muted);
-}
-
-.rooms__token-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--oj-space-md);
-}
-
-.rooms__token-url-row {
-  display: flex;
-  align-items: center;
-  gap: var(--oj-space-sm);
-}
-
-.rooms__token-url {
-  flex: 1;
-  min-width: 0;
-  font-size: 12px;
-  word-break: break-all;
-}
-
-.rooms__qr {
-  width: 220px;
-  max-width: 100%;
-  height: auto;
-  border: 1px solid var(--oj-border);
-  border-radius: var(--oj-radius);
 }

@@ -8,3 +8,8 @@ export function letterAt(index: number): string {
     if(!letter) throw new Error('a category cannot have more than ' + LETTERS.length + ' problems')
     return letter
 }
+
+// Letra que sigue a las ya usadas en la categoría (para aceptar un problema con el concurso en pausa)
+export function nextLetter(used: string[]): string {
+    return letterAt(Math.max(-1, ...used.map((letter) => LETTERS.indexOf(letter))) + 1)
+}

@@ -22,6 +22,14 @@ def test_problem_markdown_shows_the_function():
     assert "### Función\n\n```\ntotal(n: int, grid: string[][]) -> long[]\n```" in md
 
 
+def test_full_program_shows_the_read_order_instead_of_the_function():
+    problem = {"statement": "Suma.", "signature": SIGNATURE, "fullProgram": True, "samples": [{"input": "5\n3", "output": "8"}]}
+    md = problem_markdown(problem)
+    assert "### Función" not in md
+    assert "en este orden: `n`, `grid`" in md
+    assert "```\n5\n3\n```" in md
+
+
 def test_sample_with_backticks_does_not_break_the_block():
     md = problem_markdown({"statement": "x", "samples": [{"input": "1", "output": "a```b"}]})
     assert "````\na```b\n````" in md

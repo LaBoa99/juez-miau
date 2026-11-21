@@ -8,9 +8,12 @@ import { CpuPool } from './cpu-pool.js'
 import { DockerRunnerService, JudgeInfrastructureError, type CompileResult, type RawCaseResult } from './docker-runner.service.js'
 import { CPU_POOL } from './judge.constants.js'
 import { checkerInput, checkerSignature } from './special-programs.js'
+import { buildFullProgram, programInput, programOutputMatches } from './full-program.js'
 
 const CHECKER_TIME_LIMIT_MS = 10_000
 const CHECKER_MEMORY_MB = 512
+// Salida de un programa completo que se guarda con el caso (para staff)
+const MAX_PROGRAM_OUTPUT = 4096
 
 // El checker del juez truena o no regresa bool: es un problema de configuración, no del participante
 export class CheckerError extends Error {}
@@ -81,7 +84,8 @@ export class JudgeService {
     }
 
     judge(request: JudgeRequest): Promise<JudgeResult> {
-        const program = buildProgram(request.language.code, {
+        // Programa completo (categoría especial): sin driver, la entrada como texto y se compara su stdout
+        const program = request.compareMode === CompareMode.PROGRAM ? buildFullProgram(request.language, request.source) : buildProgram(request.language.code, {
             signature: request.signature,
             // El generador puede traer el caso(...) de prueba de la plantilla: se usa el del driver
             source: request.caseSignature ? stripLocalBlocks(request.source) : request.source,
@@ -121,7 +125,10 @@ export class JudgeService {
             }
 
             await this.runner.writeFiles(workspace.tests, Object.fromEntries(
-                request.cases.map((testCase, index) => [this.runner.caseName(index) + '.in', testCase.input]),
+                request.cases.map((testCase, index) => [
+                    this.runner.caseName(index) + '.in',
+                    request.compareMode === CompareMode.PROGRAM ? programInput(request.signature, testCase.input) : testCase.input,
+                ]),
             ))
 
             let judged = 0
@@ -212,6 +219,16 @@ export class JudgeService {
 
         if(raw.status !== 'OK'){
             return { ...base, verdict: Verdict[raw.status], output: null, message: raw.stderr }
+        }
+        if(request.compareMode === CompareMode.PROGRAM){
+            const stdout = resultText ?? ''
+            const accepted = testCase.expected === null || programOutputMatches(request.signature.returns, stdout, testCase.expected)
+            return {
+                ...base,
+                verdict: accepted ? Verdict.AC : Verdict.WA,
+                output: stdout.slice(0, MAX_PROGRAM_OUTPUT),
+                message: accepted ? null : 'the output does not end with the expected answer',
+            }
         }
         if(resultText === null){
             return { ...base, verdict: Verdict.WA, output: null, message: 'the program ended without returning a result' }

@@ -128,3 +128,12 @@ const doble = (n: number): number => n * 2;`;
     expect(detectSignatures('java', 'class Otra { static int f(int a) { return a; } }')).toEqual([]);
   });
 });
+
+describe('detectSignatures · Literal de Python', () => {
+    it('lee el tipo de los valores del Literal', () => {
+        const [sig] = detectSignatures('python', 'from typing import Literal\n\ndef es_par(numero: int) -> Literal["es par", "es impar"]:\n  return "es par"\n')
+        expect(sig.returns).toEqual({ type: 'string' })
+        expect(detectSignatures('python', 'def f(x: Literal[1, 2]) -> Literal[True, False]:\n  pass\n')[0])
+            .toMatchObject({ params: [{ name: 'x', type: { type: 'int' } }], returns: { type: 'bool' } })
+    })
+})

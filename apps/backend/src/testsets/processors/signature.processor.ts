@@ -2,7 +2,7 @@ import { type OnApplicationBootstrap } from '@nestjs/common'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import type { Job } from 'bullmq'
 import { DataSource } from 'typeorm'
-import type { IDetectedSignature, IProblemSignature, ISignatureDetection } from '@concurso/shared-types'
+import type { IDetectedSignature, IProblemSignature, ISignatureDetection, TypeRef } from '@concurso/shared-types'
 import { JudgeService } from '../../judge/judge.service.js'
 import { Language } from '../../languages/entities/language.entity.js'
 import { detectSignatures } from '../generation/detect-signature.js'
@@ -34,6 +34,21 @@ export class SignatureProcessor extends WorkerHost implements OnApplicationBoots
             : candidates.length === 1 ? 0 : -1
         const chosen = index < 0 ? null : index
 
+        // Firma fija: se compila con la guardada. En Python compilar solo revisa la sintaxis, así que antes se pide
+        // que la función con ese nombre exista
+        if(job.data.fixed){
+            if(chosen === null){
+                return { candidates, chosen, compiles: false, compileLog: 'No se encontró la función ' + job.data.fixed.functionName + ' en la solución.' }
+            }
+            // Lenguajes sin tipos al compilar (Python): lo que sí se leyó y no coincide ya es un error
+            const mismatches = mismatchesWith(job.data.fixed, candidates[chosen])
+            if(mismatches.length > 0){
+                return { candidates, chosen, compiles: false, compileLog: 'La función no coincide con la firma del problema: ' + mismatches.join('; ') + '.' }
+            }
+            const compiled = await this.judgeService.compileCheck(language, job.data.fixed, job.data.source)
+            return { candidates, chosen, compiles: compiled.ok, compileLog: compiled.log || null }
+        }
+
         const signature = chosen === null ? null : complete(candidates[chosen])
         if(!signature || validateSignature(signature).length > 0){
             return { candidates, chosen, compiles: null, compileLog: null }
@@ -41,6 +56,23 @@ export class SignatureProcessor extends WorkerHost implements OnApplicationBoots
         const compiled = await this.judgeService.compileCheck(language, signature, job.data.source)
         return { candidates, chosen, compiles: compiled.ok, compileLog: compiled.log || null }
     }
+}
+
+// Diferencias entre la firma fija y la leída; lo que el detector no pudo leer (null) no cuenta
+export function mismatchesWith(fixed: IProblemSignature, detected: IDetectedSignature): string[] {
+    const text = (type: TypeRef): string => type.type === 'array' ? text(type.items) + '[]' : type.type
+    const differs = (expected: TypeRef, found: TypeRef | null) => found !== null && text(found) !== text(expected)
+    const result: string[] = []
+    if(detected.params.length !== fixed.params.length){
+        result.push('recibe ' + detected.params.length + ' parámetros y la firma pide ' + fixed.params.length)
+    } else {
+        fixed.params.forEach((param, i) => {
+            const found = detected.params[i].type
+            if(differs(param.type, found)) result.push(param.name + ' es ' + text(found!) + ' y la firma pide ' + text(param.type))
+        })
+    }
+    if(differs(fixed.returns, detected.returns)) result.push('regresa ' + text(detected.returns!) + ' y la firma pide ' + text(fixed.returns))
+    return result
 }
 
 // La firma solo se puede probar si el detector resolvió todos los tipos

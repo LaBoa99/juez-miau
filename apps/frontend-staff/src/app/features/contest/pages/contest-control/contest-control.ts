@@ -11,7 +11,7 @@ import { Alert } from '../../../../shared/ui/alert.component';
 import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
 import { ContestCountdown } from '../../../../shared/ui/contest-countdown.component';
-import { msToClock, msToMin } from '../../../../shared/time';
+import { formatDuration, msToClock } from '../../../../shared/time';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
 import { EditionContext } from '../../../editions/pages/edition-layout/edition-context';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
@@ -76,12 +76,10 @@ export class ContestControl {
 
   protected readonly elapsedText = computed(() => msToClock(this.displayMs()));
   protected readonly durationText = computed(() => {
-    const d = this.clock()?.durationMs ?? 0;
-    return d > 0 ? msToMin(d) + ' min' : '—';
+    return formatDuration(this.clock()?.durationMs ?? 0);
   });
   protected readonly freezeText = computed(() => {
-    const f = this.clock()?.freezeDurationMs ?? 0;
-    return f > 0 ? msToMin(f) + ' min' : '—';
+    return formatDuration(this.clock()?.freezeDurationMs ?? 0);
   });
   // Inicio: real si ya arrancó, si no la hora programada.
   protected readonly startAt = computed(() => this.ctx.edition()?.started_at ?? this.ctx.edition()?.scheduled_start ?? null);

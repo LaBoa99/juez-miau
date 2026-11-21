@@ -77,6 +77,7 @@ export class ProblemWorkspace {
 
   constructor() {
     this.bus.editionId = this.editionId;
+    this.bus.navigate = (path) => this.go(path);
     this.bus.load();
   }
 
@@ -86,6 +87,10 @@ export class ProblemWorkspace {
 
   selectNew(): void {
     this.go('nuevo');
+  }
+
+  selectOverview(): void {
+    this.go('.');
   }
 
   private go(path: string): void {

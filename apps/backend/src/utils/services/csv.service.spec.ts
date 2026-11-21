@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { CsvService } from './csv.service.js';
+import { CsvService, decodeCsvText } from './csv.service.js';
 
 describe('CsvService', () => {
   let service: CsvService;
@@ -41,5 +41,27 @@ describe('CsvService', () => {
 
   it('devuelve un arreglo vacío si solo hay cabecera', () => {
     expect(parse('name,email\n')).toEqual([]);
+  });
+
+  describe('acentos y ñ', () => {
+    it('lee un CSV guardado por Excel en Windows (Windows-1252)', () => {
+      expect(decodeCsvText(Buffer.from('nombre\nPeña Núñez, Ángel ¿?', 'latin1'))).toBe('nombre\nPeña Núñez, Ángel ¿?');
+      // 0x91-0x94 son comillas tipográficas en Windows-1252
+      expect(decodeCsvText(Buffer.from([0x93, 0x41, 0x94]))).toBe('“A”');
+    });
+
+    it('deshace la doble codificación (JosÃ© → José), también si se guardó mal dos veces', () => {
+      expect(decodeCsvText(Buffer.from('JosÃ© PeÃ±a MuÃ‘oz Ã\u0081lvaro Â¿quÃ©?'))).toBe('José Peña MuÑoz Álvaro ¿qué?');
+      expect(decodeCsvText(Buffer.from('JosÃƒÂ©'))).toBe('José');
+    });
+
+    it('repara un archivo mezclado: UTF-8 con algún byte de Windows-1252', () => {
+      expect(decodeCsvText(Buffer.concat([Buffer.from('Peña '), Buffer.from([0xf1])]))).toBe('Peña ñ');
+    });
+
+    it('no toca texto correcto', () => {
+      const ok = 'José Peña Ñandú Ã solo, Àlex, Ãmbar, 50% ± 2';
+      expect(decodeCsvText(Buffer.from(ok))).toBe(ok);
+    });
   });
 });

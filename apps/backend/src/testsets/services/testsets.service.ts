@@ -27,6 +27,7 @@ import { DataSource, EntityManager, In, IsNull, Not, Repository } from 'typeorm'
 import { BlobsService } from '../../blobs/services/blobs.service.js';
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js';
 import { Problem } from '../../problems/entities/problem.entity.js';
+import { Category } from '../../editions/entities/category.entity.js';
 import { toProblemDto } from '../../problems/mappers/problem.mapper.js';
 import { Testset } from '../entities/testset.entity.js';
 import { TestCase } from '../entities/test-case.entity.js';
@@ -36,13 +37,14 @@ import { Generator } from '../entities/generator.entity.js';
 import { compactOrdinals } from '../generation/ordinals.js';
 import { SetCheckerDto, SetGeneratorDto } from '../dto/set-generator.dto.js';
 import { Language } from '../../languages/entities/language.entity.js';
-import { generatorTemplate, hasDriver } from '../../judge/drivers/index.js';
+import { generatorTemplate, hasDriver, starterCode } from '../../judge/drivers/index.js';
+import { programStarterCode } from '../../judge/drivers/program-starter.js';
 import { checkerNameCollisions } from '../../judge/special-programs.js';
 import { parseJsonPreservingIntegers, serializeInput } from '../generation/canonical-json.js';
 import { GenerationError, generateCases } from '../generation/generate.js';
 import { MAX_CASE_BYTES, MAX_GENERATED_TOTAL_BYTES, MAX_INPUT_PREVIEW_BYTES, MAX_TESTSET_CASES, MAX_VALIDATION_ERRORS } from '../generation/limits.js';
 import { validateSchema } from '../generation/schema.js';
-import { normalizeInput, validateSignature } from '../generation/signature.js';
+import { findLineBreaks, normalizeInput, validateSignature } from '../generation/signature.js';
 import { toSourceDto, toTestCaseDto, toTestsetDto, toTestsetSummary } from '../mappers/testset.mapper.js';
 import { SIGNATURE_QUEUE, TEST_RUN_KEEP_SECONDS, TEST_RUN_QUEUE, TESTSET_BUILD_QUEUE, type SignatureJob, type TestRunJob, type TestRunResult, type TestsetBuildJob } from '../testsets.constants.js';
 import type { SignatureResult } from '../processors/signature.processor.js';
@@ -211,6 +213,15 @@ export class TestsetsService {
         if(dto.reviewInstructions !== undefined) testset.review_instructions = dto.reviewInstructions
         if(testset.compare_mode === CompareMode.TOLERANCE && testset.float_tolerance === null){
             testset.float_tolerance = DEFAULT_FLOAT_TOLERANCE
+        }
+        // Programa completo si y solo si la categoría es especial (programa-completo.md §1)
+        if(dto.compareMode !== undefined){
+            const category = await this.dataSource.manager.findOneByOrFail(Category, { id: problem.category_id })
+            if((dto.compareMode === CompareMode.PROGRAM) !== category.full_program){
+                throw unprocessable([category.full_program
+                    ? 'category ' + category.code + ' is full-program: its problems can only use compareMode program'
+                    : 'compareMode program is only for full-program categories'])
+            }
         }
 
         const schemaChanged = dto.schema !== undefined
@@ -471,6 +482,18 @@ export class TestsetsService {
         return { fileName: 'generador.' + language.file_ext, source }
     }
 
+    // Plantilla que reciben los equipos en el concurso (la misma de contest.service): con este testset
+    // decide si es función o programa completo
+    async getStarterTemplate(testsetId: number, languageId: string, staffUserId: number): Promise<IGeneratorTemplate> {
+        const { testset, problem } = await this.getTestsetForJudge(testsetId, staffUserId)
+        const signature = this.requireSignature(problem)
+        const language = await this.dataSource.getRepository(Language).findOneBy({ id: languageId })
+        const template = testset.compare_mode === CompareMode.PROGRAM ? programStarterCode : starterCode
+        const source = language && template(language.code, signature)
+        if(!language || !source) throw unprocessable(['language ' + languageId + ' has no starter template'])
+        return { fileName: (problem.letter ?? 'solucion') + '.' + language.file_ext, source }
+    }
+
     // ─── Pruebas del staff: una solución contra un testset construido, sin crear envío ───
 
     async startTestRun(testsetId: number, dto: CreateTestRunDto, staffUserId: number): Promise<ITestRun> {
@@ -537,9 +560,14 @@ export class TestsetsService {
     // ─── Firma desde la solución oficial ─────────────────────────
 
     async startSignatureDetection(testsetId: number, dto: DetectSignatureDto, staffUserId: number): Promise<ISignatureDetection> {
-        const { testset } = await this.getTestsetForAuthor(testsetId, staffUserId)
+        const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         await this.assertLanguageUsable(dto.languageId)
-        const job = await this.signatureQueue.add('detect', { testsetId: testset.id, languageId: dto.languageId, source: dto.source, functionName: dto.functionName }, {
+        const fixed = problem.status !== ProblemStatus.DRAFT && problem.signature ? problem.signature : undefined
+        const job = await this.signatureQueue.add('detect', { testsetId: testset.id, languageId: dto.languageId, source: dto.source, functionName: fixed?.functionName ?? dto.functionName, fixed }, {
+            // Un error de compilación del código no lanza; solo falla la infraestructura (p. ej. el worker se
+            // reinició a media compilación), y eso se reintenta una vez
+            attempts: 2,
+            backoff: { type: 'fixed', delay: 1000 },
             removeOnComplete: { age: TEST_RUN_KEEP_SECONDS },
             removeOnFail: { age: TEST_RUN_KEEP_SECONDS },
         })
@@ -577,7 +605,7 @@ export class TestsetsService {
     async addCase(testsetId: number, dto: CreateTestCaseDto, staffUserId: number): Promise<ITestCase> {
         const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
         this.assertEditable(testset)
-        const text = this.serializeManualInput(this.requireSignature(problem), dto.input)
+        const text = this.serializeManualInput(this.requireSignature(problem), dto.input, testset)
         return (await this.insertManualCases(testset, [{ text, visibility: dto.visibility, group: dto.group }]))[0]
     }
 
@@ -590,7 +618,7 @@ export class TestsetsService {
         const errors: string[] = []
         const items = dto.cases.map((testCase, index) => {
             try {
-                return { text: this.serializeManualInput(signature, testCase.input), visibility: testCase.visibility, group: testCase.group }
+                return { text: this.serializeManualInput(signature, testCase.input, testset), visibility: testCase.visibility, group: testCase.group }
             } catch(error) {
                 const messages = error instanceof UnprocessableEntityException ? (error.getResponse() as { errors: string[] }).errors : [String(error)]
                 errors.push(...messages.map((text) => 'case ' + (index + 1) + ': ' + text))
@@ -611,10 +639,13 @@ export class TestsetsService {
         }
 
         return this.dataSource.transaction(async (manager) => {
+            const { group_name: group, seed } = testCase
             testCase.origin = TestCaseOrigin.MANUAL
             testCase.group_name = null
             testCase.seed = null
             const saved = await manager.save(testCase)
+            // Su semilla sale del esquema: si no, al regenerar volvería una copia aleatoria del caso fijado
+            if(group !== null && seed !== null) await this.dropFromSchema(testset, manager, group, seed)
             await this.markEdited(testset, manager)
             const preview = saved.input_bytes <= MAX_INPUT_PREVIEW_BYTES ? await this.blobsService.getText(saved.input_sha) : null
             return toTestCaseDto(saved, preview)
@@ -667,7 +698,7 @@ export class TestsetsService {
             if(testCase.origin !== TestCaseOrigin.MANUAL){
                 throw new ConflictException('generated cases cannot be edited; change the schema and generate again')
             }
-            text = this.serializeManualInput(this.requireSignature(problem), dto.input)
+            text = this.serializeManualInput(this.requireSignature(problem), dto.input, testset)
         }
 
         return this.dataSource.transaction(async (manager) => {
@@ -717,8 +748,37 @@ export class TestsetsService {
 
         await this.dataSource.transaction(async (manager) => {
             await manager.delete(TestCase, { id: testCase.id })
+            // Uno aleatorio también deja su semilla: si no, volvería al regenerar
+            if(testCase.origin === TestCaseOrigin.GENERATED && testCase.group_name !== null && testCase.seed !== null){
+                await this.dropFromSchema(testset, manager, testCase.group_name, testCase.seed)
+            }
             await this.markEdited(testset, manager)
         })
+    }
+
+    // Borra un grupo completo de la tabla: sus casos (manuales y aleatorios) y, si es aleatorio, su configuración.
+    // null = los casos sin grupo
+    async removeCasesGroup(testsetId: number, group: string | null, staffUserId: number): Promise<{ removed: number }> {
+        const { testset } = await this.getTestsetForAuthor(testsetId, staffUserId)
+        this.assertEditable(testset)
+
+        return this.dataSource.transaction(async (manager) => {
+            const result = await manager.delete(TestCase, { testset_id: testset.id, group_name: group ?? IsNull() })
+            if(group !== null) await this.dropFromSchema(testset, manager, group)
+            await this.markEdited(testset, manager)
+            return { removed: result.affected ?? 0 }
+        })
+    }
+
+    // Quita del esquema una semilla de un grupo, o el grupo entero (sin semilla); un grupo sin semillas también sale
+    private async dropFromSchema(testset: Testset, manager: EntityManager, group: string, seed?: number): Promise<void> {
+        if(!testset.schema) return
+        const groups = testset.schema.groups
+            .map((g) => g.name !== group ? g : seed === undefined ? null : { ...g, seeds: g.seeds.filter((s) => s !== seed) })
+            .filter((g): g is NonNullable<typeof g> => g !== null && g.seeds.length > 0)
+        testset.schema = groups.length > 0 ? { ...testset.schema, groups } : null
+        testset.generated_count = await manager.countBy(TestCase, { testset_id: testset.id, origin: TestCaseOrigin.GENERATED })
+        await manager.save(testset)
     }
 
     // ─── Auxiliares ──────────────────────────────────────────────
@@ -781,8 +841,9 @@ export class TestsetsService {
         return problem.signature
     }
 
-    private serializeManualInput(signature: IProblemSignature, input: unknown): string {
+    private serializeManualInput(signature: IProblemSignature, input: unknown, testset: Testset): string {
         const { value, errors } = normalizeInput(signature, input)
+        if(errors.length === 0 && testset.compare_mode === CompareMode.PROGRAM) errors.push(...findLineBreaks(signature, value))
         if(errors.length > 0) throw unprocessable(errors)
 
         const text = serializeInput(signature, value)

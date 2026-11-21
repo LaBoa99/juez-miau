@@ -16,5 +16,6 @@ export function toProblemDto(problem: Problem): IProblem {
         currentTestsetId: problem.current_testset_id,
         signature: problem.signature,
         hasStatementPdf: problem.statement_pdf_sha !== null,
+        draftReason: problem.draft_reason,
     }
 }

@@ -16,6 +16,26 @@ export class StaffController {
         return this.staffService.findAll(query)
     }
 
+    // GET /api/v1/staff/credentials?active=true&search= (mismos filtros que la lista, para el PDF)
+    @Get('credentials')
+    findAllCredentials(@Query() query: ListStaffQueryDto) {
+        return this.staffService.getCredentials(query)
+    }
+
+    // GET /api/v1/staff/:id/credentials
+    @Get(':id/credentials')
+    async findCredentials(@Param('id', ParseIntPipe) id: number) {
+        const [credentials] = await this.staffService.getCredentials({}, id)
+        return credentials
+    }
+
+    // POST /api/v1/staff/:id/reset-password
+    @Post(':id/reset-password')
+    @HttpCode(200)
+    resetPassword(@Param('id', ParseIntPipe) id: number) {
+        return this.staffService.resetPassword(id)
+    }
+
     // POST /api/v1/staff
     @Post()
     create(@Body() dto: CreateStaffDto) {

@@ -126,6 +126,9 @@ function validateNode(type: TypeRef, node: unknown, path: string, errors: string
                 errors.push(path + '.charset: must be a non-empty string like "a-z0-9"')
             } else if(expandCharset(node.charset) === null){
                 errors.push(path + '.charset: has a reversed range')
+            } else if(expandCharset(node.charset)!.some((char) => char === '\n' || char === '\r')){
+                // Un salto de línea en un string descuadra la entrada de programa completo
+                errors.push(path + '.charset: cannot include line breaks')
             }
             return maxLength
         }

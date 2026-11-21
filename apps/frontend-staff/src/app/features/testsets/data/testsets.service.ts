@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
   ICreateTestCase,
@@ -25,6 +25,7 @@ import {
   IUpdateTestset,
 } from '@concurso/shared-types';
 import { Observable } from 'rxjs';
+import { SILENT_SAVE } from '../../../core/notifications/saved.interceptor';
 
 const API = '/api';
 
@@ -81,8 +82,10 @@ export class TestsetsService {
     return this.http.get<ITestCaseContent>(`${API}/testsets/${id}/cases/${caseId}`);
   }
 
-  updateCase(id: number, caseId: number, dto: IUpdateTestCase): Observable<ITestCase> {
-    return this.http.patch<ITestCase>(`${API}/testsets/${id}/cases/${caseId}`, dto);
+  updateCase(id: number, caseId: number, dto: IUpdateTestCase, silent = false): Observable<ITestCase> {
+    return this.http.patch<ITestCase>(`${API}/testsets/${id}/cases/${caseId}`, dto, {
+      context: new HttpContext().set(SILENT_SAVE, silent),
+    });
   }
 
   // Lee la firma de la solución en el worker; se consulta con getSignatureDetection
@@ -109,6 +112,11 @@ export class TestsetsService {
     return this.http.patch<{ updated: number }>(`${API}/testsets/${id}/cases/visibility`, dto);
   }
 
+  // Borra los casos del grupo (null = sin grupo) y, si es aleatorio, su configuración
+  removeCasesGroup(id: number, group: string | null): Observable<{ removed: number }> {
+    return this.http.post<{ removed: number }>(`${API}/testsets/${id}/cases/remove-group`, { group });
+  }
+
   removeCase(id: number, caseId: number): Observable<void> {
     return this.http.delete<void>(`${API}/testsets/${id}/cases/${caseId}`);
   }
@@ -120,6 +128,11 @@ export class TestsetsService {
 
   getTestRun(id: number, runId: string): Observable<ITestRun> {
     return this.http.get<ITestRun>(`${API}/testsets/${id}/test-runs/${runId}`);
+  }
+
+  // Misma forma que la del generador: { fileName, source }
+  starterTemplate(testsetId: number, languageId: string): Observable<IGeneratorTemplate> {
+    return this.http.get<IGeneratorTemplate>(`${API}/testsets/${testsetId}/starter-template`, { params: { languageId } });
   }
 
   generatorTemplate(problemId: number, languageId: string): Observable<IGeneratorTemplate> {

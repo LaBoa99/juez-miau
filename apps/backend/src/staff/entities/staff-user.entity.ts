@@ -13,6 +13,10 @@ export class StaffUser {
     @Column({ type: 'citext', unique: true })
     declare email: string
 
+    // Cifrada y recuperable (para el PDF de credenciales); nula en cuentas anteriores a esta columna
+    @Column({ type: 'text', nullable: true, select: false })
+    declare password: string | null
+
     @Column({ type: 'text', select: false })
     declare password_hash: string
 

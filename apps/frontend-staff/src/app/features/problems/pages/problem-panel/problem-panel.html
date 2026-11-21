@@ -7,13 +7,19 @@
   <oj-alert tone="error">No se pudo cargar el problema.</oj-alert>
 } @else {
   <header class="pp__header">
-    <h1 class="pp__title">{{ title() }}</h1>
+    <div class="pp__header-left">
+      <button ojButton variant="secondary" size="sm" type="button" (click)="backToList()">← Problemas</button>
+      <h1 class="pp__title">{{ title() }}</h1>
+    </div>
     <div class="pp__header-right">
       @if (!isNew() && detail(); as d) {
         <oj-badge [tone]="(d.status | problemStatus).tone">{{ (d.status | problemStatus).label }}</oj-badge>
       }
       @if (!isNew()) {
         <oj-segmented [options]="viewOptions" [value]="view()" (valueChange)="onView($event!)" />
+      }
+      @if (canDelete()) {
+        <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDelete()">Eliminar</button>
       }
     </div>
   </header>
@@ -34,6 +40,9 @@
 
     @if (actionError()) {
       <oj-alert tone="error">{{ actionError() }}</oj-alert>
+    }
+    @if (isDraft() && detail()?.draftReason; as reason) {
+      <oj-alert tone="warning">Regresó a borrador: {{ reason }}</oj-alert>
     }
 
     @if (!canEdit() && detail(); as d) {
@@ -99,10 +108,18 @@
         }
       </div>
 
-      <p class="pp__muted">
-        Lo que recibe y regresa la función lo ve el concursante en la firma (paso Solución y firma) y en los ejemplos, que
-        salen de los casos públicos (paso Casos).
-      </p>
+      @if (isFullProgram(form.get('categoryId')?.value)) {
+        <p class="pp__muted">
+          Categoría especial: tú escribes la solución oficial como función (paso Solución y firma) y el concursante
+          manda un programa completo. Recibe una plantilla que ya lee los parámetros de la firma en orden, y los
+          ejemplos, que salen de los casos públicos (paso Casos), se le muestran como texto de entrada y salida.
+        </p>
+      } @else {
+        <p class="pp__muted">
+          Lo que recibe y regresa la función lo ve el concursante en la firma (paso Solución y firma) y en los ejemplos, que
+          salen de los casos públicos (paso Casos).
+        </p>
+      }
 
       <oj-form-field label="Puntos" for="pp-points" hint="Solo se define al crear el problema." class="pp__points">
         <input id="pp-points" class="oj-mono pp__points-input" type="number" min="0" max="100000" formControlName="points" />
@@ -120,12 +137,7 @@
         <button ojButton variant="secondary" type="button" (click)="goNext()">Siguiente →</button>
       </nav>
     } @else {
-      <div class="oj-actions oj-actions--between">
-        <div class="oj-actions">
-          @if (!published()) {
-            <button ojButton variant="danger-outline" type="button" (click)="askDelete()">Eliminar problema</button>
-          }
-        </div>
+      <div class="oj-actions oj-actions--end">
         <div class="oj-actions">
           <button ojButton variant="secondary" type="button" [disabled]="saving()" (click)="save()">Guardar</button>
           <button ojButton variant="primary" type="button" [disabled]="saving()" (click)="save(true)">
@@ -181,7 +193,13 @@
         } @else {
           <div class="pp__md oj-md" [innerHTML]="renderMd(p.statement)"></div>
         }
-        @if (p.signature) {
+        @if (p.signature && p.fullProgram) {
+          <h3 class="pp__preview-h">Programa completo</h3>
+          <p class="pp__muted">
+            El equipo recibe una plantilla que ya lee, en este orden:
+            <span class="oj-mono">{{ readOrder(p.signature) }}</span>. Solo escribe la lógica e imprime la respuesta.
+          </p>
+        } @else if (p.signature) {
           <h3 class="pp__preview-h">Función</h3>
           <pre class="pp__sample-block oj-mono">{{ signatureText(p.signature) }}</pre>
         }
@@ -200,7 +218,7 @@
             <div class="pp__sample">
               <div>
                 <div class="pp__sample-label">Entrada</div>
-                <pre class="pp__sample-block oj-mono">{{ caseInput(s.input) }}</pre>
+                <pre class="pp__sample-block oj-mono">{{ p.fullProgram ? s.input : caseInput(s.input) }}</pre>
               </div>
               <div>
                 <div class="pp__sample-label">Salida</div>
@@ -227,7 +245,7 @@
   <oj-confirm-dialog
     #deleteDialog
     title="Eliminar problema"
-    message="Se eliminará el problema. Esta acción no se puede deshacer."
+    [message]="published() ? 'Se eliminará el problema con su solución y sus casos. Está en el concurso: también sale de él. Esta acción no se puede deshacer.' : 'Se eliminará el problema con su solución y sus casos. Esta acción no se puede deshacer.'"
     confirmLabel="Eliminar"
     [danger]="true"
     (confirmed)="remove()"

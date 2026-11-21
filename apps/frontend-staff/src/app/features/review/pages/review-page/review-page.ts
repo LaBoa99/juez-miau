@@ -1,5 +1,5 @@
 import { TooltipDirective } from '../../../../shared/ui/tooltip.directive';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -83,6 +83,14 @@ export class ReviewPage {
     () => this.queue().find((s) => s.id === this.selectedId()) ?? null,
   );
 
+  // "Qué debe revisar el juez" de la versión con que se juzgó el envío (testsetId → instrucciones)
+  private readonly instructionsByTestset = signal<Map<number, string | null>>(new Map());
+  private readonly loadedProblems = new Set<number>();
+  protected readonly instructions = computed(() => {
+    const s = this.selected();
+    return s ? (this.instructionsByTestset().get(s.testsetId) ?? null) : null;
+  });
+
   private readonly confirmDialog = viewChild.required(ConfirmDialog);
   protected readonly verdictCtrl = this.fb.nonNullable.control('AC');
   protected readonly noteCtrl = this.fb.nonNullable.control('', [Validators.maxLength(1000)]);
@@ -98,9 +106,28 @@ export class ReviewPage {
     this.loadLookups();
     this.load();
 
+    effect(() => {
+      const problemId = this.selected()?.problemId;
+      if (problemId != null) untracked(() => this.loadInstructions(problemId));
+    });
+
     this.rt.joinEdition(this.editionId);
     this.rt.onSubmission().pipe(takeUntilDestroyed()).subscribe((s) => this.applyUpdate(s as IStaffSubmission));
     this.destroyRef.onDestroy(() => this.rt.leave(this.editionId));
+  }
+
+  private loadInstructions(problemId: number): void {
+    if (this.loadedProblems.has(problemId)) return;
+    this.loadedProblems.add(problemId);
+    this.problemsService.get(problemId).subscribe({
+      next: (d) => {
+        const next = new Map(this.instructionsByTestset());
+        for (const t of d.testsets) next.set(t.id, t.reviewInstructions);
+        this.instructionsByTestset.set(next);
+      },
+      // Sin instrucciones se revisa igual; se reintenta al volver a elegir el envío
+      error: () => this.loadedProblems.delete(problemId),
+    });
   }
 
   private load(): void {

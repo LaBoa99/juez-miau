@@ -8,6 +8,17 @@
       } @else if (bus.error()) {
         <p class="pw__muted">No se pudieron cargar los problemas.</p>
       } @else {
+        <!-- Regreso a la tabla de todos (propuestos, en el concurso, borradores) desde cualquier problema -->
+        <button
+          type="button"
+          class="pw__item pw__item--overview"
+          [class.pw__item--active]="selected() === null"
+          [attr.aria-current]="selected() === null ? 'page' : null"
+          (click)="selectOverview()"
+        >
+          <span class="pw__title">Todos los problemas</span>
+          <span class="pw__group-count oj-mono">{{ bus.problems().length }}</span>
+        </button>
         @for (g of groups(); track g.category.id) {
           @let open = isOpen(g.category.id);
           <div class="pw__group">

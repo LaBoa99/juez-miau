@@ -45,7 +45,7 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
   frontend (`features/editions/anti-cheat/forbidden-processes.catalog.ts`) + "Otros procesos". No va en el alta.
 - `block_submissions_on_alert`: checkbox en la pestaña Anti-trampas.
 - Salones: observadores con endpoint aparte (`POST/DELETE /rooms/:roomId/observers/...`); se eligen en el formulario
-  de agregar salón y en el modal de editar salón. Token de proyector: se genera, pero el backend NO lo valida todavía.
+  de agregar salón y en el modal de editar salón. El token de proyector por salón se eliminó (nunca se validó).
 
 ### Problemas y testsets
 - Evaluación por FUNCIÓN: cada problema tiene firma (nombre de función, parámetros con tipo, tipo de retorno).

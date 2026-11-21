@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { ArrayUnique, IsArray, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
 import type { ICreateRoom } from '@concurso/shared-types';
 
 export class CreateRoomDto implements ICreateRoom {
@@ -8,9 +8,10 @@ export class CreateRoomDto implements ICreateRoom {
     @MaxLength(255)
     declare name: string;
 
-    // null = salón sin categoría
     @IsOptional()
-    @IsInt()
-    @Min(1)
-    declare category_id?: number | null;
+    @IsArray()
+    @ArrayUnique()
+    @IsInt({ each: true })
+    @IsPositive({ each: true })
+    declare category_ids?: number[];
 }

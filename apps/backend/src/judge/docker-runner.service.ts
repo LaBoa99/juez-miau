@@ -67,6 +67,8 @@ const DOCKER_ENV: Record<string, string> = {
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1',
     // Sin esto .NET crea un archivo de memoria compartida > 1 MB y el límite de salida lo mata (SIGXFSZ)
     DOTNET_EnableWriteXorExecute: '0',
+    // Números siempre con punto y signo '-' ASCII, aunque el sistema tenga otra región (con sv-SE -5 sale con U+2212)
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: '1',
 }
 
 // Java, .NET y Node abortan por su cuenta al llenar el heap, antes que el OOM killer del cgroup

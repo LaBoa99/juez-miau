@@ -6,6 +6,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EditionStatus, ICreateTeam, IRoomListItem, ITeamImportCredential, ITeamListItem, StaffRole } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
+import { Icon } from '../../../../shared/ui/icon.component';
+import { TooltipDirective } from '../../../../shared/ui/tooltip.directive';
 import { Badge } from '../../../../shared/ui/badge.component';
 import { FormField } from '../../../../shared/ui/form-field.component';
 import { Alert } from '../../../../shared/ui/alert.component';
@@ -31,7 +33,7 @@ const MEMBERS_INCOMPLETE = 'Cada integrante necesita nombre y carrera.';
   imports: [
     ReactiveFormsModule,
     PageHeader,
-    ButtonDirective,
+    ButtonDirective, Icon, TooltipDirective,
     Badge,
     FormField,
     Alert,
@@ -75,6 +77,8 @@ export class TeamList {
     const s = this.ctx.edition()?.status;
     return s === EditionStatus.DRAFT || s === EditionStatus.SCHEDULED;
   });
+  // Cambiar de categoría mueve al equipo de marcador: solo en borrador (el backend lo valida igual)
+  protected readonly canChangeCategory = computed(() => this.ctx.edition()?.status === EditionStatus.DRAFT);
 
   protected readonly categoryCtrl = this.fb.control<number | null>(null);
   protected readonly searchCtrl = this.fb.control('');
@@ -91,12 +95,12 @@ export class TeamList {
   private editingId: number | null = null;
   protected readonly editForm = this.fb.group({
     name: ['', [Validators.required]],
+    categoryId: [null as number | null],
     roomId: [null as number | null],
     members: this.fb.array<FormGroup>([]),
   });
-  private readonly allRooms = signal<IRoomListItem[]>([]);
-  // Un salón con categoría solo admite equipos de esa categoría (igual que el backend)
-  protected readonly editRooms = signal<IRoomListItem[]>([]);
+  // Cualquier salón de la edición: puede tener equipos de varias categorías
+  protected readonly allRooms = signal<IRoomListItem[]>([]);
 
   // ─── Confirmación reutilizable ───
   private readonly confirm = viewChild.required(ConfirmDialog);
@@ -121,6 +125,8 @@ export class TeamList {
   protected readonly addForm = this.fb.group({
     name: ['', [Validators.required]],
     categoryId: this.fb.control<number | null>(null, [Validators.required]),
+    // null = automático: el backend propone el salón según la categoría
+    roomId: [null as number | null],
     members: this.fb.array<FormGroup>([]),
   });
 
@@ -283,7 +289,7 @@ export class TeamList {
     this.addNameError.set(null);
     this.addCategoryError.set(null);
     this.addMembersError.set(null);
-    this.addForm.reset({ name: '', categoryId: null });
+    this.addForm.reset({ name: '', categoryId: null, roomId: null });
     this.addMembers().clear();
     this.addMembers().push(this.memberGroup());
     this.addModal()?.open();
@@ -320,7 +326,12 @@ export class TeamList {
       name: m.name,
       career: m.career,
     }));
-    const dto: ICreateTeam = { name: raw.name!, category_id: raw.categoryId!, members };
+    const dto: ICreateTeam = {
+      name: raw.name!,
+      category_id: raw.categoryId!,
+      ...(raw.roomId != null ? { room_id: raw.roomId } : {}),
+      members,
+    };
 
     this.addSaving.set(true);
     this.service.create(this.editionId, dto).subscribe({
@@ -360,8 +371,10 @@ export class TeamList {
     this.editError.set(null);
     this.members().clear();
     for (const m of team.members) this.members().push(this.memberGroup(m));
-    this.editForm.patchValue({ name: team.name, roomId: team.room?.id ?? null });
-    this.editRooms.set(this.allRooms().filter((r) => r.category_id == null || r.category_id === team.category?.id));
+    this.editForm.patchValue({ name: team.name, categoryId: team.category?.id ?? null, roomId: team.room?.id ?? null });
+    const category = this.editForm.controls.categoryId;
+    if (this.canChangeCategory()) category.enable();
+    else category.disable();
     this.editModal().open();
   }
 
@@ -390,7 +403,8 @@ export class TeamList {
     this.editSaving.set(true);
     this.editError.set(null);
     const room = raw.roomId != null ? { room_id: raw.roomId } : {};
-    this.service.update(this.editingId, { name: raw.name!, members, ...room }).subscribe({
+    const category = this.canChangeCategory() && raw.categoryId != null ? { category_id: raw.categoryId } : {};
+    this.service.update(this.editingId, { name: raw.name!, members, ...room, ...category }).subscribe({
       next: () => {
         this.editSaving.set(false);
         this.editModal().close();

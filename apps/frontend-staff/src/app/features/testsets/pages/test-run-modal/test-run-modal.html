@@ -17,6 +17,16 @@
             }
           </select>
         </oj-form-field>
+        <div class="oj-actions">
+          <button ojButton variant="secondary" size="sm" type="button"
+                  [disabled]="!lang.value || templateBusy() || !canPasteTemplate()"
+                  [ojTooltip]="canPasteTemplate() ? 'Pone en el código la plantilla que reciben los equipos en este lenguaje' : 'Borra el código para pegar la plantilla'"
+                  (click)="useTemplate('paste')">Pegar plantilla del concurso</button>
+          <button ojButton variant="secondary" size="sm" type="button"
+                  [disabled]="!lang.value || templateBusy()"
+                  ojTooltip="Descarga la plantilla que reciben los equipos en este lenguaje"
+                  (click)="useTemplate('download')">Descargar plantilla</button>
+        </div>
       }
       <oj-file-drop accept="" (fileSelected)="onFile($event)" />
       <oj-form-field label="Código" for="tr-code" hint="Arrastra un archivo arriba o pega el código aquí.">

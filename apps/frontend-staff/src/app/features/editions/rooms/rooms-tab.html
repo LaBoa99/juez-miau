@@ -18,7 +18,7 @@
         <thead>
           <tr>
             <th>Nombre</th>
-            <th>Categoría</th>
+            <th>Categorías</th>
             <th>Observadores</th>
             <th></th>
           </tr>
@@ -27,7 +27,13 @@
           @for (r of rows(); track r.id) {
             <tr>
               <td>{{ r.name }}</td>
-              <td>{{ categoryName(r.category_id) }}</td>
+              <td>
+                @if (r.categories.length) {
+                  <span class="oj-mono">{{ categoryCodes(r) }}</span>
+                } @else {
+                  <span class="rooms__muted">—</span>
+                }
+              </td>
               <td>
                 @if (r.observers.length) {
                   <div class="rooms__obs">
@@ -49,9 +55,8 @@
               </td>
               <td>
                 <div class="tab__row-actions">
-                  <button ojButton variant="secondary" size="sm" type="button" (click)="openEdit(r)">Editar</button>
-                  <button ojButton variant="secondary" size="sm" type="button" (click)="openToken(r)">Token de proyector</button>
-                  <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDelete(r)">Eliminar</button>
+                  <button ojButton variant="secondary" size="sm" class="oj-btn--icon" type="button" [attr.aria-label]="'Editar salón ' + r.name" ojTooltip="Editar" (click)="openEdit(r)"><oj-icon name="edit" /></button>
+                  <button ojButton variant="danger-outline" size="sm" class="oj-btn--icon" type="button" [attr.aria-label]="'Eliminar salón ' + r.name" ojTooltip="Eliminar" (click)="askDelete(r)"><oj-icon name="delete" /></button>
                 </div>
               </td>
             </tr>
@@ -68,14 +73,22 @@
   <oj-form-field label="Nombre" for="room-name">
     <input id="room-name" type="text" formControlName="name" />
   </oj-form-field>
-  <oj-form-field label="Categoría" for="room-category">
-    <select id="room-category" formControlName="category_id">
-      <option [ngValue]="null">Sin categoría</option>
-      @for (c of categories(); track c.id) {
-        <option [ngValue]="c.id">{{ c.name }}</option>
-      }
-    </select>
-  </oj-form-field>
+
+  <fieldset class="rooms__obs-set">
+    <legend class="rooms__obs-legend">Categorías <span class="rooms__obs-hint">(los equipos nuevos de estas categorías se asignan aquí)</span></legend>
+    @for (c of categories(); track c.id) {
+      <label class="rooms__obs-opt">
+        <input
+          type="checkbox"
+          [checked]="addCats().has(c.id)"
+          (change)="toggleAddCat(c.id, $any($event.target).checked)"
+        />
+        <span class="oj-mono">{{ c.code }}</span> {{ c.name }}
+      </label>
+    } @empty {
+      <p class="rooms__obs-empty">Aún no hay categorías en esta edición.</p>
+    }
+  </fieldset>
 
   <fieldset class="rooms__obs-set">
     <legend class="rooms__obs-legend">Observadores <span class="rooms__obs-hint">(staff con rol observer)</span></legend>
@@ -114,14 +127,22 @@
     <oj-form-field label="Nombre" for="room-edit-name">
       <input id="room-edit-name" type="text" formControlName="name" />
     </oj-form-field>
-    <oj-form-field label="Categoría" for="room-edit-category">
-      <select id="room-edit-category" formControlName="category_id">
-        <option [ngValue]="null">Sin categoría</option>
-        @for (c of categories(); track c.id) {
-          <option [ngValue]="c.id">{{ c.name }}</option>
-        }
-      </select>
-    </oj-form-field>
+
+    <fieldset class="rooms__obs-set">
+      <legend class="rooms__obs-legend">Categorías <span class="rooms__obs-hint">(los equipos nuevos de estas categorías se asignan aquí)</span></legend>
+      @for (c of categories(); track c.id) {
+        <label class="rooms__obs-opt">
+          <input
+            type="checkbox"
+            [checked]="editCats().has(c.id)"
+            (change)="toggleEditCat(c.id, $any($event.target).checked)"
+          />
+          <span class="oj-mono">{{ c.code }}</span> {{ c.name }}
+        </label>
+      } @empty {
+        <p class="rooms__obs-empty">Aún no hay categorías en esta edición.</p>
+      }
+    </fieldset>
 
     <fieldset class="rooms__obs-set">
       <legend class="rooms__obs-legend">Observadores <span class="rooms__obs-hint">(staff con rol observer)</span></legend>
@@ -149,28 +170,6 @@
     <button ojButton variant="primary" type="submit" form="room-edit-form" [disabled]="editSaving()">
       {{ editSaving() ? 'Guardando…' : 'Guardar' }}
     </button>
-  </div>
-</oj-modal>
-
-<!-- Token de proyector -->
-<oj-modal [title]="'Token de proyector · ' + (tokenRoom()?.name ?? '')" size="sm">
-  @if (token(); as t) {
-    <div class="rooms__token-body">
-      <div class="rooms__token-url-row">
-        <span class="rooms__token-url oj-mono">{{ t.url }}</span>
-        <button ojButton variant="secondary" size="sm" type="button" (click)="copyUrl()">
-          {{ copied() ? 'Copiado' : 'Copiar' }}
-        </button>
-      </div>
-      @if (t.qr_png) {
-        <img class="rooms__qr" [src]="'data:image/png;base64,' + t.qr_png" alt="QR del proyector" />
-      }
-    </div>
-  } @else {
-    <p class="tab__loading">Generando…</p>
-  }
-  <div footer>
-    <button ojButton variant="danger-outline" type="button" (click)="revokeToken()">Revocar</button>
   </div>
 </oj-modal>
 

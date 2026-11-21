@@ -2,6 +2,7 @@
 export interface ICreateTeam {
     name: string
     category_id: number
+    room_id ?: number // sin él, el backend propone uno según la categoría
     members: ICreateTeamMember[]
 }
 
@@ -14,6 +15,7 @@ export interface ICreateTeamMember {
 
 export interface IUpdateTeam {
     name ?: string
+    category_id ?: number // solo mientras la edición está en borrador
     room_id ?: number
     members ?: IUpdateTeamMember[]
 }

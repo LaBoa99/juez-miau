@@ -7,6 +7,15 @@ export function minToMs(min: number): number {
   return Math.round(min * 60000);
 }
 
+// ms → "2 h 30 min", "2 h" o "45 min" (duración y congelamiento); 0 o menos → "—".
+export function formatDuration(ms: number): string {
+  const total = msToMin(ms);
+  if (total <= 0) return '—';
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return [h ? `${h} h` : '', m ? `${m} min` : ''].filter(Boolean).join(' ');
+}
+
 // ms → "HH:MM:SS" (reloj del concurso, marcador y proyector). Negativos se tratan como 0.
 export function msToClock(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));

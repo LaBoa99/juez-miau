@@ -3,6 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import type { IProblem, IProblemDetail, IProblemPreview, IPublishProblemResponse } from '@concurso/shared-types';
 import type { AuthenticatedRequest } from '../../auth/guards/jwt-auth.guard.js';
+import { BackToDraftDto } from '../dto/back-to-draft.dto.js';
 import { ProblemsService } from '../services/problems.service.js';
 import { UpdateProblemDto } from '../dto/update-problem.dto.js';
 
@@ -82,6 +83,17 @@ export class ProblemsController {
         @Req() req: AuthenticatedRequest,
     ): Promise<IPublishProblemResponse> {
         return this.problemsService.accept(id, req.user.sub);
+    }
+
+    // Regresa a borrador (con el motivo): ready → draft el autor o un admin; published → draft el admin
+    @Post(':id/back-to-draft')
+    @HttpCode(HttpStatus.OK)
+    backToDraft(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: BackToDraftDto,
+        @Req() req: AuthenticatedRequest,
+    ): Promise<IPublishProblemResponse> {
+        return this.problemsService.backToDraft(id, req.user.sub, dto.reason);
     }
 
     @Post(':id/disable')

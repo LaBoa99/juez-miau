@@ -142,6 +142,7 @@ paralelo. Duplica el costo, no es justo entre equipos y no es reproducible.
 | Comparación exacta (JSON) | Por defecto |
 | Comparación con tolerancia (`1e-6`) | Resultados decimales |
 | **Checker** escrito por el juez | Varias respuestas válidas |
+| **Programa completo** | Categoría especial: el participante manda un programa que lee de stdin; su salida debe terminar con la respuesta. Ver [programa-completo.md](programa-completo.md) |
 | **Revisión manual (híbrida)** | Requisitos no verificables automáticamente (p. ej. "no usar `sorted()`"). Primero corren los casos automáticos; si pasan, el envío queda en `PENDING_REVIEW` para un juez. |
 
 Veredictos: `AC`, `WA`, `TLE`, `RE`, `CE`, `PENDING_REVIEW`.

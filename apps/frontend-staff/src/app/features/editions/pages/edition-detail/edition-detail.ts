@@ -11,7 +11,8 @@ import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
 import { Modal } from '../../../../shared/ui/modal.component';
 import { TabNav } from '../../../../shared/ui/tab-nav.component';
 import { EditionStatusPipe } from '../../../../shared/pipes/edition-status.pipe';
-import { msToMin, minToMs } from '../../../../shared/time';
+import { formatDuration, msToMin, minToMs } from '../../../../shared/time';
+import { DurationInput } from '../../../../shared/ui/duration-input.component';
 import { EditionsService } from '../../data/editions.service';
 import { EditionContext } from '../edition-layout/edition-context';
 import { ContestClockService } from '../../../contest/data/contest-clock.service';
@@ -23,6 +24,7 @@ import { backendMessage, translateBackendError } from '../../../../core/http/bac
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
+    DurationInput,
     ReactiveFormsModule,
     RouterLink,
     RouterOutlet,
@@ -45,7 +47,7 @@ export class EditionDetail {
   protected readonly ctx = inject(EditionContext);
   private readonly fb = inject(FormBuilder);
 
-  protected readonly msToMin = msToMin;
+  protected readonly formatDuration = formatDuration;
   protected readonly edition = this.ctx.edition;
   protected readonly id = Number(this.route.parent?.snapshot.paramMap.get('id'));
 

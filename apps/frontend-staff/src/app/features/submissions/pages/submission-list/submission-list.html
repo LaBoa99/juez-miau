@@ -106,7 +106,7 @@
             <td class="oj-mono sub__num">{{ s.maxMemoryKb !== null ? s.maxMemoryKb + ' KB' : '—' }}</td>
             <td>
               <div class="oj-actions oj-actions--end">
-                <a ojButton variant="secondary" size="sm" [routerLink]="['/ediciones', editionId, 'envios', s.id]">Ver</a>
+                <a ojButton variant="secondary" size="sm" class="oj-btn--icon" [routerLink]="['/ediciones', editionId, 'envios', s.id]" [attr.aria-label]="'Ver envío ' + s.id" ojTooltip="Ver envío"><oj-icon name="view" /></a>
               </div>
             </td>
           </tr>

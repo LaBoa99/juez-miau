@@ -59,4 +59,13 @@ describe('EditionTeamsService.validateImport', () => {
         ])
         expect(result.errors).toEqual([{ row: 4, column: 'NombreEquipo', message: 'El equipo "JAVIER MORA" ya aparece en la fila 3' }])
     })
+
+    it('repara acentos dañados y marca lo que llegó como � (no se puede adivinar)', async () => {
+        const result = await service([]).validateImport(9, csv(
+            '1,Los Ã‘andÃºes,1,JOSÃ‰ PEÃ‘A,ISC,BASICO,modalidad_equipo',
+            '2,Individual,2,MAR\uFFFDA,IME,BASICO,modalidad_individual',
+        ))
+        expect(result.preview.map((p) => p.teamName)).toEqual(['Los Ñandúes', 'MAR\uFFFDA'])
+        expect(result.errors).toEqual([{ row: 3, column: 'Nombre', message: '"MAR\uFFFDA" tiene caracteres dañados (�): corrige los acentos o la ñ en el archivo' }])
+    })
 })

@@ -85,7 +85,12 @@
                   <span>{{ progressText() }}@if (detecting()) { <span class="tw__muted"> Compilar puede tardar unos segundos.</span> }</span>
                 </div>
                 @if (d.status === 'failed') {
-                  <oj-alert tone="error">No se pudo leer la firma. Escríbela abajo.</oj-alert>
+                  <oj-alert tone="error">
+                    <div class="oj-actions oj-actions--between">
+                      <span>No se pudo leer la firma: falló el servicio que compila, no tu código. Vuelve a intentarlo o escríbela abajo.</span>
+                      <button ojButton variant="secondary" size="sm" type="button" (click)="detectSignature()">Volver a leer</button>
+                    </div>
+                  </oj-alert>
                 } @else if (d.status === 'done' && d.candidates.length === 0) {
                   <oj-alert tone="warning">
                     No encontré la función en la solución.
@@ -184,8 +189,47 @@
             } @else {
               <p class="tw__muted">Aún no tiene firma.</p>
             }
-            @if (proposed()) {
-              <p class="tw__muted">La firma no se puede cambiar en un problema propuesto o en el concurso.</p>
+            @if (signatureError()) {
+              <oj-alert tone="error">{{ signatureError() }}</oj-alert>
+            }
+            @if (published()) {
+              <p class="tw__muted">La firma no se puede cambiar con el problema en el concurso. Para cambiarla, quítalo del concurso y regrésalo a borrador.</p>
+            } @else if (proposed()) {
+              <div class="oj-actions oj-actions--between">
+                <p class="tw__muted">La firma no se puede cambiar en un problema propuesto. Regrésalo a borrador para cambiarla; después tendrás que proponerlo otra vez.</p>
+                @if (!readOnly()) {
+                  <button ojButton variant="secondary" size="sm" type="button" [disabled]="backingToDraft()" (click)="backToDraft()">
+                    {{ backingToDraft() ? 'Regresando…' : 'Regresar a borrador' }}
+                  </button>
+                }
+              </div>
+            }
+            <!-- Firma fija: cada solución nueva se compila con ella -->
+            @if (editable() && detection(); as d) {
+              <div class="tw__detect">
+                <div class="tw__status" [attr.data-state]="statusState()" role="status">
+                  <span class="tw__status-icon" aria-hidden="true">{{ statusIcon() }}</span>
+                  <span>{{ progressText() }}@if (detecting()) { <span class="tw__muted"> Compilar puede tardar unos segundos.</span> }</span>
+                </div>
+                @if (d.status === 'failed') {
+                  <oj-alert tone="error">
+                    <div class="oj-actions oj-actions--between">
+                      <span>Falló el servicio que compila, no tu código.</span>
+                      <button ojButton variant="secondary" size="sm" type="button" (click)="detectSignature()">Volver a comprobar</button>
+                    </div>
+                  </oj-alert>
+                } @else if (d.compiles === false) {
+                  <oj-alert tone="error">
+                    La firma ya no se puede cambiar: ajusta el código para que use esta función con estos tipos.
+                    @if (d.compileLog) {
+                      <details class="tw__log-details">
+                        <summary>Ver el error del compilador</summary>
+                        <pre class="tw__log">{{ d.compileLog }}</pre>
+                      </details>
+                    }
+                  </oj-alert>
+                }
+              </div>
             }
           }
         </section>
@@ -235,6 +279,9 @@
                       <button ojButton variant="secondary" size="sm" class="tw__icon-btn" type="button" [disabled]="g.pub === 0 || !!busyKey()"
                               [attr.aria-label]="'Ocultar los casos de ' + g.label" ojTooltip="Ocultar todos los casos del grupo"
                               (click)="setGroupVisibility(g.key, TestCaseVisibility.HIDDEN)">@if (busyKey() === 'group:' + (g.key ?? '') + ':hidden') { <span class="tw__btn-spinner" aria-hidden="true"></span> } @else { <svg class="tw__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2l12 12M6.6 6.6A2 2 0 0 0 9.4 9.4M4.2 4.3C2.6 5.4 1.5 8 1.5 8s2.5 4.5 6.5 4.5c1.3 0 2.5-.4 3.5-1M7 3.6c.3 0 .7-.1 1-.1 4 0 6.5 4.5 6.5 4.5s-.5.9-1.4 1.9"/></svg> }</button>
+                      <button ojButton variant="danger-outline" size="sm" class="tw__icon-btn" type="button" [disabled]="!!busyKey()"
+                              [attr.aria-label]="'Eliminar el grupo ' + g.label" ojTooltip="Eliminar el grupo con sus casos"
+                              (click)="askDeleteGroup(g)"><svg class="tw__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.5 6.5v5M9.5 6.5v5"/></svg></button>
                     </div>
                   }
                 </div>
@@ -301,7 +348,10 @@
                               }
                               @if (editable() && c.origin === TestCaseOrigin.MANUAL) {
                                 <button ojButton variant="secondary" size="sm" class="tw__icon-btn" type="button" aria-label="Editar el caso" ojTooltip="Editar" (click)="openEditCase(c)"><svg class="tw__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M11 2l3 3-8.5 8.5H2.5v-3L11 2z"/></svg></button>
-                                <button ojButton variant="danger-outline" size="sm" class="tw__icon-btn" type="button" aria-label="Eliminar el caso" ojTooltip="Eliminar" (click)="askDeleteCase(c)"><svg class="tw__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.5 6.5v5M9.5 6.5v5"/></svg></button>
+                              }
+                              @if (editable()) {
+                                <button ojButton variant="danger-outline" size="sm" class="tw__icon-btn" type="button" aria-label="Eliminar el caso"
+                                        [ojTooltip]="c.origin === TestCaseOrigin.GENERATED ? 'Eliminar: no vuelve al regenerar' : 'Eliminar'" (click)="askDeleteCase(c)"><svg class="tw__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.5 6.5v5M9.5 6.5v5"/></svg></button>
                               }
                             </div>
                           </td>
@@ -539,52 +589,89 @@
             @if (evalError()) {
               <oj-alert tone="error">{{ evalError() }}</oj-alert>
             }
-        <div class="tw__eval-cards">
-          @for (card of evalCards; track card.mode) {
-            <button
-              type="button"
-              class="tw__eval-card"
-              [class.tw__eval-card--active]="evalMode() === card.mode"
-              [attr.aria-pressed]="evalMode() === card.mode"
-              (click)="setEvalMode(card.mode)"
-            >
-              <span class="tw__eval-card-title">{{ card.title }}</span>
-              <span class="tw__eval-card-when">{{ card.when }}</span>
-            </button>
-          }
-        </div>
-
-        <div class="tw__eval-fields" [formGroup]="evalForm">
-          @if (evalMode() === CompareMode.TOLERANCE) {
-            <oj-form-field label="Tolerancia (entre 0 y 1)" for="tw-tol">
-              <input id="tw-tol" class="oj-mono" type="number" step="any" min="0" max="1" formControlName="floatTolerance" />
-            </oj-form-field>
-          }
-          @if (evalMode() === CompareMode.CHECKER) {
-            <div class="tw__field">
-              <span class="tw__field-label">
-                Checker
-                <span class="tw__muted">{{ testset()?.checkerId != null ? 'cargado' : 'sin definir' }}</span>
+        <section class="tw__eval-block" aria-labelledby="tw-eval-compare">
+          <h4 class="tw__eval-h" id="tw-eval-compare">Cómo se compara la salida</h4>
+          @if (fullProgram()) {
+            <div class="tw__eval-card tw__eval-card--active tw__eval-card--static">
+              <span class="tw__eval-card-title">Programa completo</span>
+              <span class="tw__eval-card-when">
+                La categoría es especial: el equipo manda un programa que lee la entrada con input() y la acepta si lo
+                último que imprime es la respuesta. Lo que imprima antes, como "La suma es:", no cuenta.
               </span>
-              @if (!hasParams()) {
-                <p class="tw__muted">El checker recibe los parámetros de la firma: defínela primero (paso Solución y firma) y vuelve aquí a subirlo. Mientras, guarda con Exacta o Con tolerancia.</p>
-              } @else if (enabledLanguages().length === 0) {
-                <p class="tw__muted">No hay lenguajes. Agrégalo en <a [routerLink]="['/lenguajes']">Lenguajes</a>.</p>
-              } @else {
-                <select [formControl]="checkerLang" aria-label="Lenguaje del checker">
-                  <option [ngValue]="null" disabled>Selecciona un lenguaje</option>
-                  @for (l of enabledLanguages(); track l.id) {
-                    <option [ngValue]="l.id">{{ l.code }}</option>
-                  }
-                </select>
-              }
-              @if (hasParams()) {
-                <oj-file-drop accept="" (fileSelected)="onCheckerFile($event)" />
-                <textarea class="tw__code" rows="8" spellcheck="false" aria-label="Código del checker" placeholder="o pega el código del checker aquí"
-                          [value]="checkerText()" (input)="checkerText.set($any($event.target).value)"></textarea>
+            </div>
+          } @else {
+            <div class="tw__eval-cards">
+              @for (card of evalCards; track card.mode) {
+                <button
+                  type="button"
+                  class="tw__eval-card"
+                  [class.tw__eval-card--active]="evalMode() === card.mode"
+                  [attr.aria-pressed]="evalMode() === card.mode"
+                  (click)="setEvalMode(card.mode)"
+                >
+                  <span class="tw__eval-card-title">{{ card.title }}</span>
+                  <span class="tw__eval-card-when">{{ card.when }}</span>
+                </button>
               }
             </div>
           }
+
+          <div class="tw__eval-fields" [formGroup]="evalForm">
+            @if (evalMode() === CompareMode.TOLERANCE) {
+              <oj-form-field label="Tolerancia (entre 0 y 1)" for="tw-tol">
+                <input id="tw-tol" class="oj-mono" type="number" step="any" min="0" max="1" formControlName="floatTolerance" />
+              </oj-form-field>
+            }
+            @if (evalMode() === CompareMode.CHECKER) {
+              <div class="tw__field">
+                <span class="tw__field-label">
+                  Checker
+                  <span class="tw__muted">{{ testset()?.checkerId != null ? 'cargado' : 'sin definir' }}</span>
+                </span>
+                @if (!hasParams()) {
+                  <p class="tw__muted">El checker recibe los parámetros de la firma: defínela primero (paso Solución y firma) y vuelve aquí a subirlo. Mientras, guarda con Exacta o Con tolerancia.</p>
+                } @else if (enabledLanguages().length === 0) {
+                  <p class="tw__muted">No hay lenguajes. Agrégalo en <a [routerLink]="['/lenguajes']">Lenguajes</a>.</p>
+                } @else {
+                  <select [formControl]="checkerLang" aria-label="Lenguaje del checker">
+                    <option [ngValue]="null" disabled>Selecciona un lenguaje</option>
+                    @for (l of enabledLanguages(); track l.id) {
+                      <option [ngValue]="l.id">{{ l.code }}</option>
+                    }
+                  </select>
+                }
+                @if (hasParams()) {
+                  <oj-file-drop accept="" (fileSelected)="onCheckerFile($event)" />
+                  <textarea class="tw__code" rows="8" spellcheck="false" aria-label="Código del checker" placeholder="o pega el código del checker aquí"
+                            [value]="checkerText()" (input)="checkerText.set($any($event.target).value)"></textarea>
+                }
+              </div>
+            }
+          </div>
+        </section>
+
+        <section class="tw__eval-block" aria-labelledby="tw-eval-review" [formGroup]="evalForm">
+          <h4 class="tw__eval-h" id="tw-eval-review">Revisión manual</h4>
+          <label class="tw__eval-check">
+            <input type="checkbox" formControlName="manualReview" />
+            <span>
+              Un juez revisa los envíos que pasan todos los casos
+              <span class="tw__eval-check-hint">
+                Para reglas que el juez automático no puede comprobar, como "no usar sorted()". El envío queda
+                "En revisión" hasta que un juez lo acepta o lo rechaza en la pestaña Revisión.
+              </span>
+            </span>
+          </label>
+          @if (evalForm.controls.manualReview.value) {
+            <oj-form-field label="Qué debe revisar el juez" for="tw-review" hint="Lo ve el juez al revisar cada envío. Opcional.">
+              <textarea id="tw-review" rows="3" maxlength="2000" formControlName="reviewInstructions"
+                        placeholder="p. ej. Que la solución no use sorted() ni sort()."></textarea>
+            </oj-form-field>
+          }
+        </section>
+
+        <section class="tw__eval-block" aria-labelledby="tw-eval-limits" [formGroup]="evalForm">
+          <h4 class="tw__eval-h" id="tw-eval-limits">Límites</h4>
           <div class="tw__row">
             <oj-form-field label="Tiempo límite (ms)" for="tw-time">
               <input id="tw-time" class="oj-mono" type="number" formControlName="timeLimitMs" />
@@ -593,7 +680,7 @@
               <input id="tw-mem" class="oj-mono" type="number" formControlName="memoryLimitMb" />
             </oj-form-field>
           </div>
-        </div>
+        </section>
             <div class="oj-actions oj-actions--end">
               <button ojButton variant="secondary" type="button" (click)="toggleEval()">Cancelar</button>
               <button ojButton variant="primary" type="button" [disabled]="evalSaving()" (click)="saveEval()">
@@ -699,7 +786,7 @@
           }
           @if (built()) {
             <button ojButton variant="secondary" type="button" (click)="testRun.openCustom()"
-                    ojTooltip="Juzga otra solución contra estos casos como si fuera un envío; no se guarda ni cuenta para el marcador">Probar otra solución…</button>
+                    ojTooltip="Juzga una solución contra estos casos como si fuera un envío; la solución oficial no cambia y no cuenta para el marcador">Probar una solución…</button>
           }
         </div>
       }
@@ -842,6 +929,35 @@
 
 <oj-test-run-modal #testRun [testsetId]="testset()?.id ?? 0" [languages]="enabledLanguages()" />
 
+<!-- Primera vez en Casos sin casos: ofrecer 5 aleatorios -->
+<oj-modal #randomOfferModal title="Crear casos de prueba aleatorios" size="lg" (closed)="dismissRandomOffer()">
+  <div class="tw__offer">
+    @if (randomOfferError(); as e) {
+      <oj-alert tone="error">{{ e }}</oj-alert>
+    }
+    <p class="tw__offer-lead">Este problema todavía no tiene casos. Podemos crear 5 casos aleatorios a partir de la firma:</p>
+    <ul class="tw__offer-list">
+      <li><strong>2 públicos:</strong> son los ejemplos que el equipo ve en el enunciado.</li>
+      <li><strong>3 ocultos:</strong> solo los usa el juez para calificar.</li>
+    </ul>
+    <p class="tw__muted">
+      Rangos por defecto: números del 1 al 100 y textos o listas de 1 a 10 elementos. Los cambias después en
+      Aleatorios, y puedes agregar casos a mano cuando quieras.
+    </p>
+  </div>
+  <div footer>
+    <button ojButton variant="secondary" type="button" [disabled]="randomOfferSaving()" (click)="dismissRandomOffer()">
+      Continuar sin crear casos
+    </button>
+    <button ojButton variant="secondary" type="button" [disabled]="randomOfferSaving()" (click)="createRandomOffer('stay')">
+      Crear y quedarme aquí
+    </button>
+    <button ojButton variant="primary" type="button" [disabled]="randomOfferSaving()" (click)="createRandomOffer('next')">
+      {{ randomOfferSaving() ? 'Creando…' : 'Crear y pasar a Evaluación' }}
+    </button>
+  </div>
+</oj-modal>
+
 <!-- Nueva versión -->
 <oj-modal #newVersionModal title="Nueva versión" size="sm">
   <oj-form-field label="Motivo" for="tw-reason" hint="Queda en el historial de versiones.">
@@ -866,8 +982,17 @@
 <oj-confirm-dialog
   #deleteCaseDlg
   title="Eliminar caso"
-  message="Se eliminará el caso. Esta acción no se puede deshacer."
+  [message]="deleteCaseMessage()"
   confirmLabel="Eliminar"
   [danger]="true"
   (confirmed)="removeCase()"
+/>
+
+<oj-confirm-dialog
+  #deleteGroupDlg
+  title="Eliminar grupo"
+  [message]="deleteGroupMessage()"
+  confirmLabel="Eliminar"
+  [danger]="true"
+  (confirmed)="removeGroupCases()"
 />

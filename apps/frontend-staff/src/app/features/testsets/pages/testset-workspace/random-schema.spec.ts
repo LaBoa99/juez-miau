@@ -17,6 +17,19 @@ describe('random-schema', () => {
     expect(schema.params['nums']).toEqual({ type: 'array', length: [1, 10], items: { type: 'long', min: 1, max: 100 } });
   });
 
+  it('keeps the seeds of each existing group and adds new ones after the highest', () => {
+    // El caso con semilla 2 se borró: no vuelve; "grandes" crece de 1 a 3 casos
+    const previous: ITestsetSchema = {
+      params: { n: { type: 'int', min: 1, max: 5 }, nums: { type: 'array', length: [1, 3], items: { type: 'long', min: 0, max: 9 } } },
+      groups: [{ name: 'chicos', seeds: [1, 3, 4] }, { name: 'grandes', seeds: [6] }],
+    };
+    const [chicos, grandes] = schemaToGroups(previous, params);
+    grandes.count = '3';
+    const { schema, total } = groupsToSchema([chicos, grandes], ['n', 'nums'], previous);
+    expect(schema.groups.map((g) => g.seeds)).toEqual([[1, 3, 4], [6, 7, 8]]);
+    expect(total).toBe(6);
+  });
+
   it('round-trips an existing schema with overrides', () => {
     const schema: ITestsetSchema = {
       params: { n: { type: 'int', min: 1, max: 5 }, nums: { type: 'array', length: [1, 3], items: { type: 'long', min: 0, max: 9 } } },

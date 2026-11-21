@@ -1,13 +1,13 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import type { IRoom, IRoomListItem } from '@concurso/shared-types';
 import { Room } from '../entities/room.entity.js';
 import { CreateRoomDto } from '../dto/create-room.dto.js';
 import { UpdateRoomDto } from '../dto/update-room.dto.js';
-import { CategoriesService } from './categories.service.js';
 import { EditionsService } from './editions.service.js';
 import { Team } from '../../teams/entities/team.entity.js';
+import { Category } from '../entities/category.entity.js';
 
 @Injectable()
 export class RoomsService {
@@ -15,7 +15,6 @@ export class RoomsService {
     constructor(
         @InjectRepository(Room)
         private readonly roomRepository: Repository<Room>,
-        private readonly categoryService: CategoriesService,
         private readonly editionService: EditionsService,
     ) {}
 
@@ -39,8 +38,10 @@ export class RoomsService {
                 edition_id: editionId
             },
             relations: {
-                observers: true
-            }
+                observers: true,
+                categories: true,
+            },
+            order: { id: 'ASC', categories: { sort_order: 'ASC' } },
         })
     }
 
@@ -49,13 +50,9 @@ export class RoomsService {
         
         const edition = await this.editionService.getById(editionId)
 
-        if(dto.category_id){
-            await this.categoryService.getByIdForEdition(dto.category_id, edition.id)
-        }
-
         room.name = dto.name
         room.edition_id = edition.id
-        room.category_id = dto.category_id ?? null
+        room.categories = await this.categoriesOf(edition.id, dto.category_ids ?? [])
 
         return this.roomRepository.save(room)
     }
@@ -63,14 +60,19 @@ export class RoomsService {
     async update(id: number, dto: UpdateRoomDto): Promise<IRoom> {
         const room = await this.getById(id)
 
-        // undefined = no se envió (no cambia), null = quitar la categoría
-        if(dto.category_id){
-            await this.categoryService.getByIdForEdition(dto.category_id, room.edition_id)
-        }
-
-        this.roomRepository.merge(room, dto)
+        if(dto.name !== undefined) room.name = dto.name
+        if(dto.category_ids !== undefined) room.categories = await this.categoriesOf(room.edition_id, dto.category_ids)
 
         return this.roomRepository.save(room)
+    }
+
+    private async categoriesOf(editionId: number, ids: number[]): Promise<Category[]> {
+        if(ids.length === 0) return []
+        const categories = await this.roomRepository.manager.findBy(Category, { id: In(ids), edition_id: editionId })
+        if(categories.length !== ids.length){
+            throw new NotFoundException('category not found in this edition')
+        }
+        return categories
     }
 
     async remove(id: number): Promise<void> {

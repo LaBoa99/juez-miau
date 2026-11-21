@@ -35,7 +35,7 @@
               </td>
               <td>
                 <div class="tab__row-actions">
-                  <button ojButton variant="danger-outline" size="sm" type="button" (click)="remove(r)">Quitar</button>
+                  <button ojButton variant="danger-outline" size="sm" class="oj-btn--icon" type="button" [attr.aria-label]="'Quitar a ' + staffName(r.staff_user_id) + ' de la edición'" ojTooltip="Quitar de la edición" (click)="remove(r)"><oj-icon name="remove" /></button>
                 </div>
               </td>
             </tr>

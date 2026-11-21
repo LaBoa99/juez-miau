@@ -26,4 +26,7 @@ export enum CompareMode {
     TOLERANCE = "tolerance",
     // Un programa del juez decide (varias respuestas válidas)
     CHECKER = "checker",
+    // Categoría especial (programa-completo.md): el envío es un programa completo y su salida
+    // estándar debe terminar con la respuesta
+    PROGRAM = "program",
 }

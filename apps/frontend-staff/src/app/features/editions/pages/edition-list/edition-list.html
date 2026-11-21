@@ -39,18 +39,18 @@
             </tr>
           </thead>
           <tbody>
-            @for (e of editions(); track e.id) {
+            @for (e of sorted(); track e.id) {
               @let s = e.status | editionStatus;
-              <tr>
+              <tr [class.editions__row--finished]="e.status === FINISHED">
                 <td>
-                  <div class="editions__name">{{ e.name }}</div>
+                  <a class="editions__name" [routerLink]="['/ediciones', e.id]">{{ e.name }}</a>
                   <div class="editions__id">#{{ e.id }}</div>
                 </td>
                 <td class="oj-mono">
                   {{ e.scheduled_start ? (e.scheduled_start | date: 'yyyy-MM-dd HH:mm') : '—' }}
                 </td>
                 <td class="oj-mono editions__num">
-                  {{ e.duration_ms ? msToMin(e.duration_ms) + ' min' : '—' }}
+                  {{ formatDuration(e.duration_ms) }}
                 </td>
                 <td>{{ e.categories.length ? categoryCodes(e.categories) : '—' }}</td>
                 <td><oj-badge [tone]="s.tone">{{ s.label }}</oj-badge></td>
@@ -78,12 +78,12 @@
           <input id="ed-name" type="text" formControlName="name" />
         </oj-form-field>
 
-        <oj-form-field label="Duración (min)" for="ed-duration">
-          <input id="ed-duration" class="oj-mono" type="number" min="1" formControlName="durationMin" />
+        <oj-form-field label="Duración" for="ed-duration">
+          <oj-duration-input inputId="ed-duration" formControlName="durationMin" />
         </oj-form-field>
 
-        <oj-form-field label="Congelación del marcador (min)" for="ed-freeze">
-          <input id="ed-freeze" class="oj-mono" type="number" min="0" formControlName="freezeMin" />
+        <oj-form-field label="Congelación del marcador" for="ed-freeze">
+          <oj-duration-input inputId="ed-freeze" formControlName="freezeMin" />
         </oj-form-field>
 
         <label class="editions__check">
@@ -92,7 +92,8 @@
         </label>
 
         <p class="editions__note">
-          Se crea en Borrador. Categorías, salones, lenguajes y staff se configuran después.
+          Se crea en Borrador con las categorías Básico, Intermedio y Avanzado y los salones CITA 1, CITA 2 y
+          CITA 3 (se cambian en Configuración). Lenguajes y staff se configuran después.
         </p>
 
         <div class="editions__actions">
@@ -105,3 +106,11 @@
     </oj-side-panel>
   }
 </div>
+
+<oj-confirm-dialog
+  title="Edición creada"
+  [message]="'¿Quieres configurar ' + (created()?.name ?? '') + ' ahora? Ya tiene Básico, Intermedio y Avanzado y los salones CITA 1 a 3; faltan lenguajes y staff.'"
+  confirmLabel="Configurar"
+  cancelLabel="Después"
+  (confirmed)="configureCreated()"
+/>

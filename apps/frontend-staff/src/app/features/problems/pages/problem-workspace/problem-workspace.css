@@ -107,6 +107,10 @@
   background: var(--oj-neutral-bg);
 }
 
+.pw__item--overview {
+  font-weight: 600;
+}
+
 .pw__letter {
   font-weight: 700;
 }

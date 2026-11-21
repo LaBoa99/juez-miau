@@ -36,6 +36,15 @@
 .tw__eval-card:disabled { cursor: default; opacity: 0.6; }
 .tw__eval-card-title { font-size: 13px; font-weight: 600; }
 .tw__eval-card-when { font-size: 12px; color: var(--oj-text-muted); }
+.tw__eval-card--static { cursor: default; }
+
+/* Bloques del formulario de evaluación: cómo se compara, revisión manual, límites */
+.tw__eval-block { display: flex; flex-direction: column; gap: var(--oj-space-sm); }
+.tw__eval-block + .tw__eval-block { padding-top: var(--oj-space-md); border-top: 1px solid var(--oj-border); }
+.tw__eval-h { margin: 0; font-size: 13px; font-weight: 600; }
+.tw__eval-check { display: flex; align-items: flex-start; gap: var(--oj-space-sm); font-size: 13px; cursor: pointer; }
+.tw__eval-check input { margin-top: 2px; }
+.tw__eval-check-hint { display: block; margin-top: 2px; font-size: 12px; line-height: 1.45; color: var(--oj-text-muted); }
 
 /* Salida esperada ya calculada */
 .tw__built { font-size: 13px; color: var(--oj-success); }

@@ -2,7 +2,6 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
   ICreateRoom,
-  IProjectorTokenResponse,
   IRoom,
   IRoomListItem,
   IRoomObserver,
@@ -40,13 +39,5 @@ export class RoomsService {
 
   removeObserver(roomId: number, staffUserId: number): Observable<void> {
     return this.http.delete<void>(`${API}/rooms/${roomId}/observers/${staffUserId}`);
-  }
-
-  generateToken(roomId: number): Observable<IProjectorTokenResponse> {
-    return this.http.post<IProjectorTokenResponse>(`${API}/rooms/${roomId}/board-token`, {});
-  }
-
-  revokeToken(roomId: number): Observable<void> {
-    return this.http.delete<void>(`${API}/rooms/${roomId}/board-token`);
   }
 }

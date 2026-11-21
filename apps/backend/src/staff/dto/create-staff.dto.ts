@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MaxLength, MinLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
 export class CreateStaffDto {
 
@@ -11,9 +11,11 @@ export class CreateStaffDto {
     @MaxLength(254)
     email: string;
 
+    // Sin contraseña se genera una, como a los equipos
+    @IsOptional()
     @IsString()
     @MinLength(8)
     @MaxLength(128)
-    password: string;
+    password?: string;
 
 }

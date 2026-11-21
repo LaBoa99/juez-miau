@@ -7,9 +7,19 @@ import { EditionFiltersDto } from '../dto/edition-filters.dto.js';
 import { ScheduleEditionDto } from '../dto/schedule-edition.dto.js';
 import { UpdateEditionDto } from '../dto/update-edition.dto.js';
 import { Edition } from '../entities/edition.entity.js';
+import { Category } from '../entities/category.entity.js';
+import { Room } from '../entities/room.entity.js';
 import { Problem } from '../../problems/entities/problem.entity.js';
 import { Team } from '../../teams/entities/team.entity.js';
 import { ACTIVE_EDITION_STATUSES } from '../../teams/services/teams.service.js';
+
+// Toda edición nueva arranca con los niveles y salones de siempre; se editan o borran en Configuración
+const DEFAULT_CATEGORIES = [
+    { code: 'BASICO', name: 'Básico' },
+    { code: 'INTERMEDIO', name: 'Intermedio' },
+    { code: 'AVANZADO', name: 'Avanzado' },
+]
+const DEFAULT_ROOMS = ['CITA 1', 'CITA 2', 'CITA 3']
 
 @Injectable()
 export class EditionsService {
@@ -32,6 +42,13 @@ export class EditionsService {
     }
 
     // La configuración de una edición (y sus categorías) solo se modifica antes de iniciar el concurso
+    // Qué problemas hay y cuáles entran al concurso: antes de iniciar o con el concurso en pausa
+    assertCanChangeProblems(edition: Edition): void {
+        if(edition.status === EditionStatus.RUNNING || edition.status === EditionStatus.FINISHED){
+            throw new ConflictException('edition #' + edition.id + ' problems can only change before it starts or while it is paused')
+        }
+    }
+
     assertIsEditable(edition: Edition): void {
         if(edition.status !== EditionStatus.DRAFT && edition.status !== EditionStatus.SCHEDULED){
             throw new ConflictException('edition #' + edition.id + ' can only be modified before it starts')
@@ -46,7 +63,9 @@ export class EditionsService {
             },
             relations: {
                 categories: true
-            }
+            },
+            // La más reciente primero; sus categorías en el orden de la edición
+            order: { id: 'DESC', categories: { sort_order: 'ASC', id: 'ASC' } }
         })
     }
 
@@ -77,7 +96,12 @@ export class EditionsService {
         if(dto.watch_usb_storage !== undefined) edition.watch_usb_storage = dto.watch_usb_storage
         if(dto.watch_network !== undefined) edition.watch_network = dto.watch_network
 
-        return this.editionRepository.save(edition)
+        return this.editionRepository.manager.transaction(async (manager) => {
+            const saved = await manager.save(edition)
+            await manager.insert(Category, DEFAULT_CATEGORIES.map((c, i) => ({ ...c, edition_id: saved.id, sort_order: i + 1 })))
+            await manager.insert(Room, DEFAULT_ROOMS.map((name) => ({ name, edition_id: saved.id })))
+            return saved
+        })
     }
 
     async update(id: number, dto: UpdateEditionDto): Promise<IEdition> {

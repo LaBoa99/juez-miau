@@ -156,6 +156,21 @@ export function normalizeValue(type: TypeRef, value: unknown, path: string, erro
     }
 }
 
+// Programa completo: cada string va en su propia línea, así que un salto de línea dentro de él descuadraría la
+// lectura en todos los lenguajes. En modo función sí se permite (el valor llega por JSON)
+export function findLineBreaks(signature: IProblemSignature, value: Record<string, unknown>): string[] {
+    const errors: string[] = []
+    const visit = (type: TypeRef, item: unknown, path: string) => {
+        if(type.type === 'string' && typeof item === 'string' && /[\r\n]/.test(item)){
+            errors.push(path + ': in a full program a string cannot contain line breaks')
+        } else if(type.type === 'array' && Array.isArray(item)){
+            item.forEach((element, index) => visit(type.items, element, path + '[' + index + ']'))
+        }
+    }
+    for(const param of signature.params) visit(param.type, value[param.name], 'input.' + param.name)
+    return errors
+}
+
 export function normalizeInput(signature: IProblemSignature, input: unknown): { value: Record<string, unknown>, errors: string[] } {
     const errors: string[] = []
     const value: Record<string, unknown> = {}

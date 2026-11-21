@@ -27,7 +27,7 @@ function imageRef(image: Image): string {
     return process.env[variable]?.trim() || fallback
 }
 
-const LANGUAGES: (Omit<Language, 'id' | 'active' | 'image_ref'> & { image: Image })[] = [
+export const LANGUAGES: (Omit<Language, 'id' | 'active' | 'image_ref'> & { image: Image })[] = [
     {
         code: 'c',
         image: 'gcc',

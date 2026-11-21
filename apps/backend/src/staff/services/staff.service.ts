@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { IsNull, Repository } from 'typeorm'
+import { IsNull, Repository, SelectQueryBuilder } from 'typeorm'
 import { StaffUser } from '../entities/staff-user.entity.js'
 import { RefreshToken } from '../../auth/entities/refresh-token.entity.js'
 import { ListStaffQueryDto } from '../dto/list-staff-query.dto.js'
@@ -32,13 +32,7 @@ export class StaffService {
     async findAll(query: ListStaffQueryDto) {
         const qb = this.staffRepo.createQueryBuilder('user').orderBy('user.name', 'ASC')
 
-        if (query.active !== undefined) {
-            qb.andWhere('user.active = :active', { active: query.active })
-        }
-        if (query.search) {
-            // email es citext; ILIKE hace la búsqueda insensible a mayúsculas en ambos campos
-            qb.andWhere('(user.name ILIKE :search OR user.email ILIKE :search)', { search: `%${escapeLike(query.search)}%` })
-        }
+        this.applyFilters(qb, query)
 
         const users = await qb.getMany()
         return users.map((u) => ({ id: u.id, name: u.name, email: u.email, active: u.active, isSuperadmin: u.is_superadmin, createdAt: u.created_at }))
@@ -50,7 +44,7 @@ export class StaffService {
         const user = await this.staffRepo.save(this.staffRepo.create({
             name: dto.name,
             email: dto.email,
-            password_hash: await this.passwordService.hashPassword(dto.password),
+            ...await this.passwordFields(dto.password ?? this.passwordService.generatePassword()),
         }))
 
         return this.toResponse(user)
@@ -67,7 +61,7 @@ export class StaffService {
             user.name = dto.name
         }
         if (dto.password !== undefined) {
-            user.password_hash = await this.passwordService.hashPassword(dto.password)
+            Object.assign(user, await this.passwordFields(dto.password))
         }
 
         await this.staffRepo.save(user)
@@ -80,6 +74,34 @@ export class StaffService {
         return this.toResponse(user)
     }
 
+    async resetPassword(id: number) {
+        const user = await this.getById(id)
+        Object.assign(user, await this.passwordFields(this.passwordService.generatePassword()))
+        await this.staffRepo.save(user)
+        await this.revokeRefreshTokens(id)
+        return this.toResponse(user)
+    }
+
+    // Credenciales en claro para el PDF. password es null si la cuenta no tiene copia cifrada
+    async getCredentials(query: ListStaffQueryDto, id?: number) {
+        const qb = this.staffRepo.createQueryBuilder('user').addSelect('user.password').orderBy('user.name', 'ASC')
+        if (id !== undefined) {
+            qb.where('user.id = :id', { id })
+        } else {
+            this.applyFilters(qb, query)
+        }
+
+        const users = await qb.getMany()
+        if (id !== undefined && users.length === 0) {
+            throw new NotFoundException('staff user not found #' + id)
+        }
+        return Promise.all(users.map(async (u) => ({
+            name: u.name,
+            email: u.email,
+            password: u.password ? await this.passwordService.decryptPassword(u.password) : null,
+        })))
+    }
+
     async deactivate(id: number) {
         const user = await this.getById(id)
 
@@ -88,6 +110,24 @@ export class StaffService {
         await this.revokeRefreshTokens(id)
 
         return { id: user.id, active: false }
+    }
+
+    private applyFilters(qb: SelectQueryBuilder<StaffUser>, query: ListStaffQueryDto): void {
+        if (query.active !== undefined) {
+            qb.andWhere('user.active = :active', { active: query.active })
+        }
+        if (query.search) {
+            // email es citext; ILIKE hace la búsqueda insensible a mayúsculas en ambos campos
+            qb.andWhere('(user.name ILIKE :search OR user.email ILIKE :search)', { search: `%${escapeLike(query.search)}%` })
+        }
+    }
+
+    // Igual que los equipos: cifrada (recuperable para el PDF) y hasheada (para el login)
+    private async passwordFields(password: string) {
+        return {
+            password: await this.passwordService.encryptPassword(password),
+            password_hash: await this.passwordService.hashPassword(password),
+        }
     }
 
     private async getById(id: number): Promise<StaffUser> {

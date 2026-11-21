@@ -13,7 +13,7 @@ import { checkerInput, checkerSignature, GENERATOR_SIGNATURE, generatorInput } f
 import { parseJsonPreservingIntegers, serializeInput } from '../generation/canonical-json.js'
 import { MAX_CASE_BYTES } from '../generation/limits.js'
 import { compactOrdinals } from '../generation/ordinals.js'
-import { normalizeInput } from '../generation/signature.js'
+import { findLineBreaks, normalizeInput } from '../generation/signature.js'
 import { Testset } from '../entities/testset.entity.js'
 import { TestCase } from '../entities/test-case.entity.js'
 import { TESTSET_BUILD_QUEUE, type TestsetBuildJob } from '../testsets.constants.js'
@@ -193,6 +193,7 @@ export class TestsetBuildProcessor extends WorkerHost implements OnApplicationBo
                 continue
             }
             const normalized = normalizeInput(signature, parsed)
+            if(normalized.errors.length === 0 && testset.compare_mode === CompareMode.PROGRAM) normalized.errors.push(...findLineBreaks(signature, normalized.value))
             if(normalized.errors.length > 0){
                 errors.push(label + ': ' + normalized.errors.slice(0, 3).join('; '))
                 continue

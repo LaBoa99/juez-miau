@@ -53,6 +53,11 @@ export class ProblemsService {
     return this.http.post<IPublishProblemResponse>(`${API}/problems/${id}/accept`, {});
   }
 
+  // Propuesto o en el concurso → borrador, para corregirlo (la firma solo cambia ahí); sin envíos
+  backToDraft(id: number, reason?: string): Observable<IPublishProblemResponse> {
+    return this.http.post<IPublishProblemResponse>(`${API}/problems/${id}/back-to-draft`, reason ? { reason } : {});
+  }
+
   disable(id: number): Observable<IPublishProblemResponse> {
     return this.http.post<IPublishProblemResponse>(`${API}/problems/${id}/disable`, {});
   }

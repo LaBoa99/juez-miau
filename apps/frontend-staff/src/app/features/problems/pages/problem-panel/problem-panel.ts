@@ -124,12 +124,15 @@ export class ProblemPanel {
 
   protected readonly published = computed(() => this.detail()?.status === ProblemStatus.PUBLISHED);
   protected readonly isDraft = computed(() => this.detail()?.status === ProblemStatus.DRAFT);
-  // Qué entra al concurso lo decide el admin de la edición (o superadmin), y solo antes de iniciarlo
+  // Qué entra al concurso lo decide el admin de la edición (o superadmin), antes de iniciarlo o en pausa
   protected readonly canDecide = computed(() => {
     const status = this.ctx.edition()?.status;
     const admin = this.auth.isSuperadmin() || this.auth.roleInEdition(this.editionId) === StaffRole.ADMIN;
-    return admin && (status === EditionStatus.DRAFT || status === EditionStatus.SCHEDULED);
+    return admin && (status === EditionStatus.DRAFT || status === EditionStatus.SCHEDULED || status === EditionStatus.PAUSED);
   });
+
+  // Mismas reglas que el backend: uno en el concurso solo lo borra el admin antes de iniciar; los demás, quien lo edita
+  protected readonly canDelete = computed(() => !this.isNew() && !!this.detail() && (this.published() ? this.canDecide() : this.canEdit()));
 
   // Testset vigente del problema (el que apunta currentTestsetId) y si ya está construido (READY).
   protected readonly currentTestset = computed(() => {
@@ -219,6 +222,11 @@ export class ProblemPanel {
 
   signatureText(sig: IProblemSignature): string {
     return signatureToString(sig);
+  }
+
+  // Programa completo: los parámetros en el orden en que los lee la plantilla
+  readOrder(sig: IProblemSignature): string {
+    return sig.params.map((param) => param.name).join(', ');
   }
 
   constructor() {
@@ -477,7 +485,9 @@ export class ProblemPanel {
     this.service[action](id).subscribe({
       next: () => {
         this.bus.load();
-        this.refreshDetail();
+        // Propuesto o aceptado ya no hay nada que hacer aquí: de vuelta a la tabla de problemas (ahorra un clic)
+        if (action === 'accept' || action === 'propose') this.backToList();
+        else this.refreshDetail();
       },
       error: (err) => this.actionError.set(message(err, DECIDE_ERROR[action])),
     });
@@ -489,10 +499,18 @@ export class ProblemPanel {
     if (!id) return;
     this.service.get(id).subscribe({
       next: (d) => {
-        if (this.detail()?.id === id) this.detail.set(d);
+        if (this.detail()?.id !== id) return;
+        // Cambió de estado desde dentro (p. ej. regresó a borrador): la tabla de problemas también
+        if (this.detail()?.status !== d.status) this.bus.load();
+        this.detail.set(d);
       },
       error: (err) => this.actionError.set(message(err, 'No se pudo recargar el problema.')),
     });
+  }
+
+  // A la tabla de todos los problemas (propuestos, en el concurso, borradores)
+  backToList(): void {
+    this.bus.navigate('.');
   }
 
   askDelete(): void {
@@ -510,6 +528,10 @@ export class ProblemPanel {
       },
       error: (err) => this.actionError.set(message(err, 'No se pudo eliminar.')),
     });
+  }
+
+  isFullProgram(id: number | null | undefined): boolean {
+    return this.categories().find((c) => c.id === id)?.full_program ?? false;
   }
 
   categoryName(id: number | null): string {

@@ -25,6 +25,36 @@
   height: 34px;
   padding: 0.375rem 0.875rem;
 }
+/* Solo ícono (acciones obvias en filas de tabla): cuadrado, mismo alto que su tamaño.
+   Siempre con aria-label y ojTooltip. */
+.oj-btn--icon {
+  padding: 0;
+}
+.oj-btn--icon.oj-btn--sm {
+  width: 28px;
+}
+.oj-btn--icon.oj-btn--md {
+  width: 34px;
+}
+/* Spinner que reemplaza al ícono mientras su acción está en curso */
+.oj-btn__spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--oj-border);
+  border-top-color: var(--oj-text);
+  border-radius: 50%;
+  animation: oj-btn-spin 0.8s linear infinite;
+}
+@keyframes oj-btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oj-btn__spinner {
+    animation-duration: 2.4s;
+  }
+}
 
 /* Variants */
 .oj-btn--primary {

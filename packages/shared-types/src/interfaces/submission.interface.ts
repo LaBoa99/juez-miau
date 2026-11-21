@@ -150,7 +150,7 @@ export interface IContestProblem extends IProblemPreview {
     id: number
     letter: string
     points: number
-    // Plantilla con la firma, por código de lenguaje
+    // Plantilla con la firma (o, con fullProgram, la que ya lee la entrada), por código de lenguaje
     starterCode: Record<string, string>
 }
 

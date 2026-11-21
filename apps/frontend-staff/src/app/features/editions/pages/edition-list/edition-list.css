@@ -27,7 +27,16 @@
 }
 
 .editions__name {
+  display: block;
   font-weight: 600;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Finalizadas: fondo gris y texto atenuado para que las activas resalten */
+.editions__row--finished td {
+  background: var(--oj-neutral-bg);
+  color: var(--oj-text-muted);
 }
 
 .editions__id {

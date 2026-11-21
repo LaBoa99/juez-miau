@@ -38,7 +38,7 @@
               </td>
               <td>
                 <div class="oj-actions oj-actions--end">
-                  <button ojButton variant="secondary" size="sm" type="button" (click)="openDetails(l)">Detalles</button>
+                  <button ojButton variant="secondary" size="sm" class="oj-btn--icon" type="button" [attr.aria-label]="'Ver detalles de ' + l.code" ojTooltip="Ver detalles" (click)="openDetails(l)"><oj-icon name="view" /></button>
                   @if (auth.isSuperadmin()) {
                     @if (l.active) {
                       <button ojButton variant="danger-outline" size="sm" type="button" [disabled]="togglingId() === l.id" (click)="toggleActive(l)">

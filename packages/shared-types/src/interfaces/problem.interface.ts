@@ -32,6 +32,8 @@ export interface IProblemListItem {
     categoryId: number
     status: ProblemStatus
     currentTestsetVersion: number | null
+    // Autor (null en problemas viejos): con el admin de la edición, quien lo puede eliminar
+    createdBy: number | null
 }
 
 export interface ICreateProblemResponse {
@@ -56,6 +58,8 @@ export interface IProblem {
     signature: IProblemSignature | null
     // El enunciado es el PDF (GET /problems/:id/statement-pdf) en vez de `statement`; son excluyentes
     hasStatementPdf: boolean
+    // Por qué lo regresaron a borrador; null si no aplica
+    draftReason: string | null
 }
 
 export interface IProblemTestset {
@@ -124,6 +128,9 @@ export interface IProblemPreview {
     inputFormat: string
     outputFormat: string
     signature: IProblemSignature | null
+    // Categoría especial (programa-completo.md): el equipo manda un programa completo que lee de stdin; los
+    // ejemplos vienen como texto (entrada por stdin y respuesta) en vez de JSON
+    fullProgram: boolean
     limits: {
         timeLimitMs: number
         memoryLimitMb: number

@@ -34,6 +34,11 @@ export class CreateTeamDto implements ICreateTeam {
     @IsPositive()
     category_id: number;
 
+    @IsOptional()
+    @IsInt()
+    @IsPositive()
+    room_id?: number;
+
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => CreateTeamMemberDto)

@@ -129,12 +129,16 @@ describe('Control de acceso: guard global, roles por edición y sesión de equip
       await api().get(`/api/v1/editions/${edition.id}`).set(bearer(res.body.accessToken)).expect(403);
     });
 
-    it('401 con contraseña incorrecta o si la edición no está activa', async () => {
+    it('401 con contraseña incorrecta; 403 con aviso si la edición no está activa', async () => {
       await api().post('/api/v1/auth/team/login').send({ username: team.username, password: 'mala', machineId: 'x' }).expect(401);
 
       await editionRepo.update(edition.id, { status: EditionStatus.DRAFT });
-      await teamLogin('maquina-a').expect(401);
-      await editionRepo.update(edition.id, { status: EditionStatus.RUNNING });
+      try {
+        const res = await teamLogin('maquina-a').expect(403);
+        expect(res.body.message).toBe('La edición todavía no está abierta');
+      } finally {
+        await editionRepo.update(edition.id, { status: EditionStatus.RUNNING });
+      }
     });
 
     it('un login nuevo invalida el token anterior', async () => {

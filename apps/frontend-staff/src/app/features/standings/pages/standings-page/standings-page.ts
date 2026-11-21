@@ -50,17 +50,16 @@ export class StandingsPage {
 
   protected readonly categories = computed(() => this.data()?.categories ?? []);
   // Filtro por salón: cada fila del marcador trae el salón del equipo
-  protected readonly rooms = signal<{ id: number; name: string; categoryId: number | null }[]>([]);
+  protected readonly rooms = signal<{ id: number; name: string }[]>([]);
   protected readonly roomId = signal<number | null>(null);
 
-  // Un solo selector (salón = nivel): "Todos los salones" muestra cada categoría en su tabla; un
-  // salón muestra solo su categoría (o todas, si el salón no tiene categoría) con sus equipos
+  // "Todos los salones" muestra cada categoría en su tabla. Un salón muestra una tabla por cada
+  // categoría que tiene equipos ahí (manda la categoría del equipo; el salón es solo el lugar)
   protected readonly shown = computed<IStandingsCategory[]>(() => {
     const roomId = this.roomId();
     if (roomId == null) return this.categories();
-    const categoryId = this.rooms().find((r) => r.id === roomId)?.categoryId ?? null;
     return this.categories()
-      .filter((c) => categoryId == null || c.categoryId === categoryId)
+      .filter((c) => c.rows.some((r) => r.roomId === roomId))
       .map((c) => filterByRoom(c, roomId));
   });
   protected readonly roomEmpty = computed(() => this.shown().every((c) => c.rows.length === 0));
@@ -80,7 +79,7 @@ export class StandingsPage {
   constructor() {
     this.load();
     this.roomsService.list(this.editionId).subscribe({
-      next: (rooms) => this.rooms.set(rooms.map((r) => ({ id: r.id, name: r.name, categoryId: r.category_id ?? null }))),
+      next: (rooms) => this.rooms.set(rooms.map((r) => ({ id: r.id, name: r.name }))),
       error: () => {},
     });
     this.clockService.get(this.editionId).subscribe({ next: (c) => this.clock.set(c), error: () => {} });

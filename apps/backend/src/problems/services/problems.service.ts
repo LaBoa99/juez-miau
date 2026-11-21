@@ -1,4 +1,6 @@
 import {
+    CompareMode,
+    EditionStatus,
     ProblemStatus,
     StaffRole,
     TestCaseVisibility,
@@ -9,6 +11,7 @@ import {
     type IProblemListItem,
     type IProblemPreview,
     type IProblemSample,
+    type IProblemSignature,
     type IPublishProblemResponse,
 } from '@concurso/shared-types';
 import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
@@ -27,6 +30,9 @@ import { ProblemFiltersDto } from '../dto/problem-filters.dto.js';
 import { UpdateProblemDto } from '../dto/update-problem.dto.js';
 import { Problem } from '../entities/problem.entity.js';
 import { StaffUser } from '../../staff/entities/staff-user.entity.js';
+import { programInput, programOutput } from '../../judge/full-program.js';
+import { Submission } from '../../submissions/entities/submission.entity.js';
+import { nextLetter } from '../letters.js';
 
 @Injectable()
 export class ProblemsService {
@@ -94,15 +100,16 @@ export class ProblemsService {
             categoryId: problem.category_id,
             status: problem.status,
             currentTestsetVersion: problem.current_testset?.version ?? null,
+            createdBy: problem.created_by,
         }))
     }
 
     async create(editionId: number, dto: CreateProblemDto, staffUserId: number): Promise<ICreateProblemResponse> {
         const edition = await this.editionsService.getById(editionId)
         await this.editionStaffService.assertCanJudge(staffUserId, editionId)
-        this.editionsService.assertIsEditable(edition)
+        this.editionsService.assertCanChangeProblems(edition)
 
-        // Sin letra: se asigna al iniciar el concurso, solo a los problemas aceptados
+        // Sin letra: se asigna al iniciar el concurso (o al aceptarlo en pausa), solo a los problemas aceptados
         const category = await this.categoriesService.getByIdForEdition(dto.categoryId, editionId)
 
         // El problema y su testset v1 vacío nacen juntos (RF-17)
@@ -122,6 +129,8 @@ export class ProblemsService {
                 problem_id: problem.id,
                 version: 1,
                 author_id: staffUserId,
+                // La categoría especial fija el modo (programa-completo.md §1)
+                compare_mode: category.full_program ? CompareMode.PROGRAM : CompareMode.EXACT,
             }))
 
             await manager.update(Problem, problem.id, { current_testset_id: testset.id })
@@ -203,6 +212,7 @@ export class ProblemsService {
     // Sin revisar permisos: también lo usa la vista del equipo durante el concurso
     async buildPreview(problem: Problem): Promise<IProblemPreview> {
         const testset = await this.findCurrentTestset(problem)
+        const fullProgram = testset?.compare_mode === CompareMode.PROGRAM
 
         return {
             title: problem.title,
@@ -211,16 +221,18 @@ export class ProblemsService {
             inputFormat: problem.input_format,
             outputFormat: problem.output_format,
             signature: problem.signature,
+            fullProgram,
             limits: testset && {
                 timeLimitMs: testset.time_limit_ms,
                 memoryLimitMb: testset.memory_limit_mb,
             },
-            samples: testset ? await this.findSamples(testset) : [],
+            samples: testset ? await this.findSamples(testset, fullProgram ? problem.signature : null) : [],
         }
     }
 
-    // Casos públicos que ya tienen salida (calculada por el build), en orden
-    private async findSamples(testset: Testset): Promise<IProblemSample[]> {
+    // Casos públicos que ya tienen salida (calculada por el build), en orden. Con `asText` (programa completo)
+    // van como el texto que lee y escribe el programa
+    private async findSamples(testset: Testset, asText: IProblemSignature | null): Promise<IProblemSample[]> {
         const cases = await this.testCaseRepository.find({
             where: { testset_id: testset.id, visibility: TestCaseVisibility.PUBLIC, output_sha: Not(IsNull()) },
             order: { ordinal: 'ASC' },
@@ -230,7 +242,8 @@ export class ProblemsService {
         return cases.flatMap((testCase) => {
             const input = contents.get(testCase.input_sha)
             const output = contents.get(testCase.output_sha!)
-            return input !== undefined && output !== undefined ? [{ input, output }] : []
+            if(input === undefined || output === undefined) return []
+            return [asText ? { input: programInput(asText, input), output: programOutput(asText.returns, output) } : { input, output }]
         })
     }
 
@@ -241,6 +254,7 @@ export class ProblemsService {
         if(problem.status !== ProblemStatus.DRAFT) return { status: problem.status }
 
         await this.assertPublishable(problem)
+        problem.draft_reason = null
         return this.setStatus(problem, ProblemStatus.READY)
     }
 
@@ -250,7 +264,33 @@ export class ProblemsService {
         if(problem.status === ProblemStatus.PUBLISHED) return { status: problem.status }
 
         await this.assertPublishable(problem)
+        // Con el concurso en pausa ya se asignaron las letras: toma la siguiente de su categoría (si lo quitaron y
+        // vuelve, conserva la suya)
+        const edition = await this.editionsService.getById(problem.edition_id)
+        if(edition.status === EditionStatus.PAUSED && problem.letter === null){
+            const used = await this.problemRepository.find({
+                where: { edition_id: problem.edition_id, category_id: problem.category_id, letter: Not(IsNull()) },
+                select: { letter: true },
+            })
+            problem.letter = nextLetter(used.map((other) => other.letter!))
+        }
+        problem.draft_reason = null
         return this.setStatus(problem, ProblemStatus.PUBLISHED)
+    }
+
+    // Lo regresa a borrador para corregirlo (la firma solo cambia ahí): ready → draft, o published → draft con las
+    // mismas reglas que quitarlo del concurso. Con envíos no: se juzgaron con la firma actual
+    async backToDraft(id: number, staffUserId: number, reason?: string): Promise<IPublishProblemResponse> {
+        const current = await this.getById(id)
+        const problem = current.status === ProblemStatus.PUBLISHED
+            ? await this.getByIdForEditionAdmin(id, staffUserId)
+            : await this.getByIdForAuthor(id, staffUserId)
+        if(problem.status === ProblemStatus.DRAFT) return { status: problem.status }
+        if(await this.dataSource.getRepository(Submission).existsBy({ problem_id: id })){
+            throw new ConflictException('problem #' + id + ' has submissions; it can no longer go back to draft')
+        }
+        problem.draft_reason = reason?.trim() || null
+        return this.setStatus(problem, ProblemStatus.DRAFT)
     }
 
     // Lo saca del concurso sin borrarlo: published → ready
@@ -264,8 +304,8 @@ export class ProblemsService {
     private async getByIdForEditionAdmin(id: number, staffUserId: number): Promise<Problem> {
         const problem = await this.getById(id)
         await this.editionStaffService.assertRole(staffUserId, problem.edition_id, [StaffRole.ADMIN])
-        // Qué entra al concurso se decide antes de iniciarlo; las letras se asignan al iniciar
-        this.editionsService.assertIsEditable(await this.editionsService.getById(problem.edition_id))
+        // Qué entra al concurso se decide antes de iniciarlo o con el concurso en pausa
+        this.editionsService.assertCanChangeProblems(await this.editionsService.getById(problem.edition_id))
         return problem
     }
 
@@ -280,11 +320,17 @@ export class ProblemsService {
         return { status }
     }
 
+    // Uno que está en el concurso se borra de una vez (sin quitarlo antes), con las mismas reglas que quitarlo:
+    // admin de la edición, antes de iniciar o en pausa. Con envíos no se borra (se perderían): se quita del concurso
     async remove(id: number, staffUserId: number): Promise<void> {
-        const problem = await this.getByIdForAuthor(id, staffUserId)
-
+        const problem = await this.getById(id)
         if(problem.status === ProblemStatus.PUBLISHED){
-            throw new ConflictException('problem #' + id + ' is in the contest; take it out before deleting it')
+            await this.getByIdForEditionAdmin(id, staffUserId)
+        } else {
+            await this.getByIdForAuthor(id, staffUserId)
+        }
+        if(await this.dataSource.getRepository(Submission).existsBy({ problem_id: id })){
+            throw new ConflictException('problem #' + id + ' has submissions; take it out of the contest instead of deleting it')
         }
 
         await this.problemRepository.delete([ id ])

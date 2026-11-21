@@ -6,12 +6,13 @@ import { catchError } from 'rxjs/operators';
 import {
   ICategory,
   IEditionStaff,
-  IProjectorTokenResponse,
   IRoomListItem,
   IStaffListItem,
   StaffRole,
 } from '@concurso/shared-types';
 import { ButtonDirective } from '../../../shared/ui/button.directive';
+import { Icon } from '../../../shared/ui/icon.component';
+import { TooltipDirective } from '../../../shared/ui/tooltip.directive';
 import { FormField } from '../../../shared/ui/form-field.component';
 import { Alert } from '../../../shared/ui/alert.component';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog.component';
@@ -26,23 +27,23 @@ import { findEditionId, message } from '../tab-utils';
 @Component({
   selector: 'oj-rooms-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, FormField, Alert, ConfirmDialog, Modal, EmptyState],
+  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, Icon, TooltipDirective, FormField, Alert, ConfirmDialog, Modal, EmptyState],
   templateUrl: './rooms-tab.html',
   styleUrls: ['../tab.css', './rooms-tab.css'],
 })
 export class RoomsTab {
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(RoomsService);
-  private readonly categoriesService = inject(CategoriesService);
   private readonly staffService = inject(EditionStaffService);
+  private readonly categoriesService = inject(CategoriesService);
   private readonly ctx = inject(EditionContext);
   private readonly fb = inject(FormBuilder);
 
   protected readonly editionId = findEditionId(this.route);
 
   protected readonly rows = signal<IRoomListItem[]>([]);
-  protected readonly categories = signal<ICategory[]>([]);
   protected readonly editionStaff = signal<IEditionStaff[]>([]);
+  protected readonly categories = signal<ICategory[]>([]);
   private readonly staffNames = signal<Map<number, string>>(new Map());
 
   protected readonly loading = signal(false);
@@ -58,9 +59,9 @@ export class RoomsTab {
   protected readonly saving = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly addObs = signal<Set<number>>(new Set());
+  protected readonly addCats = signal<Set<number>>(new Set());
   protected readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(255)]],
-    category_id: [null as number | null],
   });
 
   // ─── Editar (modal) ───
@@ -69,16 +70,10 @@ export class RoomsTab {
   protected readonly editSaving = signal(false);
   protected readonly editError = signal<string | null>(null);
   protected readonly editObs = signal<Set<number>>(new Set());
+  protected readonly editCats = signal<Set<number>>(new Set());
   protected readonly editForm = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(255)]],
-    category_id: [null as number | null],
   });
-
-  // ─── Token de proyector (modal) ───
-  private readonly tokenModal = viewChild.required(Modal);
-  protected readonly token = signal<IProjectorTokenResponse | null>(null);
-  protected readonly tokenRoom = signal<IRoomListItem | null>(null);
-  protected readonly copied = signal(false);
 
   // ─── Confirmaciones ───
   private readonly deleteDialog = viewChild.required<ConfirmDialog>('deleteDlg');
@@ -105,8 +100,8 @@ export class RoomsTab {
         this.loading.set(false);
       },
     });
-    this.categoriesService.list(this.editionId).subscribe({ next: (c) => this.categories.set(c), error: () => {} });
     this.staffService.list(this.editionId).subscribe({ next: (s) => this.editionStaff.set(s), error: () => {} });
+    this.categoriesService.list(this.editionId).subscribe({ next: (c) => this.categories.set(c), error: () => {} });
     // Nombres (GET /staff es superadmin-only): si falla, se muestran los #id.
     this.staffService.staffUsers().subscribe({
       next: (users: IStaffListItem[]) => this.staffNames.set(new Map(users.map((u) => [u.id, u.name]))),
@@ -114,13 +109,12 @@ export class RoomsTab {
     });
   }
 
-  categoryName(id: number | null): string {
-    if (id == null) return '—';
-    return this.categories().find((c) => c.id === id)?.name ?? '#' + id;
-  }
-
   staffName(id: number): string {
     return this.staffNames().get(id) ?? '#' + id;
+  }
+
+  categoryCodes(room: IRoomListItem): string {
+    return room.categories.map((c) => c.code).join(', ');
   }
 
   // ─── Alta ───
@@ -128,22 +122,27 @@ export class RoomsTab {
     this.addObs.update((s) => toggle(s, id, checked));
   }
 
+  toggleAddCat(id: number, checked: boolean): void {
+    this.addCats.update((s) => toggle(s, id, checked));
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
-    const { name, category_id } = this.form.getRawValue();
+    const { name } = this.form.getRawValue();
     this.saving.set(true);
     this.formError.set(null);
     this.obsWarning.set(null);
-    this.service.create(this.editionId, { name, category_id: category_id ?? null }).subscribe({
+    this.service.create(this.editionId, { name, category_ids: [...this.addCats()] }).subscribe({
       next: (room) => {
         this.applyObservers(room.id, [...this.addObs()], []).subscribe((failed) => {
           this.saving.set(false);
           this.warnFailures(failed);
-          this.form.reset({ name: '', category_id: null });
+          this.form.reset({ name: '' });
           this.addObs.set(new Set());
+          this.addCats.set(new Set());
           this.load();
         });
       },
@@ -159,13 +158,18 @@ export class RoomsTab {
     this.editingRoom = room;
     this.editError.set(null);
     this.obsWarning.set(null);
-    this.editForm.reset({ name: room.name, category_id: room.category_id });
+    this.editForm.reset({ name: room.name });
     this.editObs.set(new Set(room.observers.map((o) => o.staff_user_id)));
+    this.editCats.set(new Set(room.categories.map((c) => c.id)));
     this.editModal().open();
   }
 
   toggleEdit(id: number, checked: boolean): void {
     this.editObs.update((s) => toggle(s, id, checked));
+  }
+
+  toggleEditCat(id: number, checked: boolean): void {
+    this.editCats.update((s) => toggle(s, id, checked));
   }
 
   submitEdit(): void {
@@ -174,11 +178,11 @@ export class RoomsTab {
       this.editForm.markAllAsTouched();
       return;
     }
-    const { name, category_id } = this.editForm.getRawValue();
+    const { name } = this.editForm.getRawValue();
     this.editSaving.set(true);
     this.editError.set(null);
     this.obsWarning.set(null);
-    this.service.update(room.id, { name, category_id: category_id ?? null }).subscribe({
+    this.service.update(room.id, { name, category_ids: [...this.editCats()] }).subscribe({
       next: () => {
         const current = room.observers.map((o) => o.staff_user_id);
         this.applyObservers(room.id, [...this.editObs()], current).subscribe((failed) => {
@@ -256,32 +260,6 @@ export class RoomsTab {
     this.service.remove(room.id).subscribe({
       next: () => this.load(),
       error: (err) => this.formError.set(message(err, 'No se pudo eliminar el salón.')),
-    });
-  }
-
-  // ─── Token de proyector ───
-  openToken(room: IRoomListItem): void {
-    this.tokenRoom.set(room);
-    this.token.set(null);
-    this.copied.set(false);
-    this.tokenModal().open();
-    this.service.generateToken(room.id).subscribe({
-      next: (res) => this.token.set(res),
-      error: (err) => this.obsWarning.set(message(err, 'No se pudo generar el token.')),
-    });
-  }
-
-  copyUrl(): void {
-    const url = this.token()?.url;
-    if (url) navigator.clipboard?.writeText(url).then(() => this.copied.set(true));
-  }
-
-  revokeToken(): void {
-    const room = this.tokenRoom();
-    if (!room) return;
-    this.service.revokeToken(room.id).subscribe({
-      next: () => this.tokenModal().close(),
-      error: (err) => this.obsWarning.set(message(err, 'No se pudo revocar el token.')),
     });
   }
 }

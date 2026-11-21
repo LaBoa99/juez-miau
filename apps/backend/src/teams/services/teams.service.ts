@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Team } from '../entities/team.entity.js';
 import { TeamMember } from '../entities/team-member.entity.js';
@@ -71,8 +71,7 @@ export class TeamsService {
 
         team.edition = edition
         team.category = category
-        // Sin salón indicado: si la categoría tiene un solo salón en la edición, ese es el suyo
-        team.room = room ?? await this.onlyRoomOf(edition.id, category.id, options.manager)
+        team.room = room ?? await this.roomFor(edition.id, category.id, options.manager)
         team.members = []
 
         await repository.save(team)
@@ -90,10 +89,9 @@ export class TeamsService {
     async replaceRoster(teamId: number, category: Category, members: CreateTeamDto['members'], manager: EntityManager): Promise<Team> {
         const repository = manager.getRepository(Team)
         const team = await repository.findOneByOrFail({ id: teamId })
-        if(team.category_id !== category.id || team.room_id === null){
-            team.category_id = category.id
-            team.room_id = (await this.onlyRoomOf(team.edition_id, category.id, manager))?.id ?? null
-        }
+        // El salón solo se rellena si no tenía (ya pudo moverse a mano)
+        team.category_id = category.id
+        team.room_id ??= (await this.roomFor(team.edition_id, category.id, manager))?.id ?? null
         await repository.save(team)
 
         await manager.getRepository(TeamMember).delete({ team_id: team.id })
@@ -104,9 +102,25 @@ export class TeamsService {
         return team
     }
 
-    private async onlyRoomOf(editionId: number, categoryId: number, manager?: EntityManager): Promise<Room | null> {
-        const rooms = await (manager ?? this._dataSource.manager).getRepository(Room).find({ where: { edition_id: editionId, category_id: categoryId }, take: 2 })
-        return rooms.length === 1 ? rooms[0] : null
+    // Salón propuesto para un equipo sin salón: el único de la edición; si hay varios, el de su categoría con
+    // menos equipos (así la importación reparte parejo); sin salón si ninguno tiene su categoría
+    private async roomFor(editionId: number, categoryId: number, manager?: EntityManager): Promise<Room | null> {
+        const m = manager ?? this._dataSource.manager
+        const rooms = await m.getRepository(Room).find({ where: { edition_id: editionId }, relations: { categories: true }, order: { id: 'ASC' } })
+        if(rooms.length === 1) return rooms[0]
+
+        const candidates = rooms.filter((room) => room.categories.some((c) => c.id === categoryId))
+        if(candidates.length <= 1) return candidates[0] ?? null
+
+        const counts = await m.getRepository(Team).createQueryBuilder('team')
+            .select('team.room_id', 'room_id')
+            .addSelect('COUNT(*)', 'n')
+            .where('team.room_id IN (:...ids)', { ids: candidates.map((room) => room.id) })
+            .groupBy('team.room_id')
+            .getRawMany<{ room_id: number, n: string }>()
+        const teamsIn = new Map(counts.map((c) => [Number(c.room_id), Number(c.n)]))
+        // Empate: el primero creado
+        return candidates.reduce((best, room) => (teamsIn.get(room.id) ?? 0) < (teamsIn.get(best.id) ?? 0) ? room : best)
     }
 
     // Usuario y contraseña en claro para entregar la credencial al equipo.
@@ -169,13 +183,20 @@ export class TeamsService {
     async update(id: number, body: UpdateTeamDto) {
         const team = await this.getById(id)
 
-        // El salón es el nivel del equipo: debe ser de su edición y, si el salón tiene categoría, de la misma
+        // El salón es solo el lugar físico (puede tener equipos de varias categorías): basta con que sea de su edición
         if(body.room_id !== undefined){
             const room = await this._dataSource.getRepository(Room).findOneBy({ id: body.room_id, edition_id: team.edition_id })
             if(!room) throw new NotFoundException('room #' + body.room_id + ' not found in this edition')
-            if(room.category_id !== null && room.category_id !== team.category_id){
-                throw new BadRequestException('room #' + room.id + ' belongs to another category')
+        }
+
+        // Cambiar de categoría mueve al equipo de marcador: solo antes de programar la edición
+        if(body.category_id !== undefined && body.category_id !== team.category_id){
+            const edition = await this._dataSource.getRepository(Edition).findOneByOrFail({ id: team.edition_id })
+            if(edition.status !== EditionStatus.DRAFT){
+                throw new ConflictException('team category can only change while the edition is a draft')
             }
+            const category = await this._dataSource.getRepository(Category).findOneBy({ id: body.category_id, edition_id: team.edition_id })
+            if(!category) throw new NotFoundException('category #' + body.category_id + ' not found in this edition')
         }
 
         const queryRunner = this._dataSource.createQueryRunner()
@@ -183,7 +204,7 @@ export class TeamsService {
         await queryRunner.startTransaction()
 
         try {
-            Object.assign(team, { name: body.name ?? team.name, room_id: body.room_id ?? team.room_id })
+            Object.assign(team, { name: body.name ?? team.name, room_id: body.room_id ?? team.room_id, category_id: body.category_id ?? team.category_id })
             await queryRunner.manager.save(team)
 
             // update members

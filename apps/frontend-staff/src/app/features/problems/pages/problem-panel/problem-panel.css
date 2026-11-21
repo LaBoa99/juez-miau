@@ -18,6 +18,13 @@
   font-weight: 600;
 }
 
+.pp__header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--oj-space-md);
+  min-width: 0;
+}
+
 .pp__header-right {
   display: flex;
   align-items: center;

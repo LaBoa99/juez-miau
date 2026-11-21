@@ -10,8 +10,8 @@
       <p class="cfg__meta">
         Inicio
         <span class="oj-mono">{{ e.scheduled_start ? (e.scheduled_start | date: 'yyyy-MM-dd HH:mm') : '—' }}</span>
-        · Duración <span class="oj-mono">{{ e.duration_ms ? msToMin(e.duration_ms) + ' min' : '—' }}</span>
-        · Congelamiento <span class="oj-mono">{{ e.freeze_duration_ms ? msToMin(e.freeze_duration_ms) + ' min' : '—' }}</span>
+        · Duración <span class="oj-mono">{{ formatDuration(e.duration_ms) }}</span>
+        · Congelamiento <span class="oj-mono">{{ formatDuration(e.freeze_duration_ms) }}</span>
       </p>
       @if (isScheduled() && e.scheduled_start) {
         <p class="cfg__meta">
@@ -60,11 +60,11 @@
         <input id="edit-name" type="text" formControlName="name" />
       </oj-form-field>
       <div class="cfg__row">
-        <oj-form-field label="Duración (min)" for="edit-duration">
-          <input id="edit-duration" class="oj-mono" type="number" min="1" formControlName="durationMin" />
+        <oj-form-field label="Duración" for="edit-duration">
+          <oj-duration-input inputId="edit-duration" formControlName="durationMin" />
         </oj-form-field>
-        <oj-form-field label="Congelamiento (min)" for="edit-freeze">
-          <input id="edit-freeze" class="oj-mono" type="number" min="0" formControlName="freezeMin" />
+        <oj-form-field label="Congelamiento" for="edit-freeze">
+          <oj-duration-input inputId="edit-freeze" formControlName="freezeMin" />
         </oj-form-field>
       </div>
     </form>
@@ -97,8 +97,8 @@
             <input id="sched-start" class="oj-mono" type="datetime-local" [min]="minStart()" formControlName="start" />
           </oj-form-field>
           <p class="cfg__hint">
-            Duración {{ e.duration_ms ? msToMin(e.duration_ms) : '—' }} min · congela
-            {{ e.freeze_duration_ms ? msToMin(e.freeze_duration_ms) : '—' }} min antes (se cambian en Editar datos)
+            Duración {{ formatDuration(e.duration_ms) }} · congela
+            {{ formatDuration(e.freeze_duration_ms) }} antes (se cambian en Editar datos)
           </p>
         </div>
 

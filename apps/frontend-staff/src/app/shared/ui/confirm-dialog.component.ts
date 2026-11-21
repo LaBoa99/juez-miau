@@ -10,7 +10,7 @@ import { Modal } from './modal.component';
     <oj-modal #modal [title]="title()" size="sm" [closeOnBackdrop]="false" (closed)="onClosed()">
       <p class="oj-cd__message">{{ message() }}</p>
       <div footer>
-        <button ojButton variant="secondary" (click)="cancel()">Cancelar</button>
+        <button ojButton variant="secondary" (click)="cancel()">{{ cancelLabel() }}</button>
         <button ojButton [variant]="danger() ? 'danger' : 'primary'" (click)="confirm()">
           {{ confirmLabel() }}
         </button>
@@ -31,6 +31,7 @@ export class ConfirmDialog {
   readonly title = input<string>();
   readonly message = input<string>();
   readonly confirmLabel = input('Eliminar');
+  readonly cancelLabel = input('Cancelar');
   readonly danger = input(false);
 
   readonly confirmed = output<void>();

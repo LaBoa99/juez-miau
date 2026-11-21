@@ -110,7 +110,7 @@ el gateway de tiempo real desconecta los sockets que seguían abiertos con la se
 | Autenticación | **JWT** (`@nestjs/jwt`, access 15 min) + refresh token en cookie httpOnly; hashing con **bcrypt**; cifrado reversible de contraseñas de equipo (scrypt, `PASSWORD_ADMIN_MASTERKEY`) |
 | Validación / serialización | **class-validator** + **class-transformer** (`ValidationPipe` global whitelist) |
 | Tiempo real | **WebSocket** vía `@nestjs/websockets` + `@nestjs/platform-socket.io` |
-| Utilidades | **csv-parse** + **multer** (import de equipos por CSV), **qrcode** (URL de proyector) |
+| Utilidades | **csv-parse** + **multer** (import de equipos por CSV) |
 | Docs API | **Swagger** (`@nestjs/swagger`) |
 | Config | `@nestjs/config` (`.env`, ver `apps/backend/.env.example`) |
 | Pruebas | **Vitest** (unit + `test:e2e` con Supertest) |

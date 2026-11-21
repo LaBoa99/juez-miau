@@ -94,18 +94,12 @@
             <td>
               <div class="teams__row-actions">
                 @if (canEdit()) {
-                  <button
-                    ojButton
-                    variant="secondary"
-                    size="sm"
-                    type="button"
-                    [disabled]="pdfBusy() !== null"
-                    (click)="downloadOne(t)"
-                  >
-                    {{ pdfBusy() === t.id ? 'Generando…' : 'Descargar PDF' }}
+                  <button ojButton variant="secondary" size="sm" class="oj-btn--icon" type="button"
+                          [attr.aria-label]="'Descargar PDF de credenciales de ' + t.name" ojTooltip="Descargar PDF de credenciales"
+                          [attr.aria-busy]="pdfBusy() === t.id" [disabled]="pdfBusy() !== null" (click)="downloadOne(t)">
+                    @if (pdfBusy() === t.id) { <span class="oj-btn__spinner" aria-hidden="true"></span> } @else { <oj-icon name="download" /> }
                   </button>
                 }
-                <button ojButton variant="secondary" size="sm" type="button" (click)="openEdit(t)">Editar</button>
                 <button ojButton variant="secondary" size="sm" type="button" (click)="askReset(t)">Nueva contraseña</button>
                 <button ojButton variant="secondary" size="sm" type="button" (click)="askCloseSession(t)">Cerrar sesión</button>
                 @if (canEdit()) {
@@ -113,7 +107,8 @@
                     {{ t.suspended ? 'Reactivar' : 'Suspender' }}
                   </button>
                 }
-                <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDelete(t)">Eliminar</button>
+                <button ojButton variant="secondary" size="sm" class="oj-btn--icon" type="button" [attr.aria-label]="'Editar equipo ' + t.name" ojTooltip="Editar" (click)="openEdit(t)"><oj-icon name="edit" /></button>
+                <button ojButton variant="danger-outline" size="sm" class="oj-btn--icon" type="button" [attr.aria-label]="'Eliminar equipo ' + t.name" ojTooltip="Eliminar" (click)="askDelete(t)"><oj-icon name="delete" /></button>
               </div>
             </td>
           </tr>
@@ -136,13 +131,20 @@
       @if (editError()) {
         <oj-alert tone="error">{{ editError() }}</oj-alert>
       }
-      <oj-form-field label="Nombre" for="team-name">
+      <oj-form-field label="Nombre del equipo" for="team-name">
         <input id="team-name" type="text" formControlName="name" />
+      </oj-form-field>
+      <oj-form-field label="Categoría" for="team-category">
+        <select id="team-category" formControlName="categoryId" aria-describedby="team-category-hint">
+          @for (c of categories(); track c.id) {
+            <option [ngValue]="c.id">{{ c.name }}</option>
+          }
+        </select>
       </oj-form-field>
       <oj-form-field label="Salón" for="team-room">
         <select id="team-room" formControlName="roomId">
           <option [ngValue]="null" disabled>Sin salón</option>
-          @for (r of editRooms(); track r.id) {
+          @for (r of allRooms(); track r.id) {
             <option [ngValue]="r.id">{{ r.name }}</option>
           }
         </select>
@@ -164,7 +166,9 @@
         }
       </div>
 
-      <p class="teams__hint">La categoría no se cambia aquí.</p>
+      <p class="teams__hint" id="team-category-hint">
+        {{ canChangeCategory() ? 'La categoría solo se puede cambiar mientras la edición está en borrador.' : 'La edición ya no está en borrador: la categoría ya no se puede cambiar.' }}
+      </p>
     </form>
   <div footer>
     <button ojButton variant="secondary" type="button" (click)="editModal.close()">Cancelar</button>
@@ -189,6 +193,15 @@
         <option [ngValue]="null" disabled>Elige una categoría</option>
         @for (c of categories(); track c.id) {
           <option [ngValue]="c.id">{{ c.name }}</option>
+        }
+      </select>
+    </oj-form-field>
+
+    <oj-form-field label="Salón" for="add-team-room">
+      <select id="add-team-room" formControlName="roomId">
+        <option [ngValue]="null">Automático (según la categoría)</option>
+        @for (r of allRooms(); track r.id) {
+          <option [ngValue]="r.id">{{ r.name }}</option>
         }
       </select>
     </oj-form-field>

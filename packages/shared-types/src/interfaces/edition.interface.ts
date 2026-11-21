@@ -28,12 +28,13 @@ export interface ICategory {
     code: string
     name: string
     sort_order: number
+    // Categoría especial: sus problemas se evalúan como programa completo (programa-completo.md)
+    full_program: boolean
 }
 
 export interface IRoom {
     id: number
     edition_id: number
-    category_id: number | null
     name: string
 }
 
@@ -61,11 +62,11 @@ export interface IScheduleEdition {
     scheduled_start: string | Date // ISO DATE
 }
 
-export type ICreateCategory = Pick<ICategory, 'name' | 'code'>
+export type ICreateCategory = Pick<ICategory, 'name' | 'code'> & Partial<Pick<ICategory, 'full_program'>>
 
 export type IUpdateCategory = Partial<ICreateCategory>
 
-export type ICreateRoom = Pick<IRoom, 'name'> & Partial<Pick<IRoom, 'category_id'>>
+export type ICreateRoom = Pick<IRoom, 'name'> & { category_ids?: number[] }
 
 export type IUpdateRoom = Partial<ICreateRoom>
 
@@ -89,15 +90,9 @@ export type IEditionScheduleResponse = Pick<IEdition, 'id' | 'status' | 'schedul
 
 export interface IRoomListItem extends IRoom {
     observers: IRoomObserver[]
+    categories: { id: number; code: string; name: string }[]
 }
 
 export interface IEditionStaffListItem extends IEditionStaff {
     name: string
-}
-
-// El token en texto plano solo se devuelve al generarlo; en BD se guarda su hash
-export interface IProjectorTokenResponse {
-    token: string
-    url: string
-    qr_png: string // base64
 }

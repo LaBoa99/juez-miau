@@ -57,6 +57,10 @@ export class Problem {
     @Column({ type: 'int', nullable: true })
     declare created_by: number | null
 
+    // Por qué lo regresaron a borrador (lo lee su autor); se borra al proponerlo otra vez
+    @Column({ type: 'text', nullable: true })
+    declare draft_reason: string | null
+
     @ManyToOne(() => Edition, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'edition_id' })
     declare edition: Relation<Edition>

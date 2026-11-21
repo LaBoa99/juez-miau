@@ -3,10 +3,13 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { ICategory } from '@concurso/shared-types';
 import { ButtonDirective } from '../../../shared/ui/button.directive';
+import { Icon } from '../../../shared/ui/icon.component';
+import { TooltipDirective } from '../../../shared/ui/tooltip.directive';
 import { FormField } from '../../../shared/ui/form-field.component';
 import { Alert } from '../../../shared/ui/alert.component';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog.component';
 import { EmptyState } from '../../../shared/ui/empty-state.component';
+import { Badge } from '../../../shared/ui/badge.component';
 import { Modal } from '../../../shared/ui/modal.component';
 import { CategoriesService } from './data/categories.service';
 import { EditionContext } from '../pages/edition-layout/edition-context';
@@ -15,7 +18,7 @@ import { findEditionId, message } from '../tab-utils';
 @Component({
   selector: 'oj-categories-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, ButtonDirective, FormField, Alert, ConfirmDialog, EmptyState, Modal],
+  imports: [ReactiveFormsModule, ButtonDirective, Icon, TooltipDirective, FormField, Alert, ConfirmDialog, EmptyState, Modal, Badge],
   templateUrl: './categories-tab.html',
   styleUrl: '../tab.css',
 })
@@ -37,6 +40,7 @@ export class CategoriesTab {
   protected readonly form = this.fb.nonNullable.group({
     code: ['', [Validators.required, Validators.maxLength(255)]],
     name: ['', [Validators.required, Validators.maxLength(255)]],
+    full_program: [false],
   });
 
   // Edición (modal)
@@ -47,6 +51,7 @@ export class CategoriesTab {
   protected readonly editForm = this.fb.nonNullable.group({
     code: ['', [Validators.required, Validators.maxLength(255)]],
     name: ['', [Validators.required, Validators.maxLength(255)]],
+    full_program: [false],
   });
 
   private readonly dialog = viewChild.required(ConfirmDialog);
@@ -82,7 +87,7 @@ export class CategoriesTab {
     this.service.create(this.editionId, this.form.getRawValue()).subscribe({
       next: () => {
         this.saving.set(false);
-        this.form.reset({ code: '', name: '' });
+        this.form.reset({ code: '', name: '', full_program: false });
         this.load();
       },
       error: (err) => {
@@ -95,7 +100,7 @@ export class CategoriesTab {
   openEdit(cat: ICategory): void {
     this.editingId = cat.id;
     this.editError.set(null);
-    this.editForm.reset({ code: cat.code, name: cat.name });
+    this.editForm.reset({ code: cat.code, name: cat.name, full_program: cat.full_program });
     this.editModal().open();
   }
 
