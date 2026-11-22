@@ -71,6 +71,9 @@ export class EditionDetail {
     ];
   });
 
+  // Párrafo de la pestaña activa (cada pestaña declara su `intro`)
+  protected readonly tabIntro = signal<string | null>(null);
+
   // Mensaje de éxito tras programar (ISO de la fecha)
   protected readonly scheduledAt = signal<string | null>(null);
 

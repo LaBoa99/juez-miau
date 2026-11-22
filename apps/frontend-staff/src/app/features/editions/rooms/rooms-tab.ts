@@ -32,6 +32,9 @@ import { findEditionId, message } from '../tab-utils';
   styleUrls: ['../tab.css', './rooms-tab.css'],
 })
 export class RoomsTab {
+  // Qué es esta pestaña: la página de Configuración lo muestra debajo de las pestañas
+  readonly intro = 'Los salones son los laboratorios donde se sientan los equipos. Sirven para filtrar el marcador y el proyector por salón y para asignar observadores que lo vigilan. Si marcas sus categorías, los equipos nuevos de esas categorías se reparten solos entre esos salones.';
+
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(RoomsService);
   private readonly staffService = inject(EditionStaffService);

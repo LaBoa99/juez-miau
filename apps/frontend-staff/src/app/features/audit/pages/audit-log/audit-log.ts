@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { IAuditEntry, IStaffListItem } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
@@ -17,7 +18,7 @@ const PAGE_SIZE = 50;
 @Component({
   selector: 'oj-audit-log',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, DatePipe, PageHeader, ButtonDirective, Badge, Alert, EmptyState, FormField],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, PageHeader, ButtonDirective, Badge, Alert, EmptyState, FormField],
   templateUrl: './audit-log.html',
   styleUrl: './audit-log.css',
 })

@@ -4,8 +4,9 @@ import { tap } from 'rxjs';
 import { ToastService } from './toast.service';
 
 const WRITES = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-// Escrituras que no guardan nada: sesión, proyector público, validar importación y corridas de prueba.
-const NOT_SAVES = ['/api/auth/', '/api/public/', '/import/validate', '/test-runs'];
+// Escrituras que no guardan nada: sesión, proyector público, validar importación, corridas de prueba y los clics
+// de la barra de secciones (prueba de calor).
+const NOT_SAVES = ['/api/auth/', '/api/public/', '/import/validate', '/test-runs', '/nav-events'];
 
 // Una escritura que es parte de otra acción que ya avisa (p. ej. hacer públicos los casos recién creados)
 export const SILENT_SAVE = new HttpContextToken<boolean>(() => false);

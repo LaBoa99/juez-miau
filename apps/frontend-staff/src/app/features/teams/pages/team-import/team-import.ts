@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
-import { ITeamImportCredential, ITeamImportValidation } from '@concurso/shared-types';
+import { IRoomListItem, ITeamImportCredential, ITeamImportValidation } from '@concurso/shared-types';
+import { RouterLink } from '@angular/router';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { FileDrop } from '../../../../shared/ui/file-drop.component';
@@ -12,7 +13,7 @@ const ORDER: Step[] = ['archivo', 'validacion', 'credenciales'];
 @Component({
   selector: 'oj-team-import',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonDirective, Alert, FileDrop],
+  imports: [RouterLink, ButtonDirective, Alert, FileDrop],
   templateUrl: './team-import.html',
   styleUrl: './team-import.css',
 })
@@ -22,6 +23,8 @@ export class TeamImport {
   readonly editionId = input.required<number>();
   readonly editable = input(true);
   readonly disabledReason = input('');
+  // Salones de la edición con sus categorías: para avisar qué equipos quedarían sin salón
+  readonly rooms = input<IRoomListItem[]>([]);
   readonly imported = output<void>();
 
   protected readonly step = signal<Step>('archivo');
@@ -48,6 +51,17 @@ export class TeamImport {
   }
 
   protected readonly canImport = computed(() => (this.validation()?.validRows ?? 0) > 0);
+  // Con un solo salón todos van ahí; con varios, un equipo cuya categoría no tiene salón queda sin salón
+  protected readonly roomless = computed(() => {
+    const v = this.validation();
+    const rooms = this.rooms();
+    if (!v || rooms.length === 1) return null;
+    const assigned = new Set(rooms.flatMap((r) => r.categories.map((c) => c.id)));
+    const rows = v.preview.filter((p) => !assigned.has(p.category.id));
+    if (rows.length === 0) return null;
+    return { teams: rows.length, categories: [...new Set(rows.map((p) => p.category.name))].join(', '), noRooms: rooms.length === 0 };
+  });
+
   protected readonly toUpdate = computed(() => this.validation()?.preview.filter((p) => p.action === 'update').length ?? 0);
 
   onFile(file: File): void {

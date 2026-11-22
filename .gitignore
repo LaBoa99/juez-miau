@@ -123,10 +123,8 @@ Thumbs.db
 desktop.ini
 .impeccable/
 
-# Pruebas de carga: credenciales generadas
-equipos-prueba/credenciales-*
-equipos-prueba/edicion.json
-equipos-prueba/reporte.md
+# Pruebas de carga: soluciones y credenciales generadas
+equipos-prueba/
 
 # ===================================
 # DOCUMENTACIÓN LOCAL

@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { IFlag, IStaffSubmission, StaffRole, SubmissionStatus, Verdict } from '@concurso/shared-types';
+import { EDITION_SECTIONS, EditionSection, IFlag, IStaffSubmission, StaffRole, SubmissionStatus, Verdict } from '@concurso/shared-types';
+import { EditionsService } from '../../data/editions.service';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { SubmissionsService } from '../../../submissions/data/submissions.service';
@@ -13,11 +14,13 @@ import { ToastService } from '../../../../core/notifications/toast.service';
 import { LiveClockService } from '../../../../core/realtime/live-clock.service';
 import { ContestClockService } from '../../../contest/data/contest-clock.service';
 import { flagToastText, flagTone } from '../../../flags/flag-display';
+import { EmptyState } from '../../../../shared/ui/empty-state.component';
+import { ButtonDirective } from '../../../../shared/ui/button.directive';
 
 @Component({
   selector: 'oj-edition-layout',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, EmptyState, ButtonDirective],
   providers: [EditionContext],
   templateUrl: './edition-layout.html',
   styleUrl: './edition-layout.css',
@@ -53,25 +56,26 @@ export class EditionLayout {
   // El backend no tiene "código" de edición: se muestra el nombre.
   protected readonly code = computed(() => this.ctx.edition()?.name ?? '');
 
-  private readonly allSections = [
-    { label: 'Configuración', path: 'configuracion' },
-    { label: 'Equipos', path: 'equipos' },
-    { label: 'Problemas', path: 'problemas' },
-    { label: 'Concurso', path: 'concurso' },
-    { label: 'Envíos', path: 'envios' },
-    { label: 'Marcador', path: 'marcador' },
-    { label: 'Revisión', path: 'revision' },
-    { label: 'Alertas', path: 'alertas' },
-    { label: 'Aclaraciones', path: 'aclaraciones' },
-  ];
+  private readonly allSections = EDITION_SECTIONS;
+  private readonly router = inject(Router);
+  private readonly editionsService = inject(EditionsService);
 
-  // Un OBSERVER solo ve Envíos, Marcador y Alertas; cualquier otro rol (y superadmin) ve todo.
-  private static readonly observerSections = new Set(['envios', 'marcador', 'alertas']);
-  protected readonly sections = computed(() =>
-    !this.auth.isSuperadmin() && this.auth.roleInEdition(this.id) === StaffRole.OBSERVER
-      ? this.allSections.filter((s) => EditionLayout.observerSections.has(s.path))
-      : this.allSections,
-  );
+  // Un OBSERVER solo ve Envíos, Marcador y Alertas; un JUDGE todo menos Configuración; ADMIN y superadmin, todo.
+  private static readonly observerSections = new Set<EditionSection>(['envios', 'marcador', 'alertas']);
+
+  // Prueba de calor del orden de la barra: de qué sección a cuál (la actual se lee de la URL antes de navegar)
+  protected trackSection(to: EditionSection): void {
+    const current = /^\/ediciones\/\d+\/([^/?#]+)/.exec(this.router.url)?.[1];
+    const from = EDITION_SECTIONS.some((s) => s.path === current) ? (current as EditionSection) : null;
+    if (from !== to) this.editionsService.recordNav(this.id, { from, to });
+  }
+  protected readonly sections = computed(() => {
+    if (this.auth.isSuperadmin()) return this.allSections;
+    const role = this.auth.roleInEdition(this.id);
+    if (role === StaffRole.OBSERVER) return this.allSections.filter((s) => EditionLayout.observerSections.has(s.path));
+    if (role === StaffRole.JUDGE) return this.allSections.filter((s) => s.path !== 'configuracion');
+    return this.allSections;
+  });
 
   constructor() {
     this.ctx.load(this.id);

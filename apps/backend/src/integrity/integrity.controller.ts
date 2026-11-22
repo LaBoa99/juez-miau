@@ -1,5 +1,5 @@
 import { Body, Controller, ForbiddenException, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, Query, Req } from '@nestjs/common'
-import { FlagType, type IFlag, type IHeartbeatResponse } from '@concurso/shared-types'
+import { FlagType, type IFlag, type IHeartbeatResponse, StaffRole } from '@concurso/shared-types'
 import { AllowTeam, ANY_EDITION_ROLE, RequireEditionRole } from '../auth/decorators/access.decorators.js'
 import { AccessTokenType } from '../auth/factories/access-token-payload.factory.js'
 import type { AuthenticatedRequest } from '../auth/guards/jwt-auth.guard.js'
@@ -48,7 +48,8 @@ export class IntegrityController {
     @Post('flags/:id/resolve')
     @HttpCode(HttpStatus.OK)
     async resolve(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest, @Body() dto: ResolveFlagDto): Promise<IFlag> {
-        await this.editionStaffService.assertRole(req.user.sub, await this.flagsService.getEditionId(id), ANY_EDITION_ROLE)
+        // El observador ve y levanta alertas; resolverlas es de admin y juez
+        await this.editionStaffService.assertRole(req.user.sub, await this.flagsService.getEditionId(id), [StaffRole.ADMIN, StaffRole.JUDGE])
         return this.flagsService.resolve(id, req.user.sub, dto.note)
     }
 }

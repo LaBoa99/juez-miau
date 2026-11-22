@@ -21,6 +21,9 @@ import { withMessage } from '../../../shared/validators';
   styleUrl: '../tab.css',
 })
 export class EditionStaffTab {
+  // Qué es esta pestaña: la página de Configuración lo muestra debajo de las pestañas
+  readonly intro = 'Quiénes trabajan en esta edición y con qué rol: el administrador la configura y controla el concurso; el juez crea problemas, revisa envíos y responde aclaraciones; el observador vigila envíos, marcador y alertas. Solo ven esta edición las personas que estén aquí.';
+
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(EditionStaffService);
   private readonly ctx = inject(EditionContext);

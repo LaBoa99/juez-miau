@@ -108,6 +108,13 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
         this.changed(editionId)
     }
 
+    // Un cambio del staff (equipo renombrado o borrado, problema aceptado, categoría…) puede tocar cualquier edición
+    // en caché: se descartan todas y se vuelven a mandar por socket. Lo llama StandingsInvalidationInterceptor
+    invalidateAll(): void {
+        const editionIds = new Set([...this.cache.keys()].map((key) => Number(key.split(':')[0])))
+        for(const editionId of editionIds) this.changed(editionId)
+    }
+
     private changed(editionId: number): void {
         for(const key of this.cache.keys()){
             if(key.startsWith(editionId + ':')) this.cache.delete(key)

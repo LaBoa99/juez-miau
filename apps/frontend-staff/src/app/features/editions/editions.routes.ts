@@ -20,6 +20,7 @@ import { StandingsPage } from '../standings/pages/standings-page/standings-page'
 import { ReviewPage } from '../review/pages/review-page/review-page';
 import { AlertsPage } from '../flags/pages/alerts-page/alerts-page';
 import { ClarificationsPage } from '../clarifications/pages/clarifications-page/clarifications-page';
+import { editionConfigGuard } from '../../core/auth/role.guard';
 
 export const routes: Routes = [
   {
@@ -35,6 +36,7 @@ export const routes: Routes = [
           {
             path: 'configuracion',
             component: EditionDetail,
+            canActivate: [editionConfigGuard],
             data: { breadcrumb: 'Configuración' },
             children: [
               { path: 'categorias', component: CategoriesTab, data: { breadcrumb: 'Categorías' } },

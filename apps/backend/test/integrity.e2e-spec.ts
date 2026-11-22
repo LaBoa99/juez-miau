@@ -146,6 +146,17 @@ describe('Integridad: alertas, heartbeat, auditoría y exportaciones (e2e)', () 
       .send({ problemId: 999999, languageId: '00000000-0000-4000-8000-000000000000', source: 'x' });
     expect((await submit().expect(403)).body.message).toMatch(/blocked/);
 
+    // El observador ve y levanta alertas, pero resolverlas es de admin y juez
+    const observer = await app.get<Repository<StaffUser>>(getRepositoryToken(StaffUser)).save({ name: 'Observador integridad', email: `integridad-obs-${stamp}@concurso.test`, password_hash: 'x' });
+    try {
+      await app.get<Repository<EditionStaff>>(getRepositoryToken(EditionStaff)).save({ edition_id: edition.id, staff_user_id: observer.id, role: StaffRole.OBSERVER });
+      const observerToken = await app.get(JwtService).signAsync({ ...AccessTokenPayloadFactory.forStaff(observer) });
+      await api().get(`/api/v1/editions/${edition.id}/flags`).set(bearer(observerToken)).expect(200);
+      await api().post(`/api/v1/flags/${(await flags('?open=true'))[0].id}/resolve`).set(bearer(observerToken)).send({}).expect(403);
+    } finally {
+      await app.get<Repository<StaffUser>>(getRepositoryToken(StaffUser)).delete([observer.id]);
+    }
+
     for (const flag of await flags('?open=true')) {
       const res = await api().post(`/api/v1/flags/${flag.id}/resolve`).set(bearer(adminToken)).send({ note: 'revisado en sala' }).expect(200);
       expect(res.body).toMatchObject({ resolvedBy: admin.id, resolutionNote: 'revisado en sala' });

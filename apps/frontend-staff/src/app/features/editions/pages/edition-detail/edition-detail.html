@@ -158,7 +158,10 @@
   <div class="cfg__tabs">
     <oj-tab-nav [items]="tabs()" />
     <div class="cfg__tab-body">
-      <router-outlet />
+      @if (tabIntro(); as intro) {
+        <p class="cfg__intro">{{ intro }}</p>
+      }
+      <router-outlet (activate)="tabIntro.set($any($event).intro ?? null)" />
     </div>
   </div>
 

@@ -1,5 +1,7 @@
 import { TeamsModule } from '../teams/teams.module.js';
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { StandingsInvalidationInterceptor } from './standings-invalidation.interceptor.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ContestClockModule } from '../contest-clock/contest-clock.module.js';
 import { Category } from '../editions/entities/category.entity.js';
@@ -21,7 +23,7 @@ import { StandingsService } from './standings.service.js';
     TeamsModule,
   ],
   controllers: [StandingsController],
-  providers: [StandingsService],
+  providers: [StandingsService, { provide: APP_INTERCEPTOR, useClass: StandingsInvalidationInterceptor }],
   exports: [StandingsService],
 })
 export class StandingsModule {}

@@ -111,6 +111,11 @@ export class EditionList {
     });
   }
 
+  // Vuelve a pedir /auth/me (los roles nuevos) y la lista: por si el superadmin ya lo asignó
+  recheck(): void {
+    this.auth.me().subscribe({ next: () => this.load(), error: () => this.load() });
+  }
+
   onFilter(value: string): void {
     this.filter.set(value);
     this.load();

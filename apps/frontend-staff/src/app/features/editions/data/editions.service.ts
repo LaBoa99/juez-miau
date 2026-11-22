@@ -9,8 +9,7 @@ import {
   IEditionListItem,
   IEditionScheduleResponse,
   IProblemListItem,
-  IUpdateEdition,
-} from '@concurso/shared-types';
+  IUpdateEdition, ICreateNavEvent } from '@concurso/shared-types';
 import { Observable } from 'rxjs';
 
 const EDITIONS = '/api/editions';
@@ -22,6 +21,11 @@ export class EditionsService {
   list(status?: EditionStatus): Observable<IEditionListItem[]> {
     const params = status ? new HttpParams().set('status', status) : undefined;
     return this.http.get<IEditionListItem[]>(EDITIONS, { params });
+  }
+
+  // Prueba de calor de la barra: cada clic de sección; si falla no importa (no se reintenta ni se avisa)
+  recordNav(id: number, event: ICreateNavEvent): void {
+    this.http.post<void>(`${EDITIONS}/${id}/nav-events`, event).subscribe({ error: () => {} });
   }
 
   get(id: number): Observable<IEditionDetail> {

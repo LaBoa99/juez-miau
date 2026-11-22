@@ -68,7 +68,7 @@ Base `/editions`. Tipos: `IEdition`, `IEditionListItem`, `IEditionDetail`, `ICre
 
 | Método | Ruta | Quién | Body | Respuesta | Errores |
 |---|---|---|---|---|---|
-| GET | `/editions?status=` | staff | — | `IEditionListItem[]` (con `categories`) | — |
+| GET | `/editions?status=` | staff | — | `IEditionListItem[]` (con `categories`); el superadmin ve todas, el resto solo donde tiene rol | — |
 | POST | `/editions` | `@SuperadminOnly` | `ICreateEdition` | `IEdition` | — |
 | GET | `/editions/:id` | `RequireEditionRole(ANY)` | — | `IEditionDetail` (con `categories`, `rooms`) | 404 |
 | PATCH | `/editions/:id` | `RequireEditionRole([ADMIN])` | `IUpdateEdition` | `IEdition` | 409 si no es DRAFT/SCHEDULED. |
@@ -359,7 +359,7 @@ Alertas de integridad. Definidas en `IntegrityController` (no hay controlador `f
 |---|---|---|---|---|
 | GET | `/editions/:editionId/flags?open=&teamId=` | `RequireEditionRole(ANY)` | — | `IFlag[]` |
 | POST | `/editions/:editionId/flags` | `RequireEditionRole(ANY)` | `{ teamId (int≥1), details (≤1000) }` | `IFlag` (tipo `MANUAL`) |
-| POST | `/flags/:id/resolve` | staff con rol en la edición (servicio) | `{ note? (≤1000) }` | `IFlag` |
+| POST | `/flags/:id/resolve` | ADMIN o JUDGE de la edición (servicio; el observador solo ve y levanta) | `{ note? (≤1000) }` | `IFlag` |
 
 **`FlagType`:** `SESSION_REPLACED`, `FORBIDDEN_PROCESS`, `HEARTBEAT_LOST`, `MANUAL`. `IFlag` = `{ id, editionId, teamId, type, details, createdAt, resolvedAt, resolvedBy, resolutionNote }`. Filtro `open=true` = sin resolver. Las automáticas se deduplican; las `MANUAL` siempre se crean. Al crear/resolver se emite `flag:update` a la sala de staff. El filtro por salón se arma en el cliente (equipo → salón).
 
@@ -384,6 +384,8 @@ Bitácora de cambios (solo lectura). Registro automático por un interceptor glo
 | Método | Ruta | Quién | Query | Respuesta |
 |---|---|---|---|---|
 | GET | `/audit` | `@SuperadminOnly` | `editionId?, staffUserId?, before?, limit? (1–500, def 100)` | `IAuditEntry[]` (orden id desc, paginación hacia atrás con `before`) |
+| POST | `/editions/:editionId/nav-events` | cualquier rol de la edición | `ICreateNavEvent` = `{ from: EditionSection \| null, to: EditionSection }` | 204. Clic en la barra de secciones (prueba de calor); guarda el rol y la fase, no quién. No entra a `audit_log` |
+| GET | `/audit/navigation` | `@SuperadminOnly` | `editionId?, status?` | `INavCount[]` = `{ role, from, to, count }` agregados |
 
 `IAuditEntry` = `{ id, staffUserId, editionId, method, path, statusCode, body, createdAt }`.
 

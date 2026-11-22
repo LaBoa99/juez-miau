@@ -51,6 +51,22 @@
           </div>
         </div>
 
+        @if (roomless(); as r) {
+          <oj-alert tone="warning">
+            @if (r.noRooms) {
+              La edición no tiene salones: {{ r.teams === 1 ? 'el equipo quedará' : 'los ' + r.teams + ' equipos quedarán' }} sin salón.
+              Créalos en <a [routerLink]="['/ediciones', editionId(), 'configuracion', 'salones']">Configuración › Salones</a>
+              antes de importar.
+            } @else {
+              {{ r.teams }} {{ r.teams === 1 ? 'equipo quedará' : 'equipos quedarán' }} sin salón: ningún salón tiene
+              {{ r.categories.includes(',') ? 'las categorías' : 'la categoría' }} {{ r.categories }}.
+              Asígnalas en <a [routerLink]="['/ediciones', editionId(), 'configuracion', 'salones']">Configuración › Salones</a>
+              antes de importar, o después elige el salón de cada equipo a mano.
+            }
+            Los equipos que ya existen conservan su salón.
+          </oj-alert>
+        }
+
         @if (v.preview.length) {
           <div class="oj-table-wrap">
             <table class="oj-table">
