@@ -27,11 +27,14 @@ export class EditionContext {
   readonly edition = signal<IEditionDetail | null>(null);
   readonly loading = signal(false);
   readonly error = signal(false);
+  // 403: el usuario no tiene rol en esta edición (no es una falla: hay que pedir acceso)
+  readonly forbidden = signal(false);
   readonly counts = signal<TabCounts>({});
 
   load(id: number): void {
     this.loading.set(true);
     this.error.set(false);
+    this.forbidden.set(false);
     this.editions.get(id).subscribe({
       next: (e) => {
         this.edition.set(e);
@@ -43,8 +46,9 @@ export class EditionContext {
           antitrampas: countPrograms(e.forbidden_processes),
         }));
       },
-      error: () => {
+      error: (err: { status?: number }) => {
         this.error.set(true);
+        this.forbidden.set(err?.status === 403);
         this.loading.set(false);
       },
     });

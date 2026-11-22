@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Query, Req } from '@nestjs/common';
+import type { AuthenticatedRequest } from '../../auth/guards/jwt-auth.guard.js';
 import type { IEdition, IEditionDetail, IEditionListItem, IEditionScheduleResponse } from '@concurso/shared-types';
 import { EditionsService } from '../services/editions.service.js';
 import { EditionFiltersDto } from '../dto/edition-filters.dto.js';
@@ -18,8 +19,9 @@ export class EditionsController {
     @Get()
     getAllEditions(
         @Query() filters: EditionFiltersDto,
+        @Req() req: AuthenticatedRequest,
     ): Promise<IEditionListItem[]> {
-        return this.editionsService.findAll(filters);
+        return this.editionsService.findAll(filters, req.user.sub);
     }
 
     @Post()

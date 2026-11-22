@@ -107,6 +107,52 @@ describe('Control de acceso: guard global, roles por edición y sesión de equip
       await api().get(`/api/v1/editions/${otherEdition.id}`).set(bearer(judgeToken)).expect(403);
     });
 
+    it('GET /editions: el staff solo ve las ediciones donde tiene rol; sin rol, ninguna', async () => {
+      const ids = async (token: string) => (await api().get('/api/v1/editions').set(bearer(token)).expect(200)).body.map((e: { id: number }) => e.id);
+      expect(await ids(judgeToken)).toContain(edition.id);
+      expect(await ids(judgeToken)).not.toContain(otherEdition.id);
+      expect(await ids(superToken)).toEqual(expect.arrayContaining([edition.id, otherEdition.id]));
+
+      const sinRol = await staffRepo.save(staffRepo.create({ name: 'Sin rol', email: `acceso-sinrol-${stamp}@concurso.test`, password_hash: judge.password_hash }));
+      try {
+        const token = await app.get(JwtService).signAsync(AccessTokenPayloadFactory.forStaff(sinRol));
+        expect(await ids(token)).toEqual([]);
+      } finally {
+        await staffRepo.delete([sinRol.id]);
+      }
+    });
+
+    it('prueba de calor: el staff registra sus clics en la barra (solo el rol); solo el superadmin ve los conteos', async () => {
+      const url = `/api/v1/editions/${edition.id}/nav-events`;
+      await api().post(url).set(bearer(judgeToken)).send({ from: null, to: 'problemas' }).expect(204);
+      await api().post(url).set(bearer(judgeToken)).send({ from: 'problemas', to: 'envios' }).expect(204);
+      await api().post(url).set(bearer(judgeToken)).send({ from: 'problemas', to: 'envios' }).expect(204);
+      await api().post(url).set(bearer(judgeToken)).send({ from: 'problemas', to: 'no-existe' }).expect(400);
+      await api().post(`/api/v1/editions/${otherEdition.id}/nav-events`).set(bearer(judgeToken)).send({ from: null, to: 'envios' }).expect(403);
+
+      await api().get('/api/v1/audit/navigation').set(bearer(judgeToken)).expect(403);
+      const counts = await api().get(`/api/v1/audit/navigation?editionId=${edition.id}`).set(bearer(superToken)).expect(200);
+      expect(counts.body).toEqual(expect.arrayContaining([
+        { role: 'judge', from: null, to: 'problemas', count: 1 },
+        { role: 'judge', from: 'problemas', to: 'envios', count: 2 },
+      ]));
+      // Los clics no se mezclan con la auditoría de cambios
+      const audit = await api().get(`/api/v1/audit?editionId=${edition.id}`).set(bearer(superToken)).expect(200);
+      expect(audit.body.some((entry: { path: string }) => entry.path.endsWith('/nav-events'))).toBe(false);
+    });
+
+    it('el marcador no se queda con un equipo renombrado o borrado (caché)', async () => {
+      const names = async () => {
+        const res = await api().get(`/api/v1/editions/${edition.id}/standings`).set(bearer(superToken)).expect(200);
+        return res.body.categories.flatMap((c: { rows: { teamName: string }[] }) => c.rows.map((r) => r.teamName));
+      };
+      expect(await names()).toContain('Equipo acceso'); // queda en caché
+      await api().patch(`/api/v1/teams/${team.id}`).set(bearer(superToken)).send({ name: 'Equipo renombrado' }).expect(200);
+      expect(await names()).toEqual(expect.arrayContaining(['Equipo renombrado']));
+      expect(await names()).not.toContain('Equipo acceso');
+      await api().patch(`/api/v1/teams/${team.id}`).set(bearer(superToken)).send({ name: 'Equipo acceso' }).expect(200);
+    });
+
     it('resuelve la edición desde el equipo de la ruta', async () => {
       await api().get(`/api/v1/teams/${team.id}`).set(bearer(judgeToken)).expect(200);
       await api().post(`/api/v1/teams/${team.id}/reset-password`).set(bearer(judgeToken)).expect(403);

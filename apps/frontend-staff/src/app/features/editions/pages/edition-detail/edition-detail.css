@@ -133,3 +133,11 @@
 .cfg__tab-body {
   padding-top: var(--oj-space-lg);
 }
+
+.cfg__intro {
+  margin: 0 0 var(--oj-space-lg);
+  max-width: 75ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--oj-text-muted);
+}

@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common'
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { IsNull, Repository, SelectQueryBuilder } from 'typeorm'
 import { StaffUser } from '../entities/staff-user.entity.js'
@@ -80,6 +80,21 @@ export class StaffService {
         await this.staffRepo.save(user)
         await this.revokeRefreshTokens(id)
         return this.toResponse(user)
+    }
+
+    // La persona cambia la suya: no se guarda copia cifrada, así no sale en el PDF del superadmin.
+    // 400 y no 401 con la actual equivocada, para que el front no lo tome como sesión vencida
+    async changeOwnPassword(id: number, current: string, next: string): Promise<void> {
+        const user = await this.staffRepo
+            .createQueryBuilder('user')
+            .addSelect('user.password_hash')
+            .where('user.id = :id', { id })
+            .getOne()
+        if (!user || !(await this.passwordService.comparePassword(current, user.password_hash))) {
+            throw new BadRequestException('La contraseña actual no es correcta')
+        }
+        await this.staffRepo.update(id, { password: null, password_hash: await this.passwordService.hashPassword(next) })
+        await this.revokeRefreshTokens(id)
     }
 
     // Credenciales en claro para el PDF. password es null si la cuenta no tiene copia cifrada

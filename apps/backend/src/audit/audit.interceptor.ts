@@ -25,6 +25,8 @@ export class AuditInterceptor implements NestInterceptor {
         if(context.getType() !== 'http') return next.handle()
         const req = context.switchToHttp().getRequest<AuthenticatedRequest>()
         if(!MUTATIONS.has(req.method) || req.user?.type !== AccessTokenType.STAFF) return next.handle()
+        // Los clics de la barra (prueba de calor) no son cambios: tienen su propia tabla
+        if(String((req.route as { path?: string } | undefined)?.path ?? '').endsWith('/nav-events')) return next.handle()
 
         const res = context.switchToHttp().getResponse<Response>()
         return next.handle().pipe(tap({

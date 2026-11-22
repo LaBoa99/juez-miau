@@ -16,11 +16,11 @@ import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { Modal } from '../../../../shared/ui/modal.component';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
 import { IStaffCredentials, StaffService } from '../../data/staff.service';
-import { downloadCredentialsPdf } from '../../../teams/data/credentials-pdf';
+import { downloadStaffCredentialsPdf } from '../../../teams/data/credentials-pdf';
 
 // Indicaciones del PDF de credenciales de staff (los equipos usan TEAM_LOGIN_INSTRUCTIONS).
 const STAFF_LOGIN_INSTRUCTIONS: readonly string[] = [
-  `Entra al panel de staff en ${location.origin} con el correo y la contraseña de arriba.`,
+  'Entra al panel de staff con el correo y la contraseña de arriba.',
   'No compartas estas credenciales.',
   'Si pierdes la contraseña, pide al superadmin que te genere una nueva.',
 ];
@@ -239,9 +239,10 @@ export class StaffList {
   }
 
   private makePdf(creds: IStaffCredentials[], fileName: string): void {
-    downloadCredentialsPdf(
-      creds.map((c) => ({ teamName: c.name, username: c.email, password: c.password ?? '' })),
+    downloadStaffCredentialsPdf(
+      creds.map((c) => ({ name: c.name, email: c.email, password: c.password ?? '' })),
       fileName,
+      location.origin,
       STAFF_LOGIN_INSTRUCTIONS,
     )
       .then(({ logoMissing }) => {

@@ -1,0 +1,106 @@
+<oj-page-header
+  title="Uso de la barra de secciones"
+  subtitle="Prueba de calor: cada clic del staff en la barra de una edición, por rol. Sirve para decidir el orden de las secciones."
+/>
+
+<div class="heat__filters">
+  <oj-form-field label="Edición" for="heat-edition">
+    <select id="heat-edition" [formControl]="editionCtrl">
+      <option [ngValue]="null">Todas</option>
+      @for (e of editionList(); track e.id) {
+        <option [ngValue]="e.id">{{ e.name }}</option>
+      }
+    </select>
+  </oj-form-field>
+  <oj-form-field label="Fase del concurso" for="heat-phase">
+    <select id="heat-phase" [formControl]="phaseCtrl">
+      <option [ngValue]="null">Todas</option>
+      @for (p of phases; track p.value) {
+        <option [ngValue]="p.value">{{ p.label }}</option>
+      }
+    </select>
+  </oj-form-field>
+</div>
+
+@if (loading()) {
+  <p class="heat__muted">Cargando…</p>
+} @else if (error()) {
+  <oj-alert tone="error">No se pudo cargar el uso de la barra.</oj-alert>
+} @else if (total() === 0) {
+  <oj-empty-state message="Aún no hay clics registrados con estos filtros. La barra empieza a registrarlos desde ahora; se llena con el próximo simulacro o concurso." />
+} @else {
+  <section class="heat__block" aria-labelledby="heat-usage">
+    <h3 class="heat__title" id="heat-usage">Secciones que se abren</h3>
+    <p class="heat__muted">
+      {{ total() }} clics. El porcentaje es la parte de los clics de cada rol; «Lugar por uso» compara la posición en la barra
+      con qué tan usada es.@if (averageDistance(); as d) { Distancia media por salto: <span class="oj-mono">{{ d }}</span> posiciones (menos es mejor).}
+    </p>
+    <div class="oj-table-wrap">
+      <table class="oj-table heat__table">
+        <thead>
+          <tr>
+            <th class="heat__num">Posición</th>
+            <th>Sección</th>
+            @for (r of roles; track r.role) { <th class="heat__num">{{ r.label }}</th> }
+            <th class="heat__num">Total</th>
+            <th class="heat__num">Lugar por uso</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of usage(); track row.path) {
+            <tr>
+              <td class="heat__num oj-mono">{{ row.position }}</td>
+              <td>{{ row.label }}</td>
+              @for (c of row.cells; track $index) {
+                <td class="heat__num heat__cell oj-mono" [style.background]="heat(c.share)" [class.heat__cell--strong]="strong(c.share)">
+                  @if (c.count) { {{ percent(c.share) }} <span class="heat__count">({{ c.count }})</span> } @else { — }
+                </td>
+              }
+              <td class="heat__num oj-mono">{{ row.total }}</td>
+              <td class="heat__num oj-mono" [class.heat__off]="row.rank !== null && row.rank !== row.position">{{ row.rank ?? '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (suggestedOrder(); as order) {
+      <p class="heat__muted">Orden por uso: {{ order }}</p>
+    }
+  </section>
+
+  <section class="heat__block" aria-labelledby="heat-jumps">
+    <div class="heat__head">
+      <h3 class="heat__title" id="heat-jumps">Saltos de una sección a otra</h3>
+      <oj-form-field label="Rol" for="heat-role">
+        <select id="heat-role" [formControl]="roleCtrl">
+          <option [ngValue]="null">Todos</option>
+          @for (r of roles; track r.role) { <option [ngValue]="r.role">{{ r.label }}</option> }
+        </select>
+      </oj-form-field>
+    </div>
+    <p class="heat__muted">Filas: desde dónde; columnas: a dónde. Dos secciones con muchos saltos entre sí deberían quedar juntas.</p>
+    <div class="oj-table-wrap">
+      <table class="oj-table heat__table">
+        <thead>
+          <tr>
+            <th>Desde \ a</th>
+            @for (to of sections; track to.path) { <th class="heat__num">{{ to.label }}</th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (from of fromRows(); track from.label) {
+            <tr>
+              <td>{{ from.label }}</td>
+              @for (to of sections; track to.path) {
+                @let n = jumps().get(from.path, to.path);
+                <td class="heat__num heat__cell oj-mono" [style.background]="heat(n / jumps().max)" [class.heat__cell--strong]="strong(n / jumps().max)">
+                  {{ n || '' }}
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}

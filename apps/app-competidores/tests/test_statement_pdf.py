@@ -9,7 +9,9 @@ from PySide6.QtWidgets import QApplication
 
 from commands.load_contest import LoadStatementPdfCommand
 from services.api_client import ApiClient
-from views.problems_view import ProblemsView, problem_markdown
+from PySide6.QtGui import QTextDocument
+
+from views.problems_view import ProblemsView, render_problem
 
 
 def tiny_pdf():
@@ -43,8 +45,10 @@ def test_load_statement_pdf_command_returns_id_and_bytes():
 
 
 def test_markdown_without_statement_keeps_only_samples():
-    md = problem_markdown({"statement": "", "samples": [{"input": "1", "output": "2"}]})
-    assert md.startswith("### Ejemplo 1")
+    QApplication.instance() or QApplication([])
+    document = QTextDocument()
+    render_problem(document, {"statement": "", "samples": [{"input": "1", "output": "2"}]})
+    assert document.toPlainText().startswith("Ejemplo 1")
 
 
 def test_view_asks_for_the_pdf_once_and_shows_it_in_memory():

@@ -3,6 +3,7 @@
 <oj-team-import
   [editionId]="editionId"
   [editable]="canImport()"
+  [rooms]="allRooms()"
   disabledReason="La edición ya inició; no se pueden importar equipos."
   (imported)="onImported()"
 />

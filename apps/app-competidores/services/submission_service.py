@@ -25,6 +25,7 @@ VERDICTS = {
     "PENDING_REVIEW": "En revisión del juez",
 }
 PENDING = {"QUEUED", "JUDGING"}
+REJECTED = {"WA", "TLE", "MLE", "RE"}
 
 
 class SubmissionService:
@@ -36,6 +37,9 @@ class SubmissionService:
 
     def list(self):
         return self.api.get("/submissions")
+
+    def get(self, submission_id):
+        return self.api.get(f"/submissions/{submission_id}")
 
 
 def language_for(path, languages):
@@ -68,6 +72,16 @@ def normalize(sub):
 
 def is_final(sub):
     return sub["status"] not in PENDING
+
+
+def has_cases(sub):
+    """Juzgado caso por caso (aceptado o rechazado por el juez): el equipo puede ver cómo le fue en cada caso."""
+    return sub["status"] == "DONE" and (sub["verdict"] == "AC" or sub["verdict"] in REJECTED)
+
+
+def is_rejected(sub):
+    """Rechazado por el juez en algún caso: el equipo puede ver en qué ejemplo falló."""
+    return sub["status"] == "DONE" and sub["verdict"] in REJECTED
 
 
 def verdict_text(sub, progress=None):

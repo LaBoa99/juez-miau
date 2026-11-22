@@ -53,7 +53,7 @@
           </p>
         }
         <div class="oj-actions al__card-actions">
-          @if (!f.resolvedAt) {
+          @if (!f.resolvedAt && canResolve()) {
             <button ojButton variant="secondary" size="sm" type="button" (click)="openResolve(f)">Resolver</button>
           }
           @if (canSuspend()) {

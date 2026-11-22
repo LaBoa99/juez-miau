@@ -1,9 +1,10 @@
-import re
-
-from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPointF, Qt, QUrl, Signal
-from PySide6.QtGui import QColor, QDesktopServices, QGuiApplication, QIcon, QPainter, QPen, QPixmap, QTextCursor, QTextFormat
+from PySide6.QtCore import QBuffer, QByteArray, QEvent, QIODevice, QPointF, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import (
+    QColor, QDesktopServices, QFont, QIcon, QPainter, QPen, QPixmap, QTextBlockFormat, QTextCharFormat,
+    QTextCursor, QTextFormat,
+)
 from PySide6.QtWidgets import (
-    QComboBox, QFileDialog, QHBoxLayout, QInputDialog, QMessageBox, QLabel, QListWidget, QListWidgetItem, QPushButton, QSplitter,
+    QComboBox, QFileDialog, QFrame, QHBoxLayout, QInputDialog, QMessageBox, QLabel, QListWidget, QListWidgetItem, QPushButton, QSplitter,
     QStackedWidget, QTextBrowser, QVBoxLayout, QWidget,
 )
 
@@ -12,7 +13,8 @@ from PySide6.QtPdfWidgets import QPdfView
 
 from services.submission_service import CODE_TO_EXTENSION, EXTENSION_TO_CODE, LANGUAGE_NAMES, problem_states
 from views.attempts_view import AttemptsView
-from views.style import ACCENT, BORDER, ERROR, LG, MD, PANEL, SM, TEXT_MUTED, XS
+from views.case_table import case_input_line, case_text, insert_example
+from views.style import ACCENT, BORDER, ERROR, LG, MD, SM, TEXT_MUTED, XS
 
 READING_WIDTH = 760  # ~75 caracteres por línea
 
@@ -86,8 +88,6 @@ class ProblemsView(QWidget):
         self.title = QLabel()
         self.title.setObjectName("title")
         self.title.setWordWrap(True)
-        self.limits = QLabel()
-        self.limits.setObjectName("muted")
 
         self.language = QComboBox()
         self.language.setAccessibleName("Lenguaje")
@@ -100,6 +100,7 @@ class ProblemsView(QWidget):
         self.message.setWordWrap(True)
         self.message.hide()
 
+        # Fila propia para las acciones, como botones normales: lenguaje y plantilla a la izquierda, enviar a la derecha
         actions = QHBoxLayout()
         actions.setSpacing(SM)
         actions.addWidget(self.language)
@@ -109,7 +110,7 @@ class ProblemsView(QWidget):
 
         self.body = QTextBrowser()
         self.body.setOpenLinks(False)
-        self.body.anchorClicked.connect(self._on_link)
+        self.body.anchorClicked.connect(QDesktopServices.openUrl)  # los enlaces del enunciado se abren fuera
         self.body.document().setDocumentMargin(0)
         self.attempts = AttemptsView()
 
@@ -121,44 +122,47 @@ class ProblemsView(QWidget):
         self.pdf_view.setDocument(self.pdf_document)
         self.pdf_view.setPageMode(QPdfView.PageMode.MultiPage)
         self.pdf_view.setZoomMode(QPdfView.ZoomMode.FitToWidth)
+        self.pdf_view.installEventFilter(self)  # para ajustar el zoom cuando cambia su ancho
         self.pdf_view.hide()
 
-        reading = QSplitter(Qt.Orientation.Vertical)
+        # Arriba el enunciado (con PDF: el PDF y debajo los ejemplos); abajo los intentos junto a su detalle
+        reading = self.reading = QSplitter(Qt.Orientation.Vertical)
         reading.addWidget(self.pdf_view)
         reading.addWidget(self.body)
         reading.addWidget(self.attempts)
         reading.setStretchFactor(0, 2)
-        reading.setStretchFactor(1, 1)
-        reading.setSizes([380, 380, 300])
+        reading.setStretchFactor(1, 2)
+        reading.setStretchFactor(2, 1)
+        reading.setSizes([380, 380, 280])
         reading.setChildrenCollapsible(False)
+        # El divisor es solo zona de arrastre; la línea entre enunciado e intentos la pinta el panel de intentos
+        reading.setObjectName("sections")
+        reading.setHandleWidth(MD)
 
-        column = QWidget()
-        column.setMaximumWidth(READING_WIDTH + 2 * LG)
-        detail_layout = QVBoxLayout(column)
-        detail_layout.setContentsMargins(LG, LG, LG, MD)
-        detail_layout.setSpacing(0)
-        detail_layout.addWidget(self.title)
-        detail_layout.addSpacing(XS)
-        detail_layout.addWidget(self.limits)
-        detail_layout.addSpacing(MD)
-        detail_layout.addLayout(actions)
-        detail_layout.addSpacing(XS)
-        detail_layout.addWidget(self.message)
-        detail_layout.addSpacing(MD)
-        detail_layout.addWidget(reading, 1)
-
+        # A todo el ancho: la ventana suele compartir pantalla con el IDE, así que no se fija su tamaño
         detail = QWidget()
         detail.setObjectName("detail")
-        QHBoxLayout(detail).addWidget(column)
-        detail.layout().setContentsMargins(0, 0, 0, 0)
-        detail.layout().addStretch()
-        detail.layout().setStretch(0, 1)
+        column_layout = QVBoxLayout(detail)
+        column_layout.setContentsMargins(LG, LG, LG, MD)
+        column_layout.setSpacing(0)
+        column_layout.addWidget(self.title)
+        column_layout.addSpacing(MD)
+        column_layout.addLayout(actions)
+        column_layout.addSpacing(XS)
+        column_layout.addWidget(self.message)
+        column_layout.addSpacing(MD)
+        rule = QFrame()  # separa el encabezado (título y acciones) del enunciado
+        rule.setObjectName("rule")
+        rule.setFixedHeight(1)
+        column_layout.addWidget(rule)
+        column_layout.addSpacing(MD)
+        column_layout.addWidget(reading, 1)
 
         split = QSplitter()
         split.addWidget(left)
         split.addWidget(detail)
         split.setStretchFactor(1, 1)
-        split.setSizes([240, 760])
+        split.setSizes([200, 1000])
         split.setChildrenCollapsible(False)
 
         self.stack = QStackedWidget()
@@ -228,6 +232,16 @@ class ProblemsView(QWidget):
         self.progress = progress
         self._refresh_states()
         self._refresh_attempts()
+
+    def show_attempt(self, problem_id, submission_id, switch=False):
+        """Selecciona un intento si su problema está abierto; con switch, primero abre el problema."""
+        row = next((i for i, p in enumerate(self.problems) if p["id"] == problem_id), None)
+        if row is None:
+            return
+        if switch:
+            self.sidebar.setCurrentRow(row)
+        if row == self.sidebar.currentRow():
+            self.attempts.select(submission_id)
 
     def set_clock(self, text, note):
         self.clock.setText(text)
@@ -300,13 +314,9 @@ class ProblemsView(QWidget):
         if not problem:
             return
         self.title.setText(f"{problem['letter']}. {problem['title']}")
-        limits = problem.get("limits")
-        self.limits.setText(
-            f"Tiempo {limits['timeLimitMs'] / 1000:g} s  ·  Memoria {limits['memoryLimitMb']} MB" if limits else ""
-        )
         self.message.hide()
-        self.body.setMarkdown(problem_markdown(problem))
-        tune_rhythm(self.body.document())
+        render_problem(self.body.document(), problem)
+        self.body.moveCursor(QTextCursor.MoveOperation.Start)  # el enunciado se lee desde arriba
         self._show_pdf(problem)
         self._refresh_attempts()
 
@@ -317,6 +327,31 @@ class ProblemsView(QWidget):
         if problem and problem["id"] == problem_id:
             self._show_pdf(problem)
 
+    def eventFilter(self, watched, event):
+        if watched is self.pdf_view and event.type() == QEvent.Type.Resize:
+            self._fit_pdf_zoom()
+        return super().eventFilter(watched, event)
+
+    def _fit_pdf_zoom(self):
+        """Ajustado al ancho, salvo que sobre espacio: ahí la hoja va a su tamaño real y no con letras enormes."""
+        page = self.pdf_document.pagePointSize(0).width() * 96 / 72  # ancho de la hoja en px a 100 %
+        wide = page > 0 and self.pdf_view.viewport().width() > page + 2 * LG
+        if wide:
+            self.pdf_view.setZoomMode(QPdfView.ZoomMode.Custom)
+            self.pdf_view.setZoomFactor(1.0)
+        else:
+            self.pdf_view.setZoomMode(QPdfView.ZoomMode.FitToWidth)
+
+    def _fit_pdf_layout(self):
+        """Con PDF, abajo de él solo van los ejemplos: ocupan lo que miden (hasta un tercio) y el resto es del PDF."""
+        sizes = self.reading.sizes()
+        total = sizes[0] + sizes[1]
+        if total <= 0:
+            return
+        examples = int(self.body.document().size().height()) + 2 * self.body.frameWidth()
+        examples = min(examples, total // 3)
+        self.reading.setSizes([total - examples, examples, sizes[2]])
+
     def forget_pdf_requests(self):
         """Tras un error de red: al volver a abrir el problema se intenta de nuevo."""
         self.pdf_pending.clear()
@@ -325,7 +360,9 @@ class ProblemsView(QWidget):
         if not problem.get("hasStatementPdf"):
             self.pdf_view.hide()
             return
-        self.pdf_view.show()
+        if self.pdf_view.isHidden():
+            self.pdf_view.show()
+            QTimer.singleShot(0, self._fit_pdf_layout)
         data = self.pdfs.get(problem["id"])
         if data is None:
             self.pdf_document.close()
@@ -339,19 +376,9 @@ class ProblemsView(QWidget):
         self.pdf_buffer.setData(QByteArray(data))
         self.pdf_buffer.open(QIODevice.OpenModeFlag.ReadOnly)
         self.pdf_document.load(self.pdf_buffer)
+        self._fit_pdf_zoom()
 
     # ── Acciones ───────────────────────────────────────────
-
-    def _on_link(self, url: QUrl):
-        # copy:<índice>:<input|output> son los botones de los ejemplos; cualquier otro enlace del enunciado se abre fuera
-        if url.scheme() != "copy":
-            QDesktopServices.openUrl(url)
-            return
-        _, index, field = url.toString().split(":")
-        value = self._current()["samples"][int(index)][field]
-        # Se copia lo mismo que se ve (la entrada sin la estructura JSON)
-        QGuiApplication.clipboard().setText(case_input_text(value) if field == "input" else value)
-        self.show_message("Ejemplo copiado.")
 
     def _language_code(self):
         return next((lang["code"] for lang in self.languages if lang["id"] == self.language.currentData()), None)
@@ -401,7 +428,7 @@ class ProblemsView(QWidget):
 
 
 def tune_rhythm(document):
-    """Más aire arriba de cada encabezado que abajo, y los bloques de código sobre un fondo propio."""
+    """Más aire arriba de cada encabezado que abajo, y aire después de cada bloque de código."""
     block = document.begin()
     while block.isValid():
         fmt = block.blockFormat()
@@ -410,7 +437,6 @@ def tune_rhythm(document):
             fmt.setBottomMargin(XS)
             QTextCursor(block).setBlockFormat(fmt)
         elif fmt.hasProperty(QTextFormat.Property.BlockCodeFence):
-            fmt.setBackground(QColor(PANEL))
             # Cada línea del bloque es un bloque de Qt: el margen va solo en la última
             if not block.next().blockFormat().hasProperty(QTextFormat.Property.BlockCodeFence):
                 fmt.setBottomMargin(SM)
@@ -418,64 +444,8 @@ def tune_rhythm(document):
         block = block.next()
 
 
-def type_text(type_ref):
-    """TypeRef del backend -> "int", "int[]", "string[][]"... (igual que el panel de staff)."""
-    depth = 0
-    while type_ref["type"] == "array":
-        type_ref, depth = type_ref["items"], depth + 1
-    return type_ref["type"] + "[]" * depth
-
-
-def signature_text(signature):
-    params = ", ".join(f"{p['name']}: {type_text(p['type'])}" for p in signature["params"])
-    return f"{signature['functionName']}({params}) -> {type_text(signature['returns'])}"
-
-
-def case_input_text(json_text):
-    """Presentación de la entrada de un ejemplo: llega como JSON canónico ({"nums":[2,7],"k":9}) y se
-    muestra un parámetro por línea ("nums = [2,7]", "k = 9"), sin la estructura JSON. Se corta el
-    texto en vez de parsearlo para no perder precisión en los long."""
-    text = json_text.strip()
-    if not (text.startswith("{") and text.endswith("}")):
-        return json_text
-    parts, depth, in_string, start, body, i = [], 0, False, 0, text[1:-1], 0
-    while i < len(body):
-        ch = body[i]
-        if in_string:
-            if ch == "\\":
-                i += 1
-            elif ch == '"':
-                in_string = False
-        elif ch == '"':
-            in_string = True
-        elif ch in "[{":
-            depth += 1
-        elif ch in "]}":
-            depth -= 1
-        elif ch == "," and depth == 0:
-            parts.append(body[start:i])
-            start = i + 1
-        i += 1
-    if body[start:].strip():
-        parts.append(body[start:])
-    lines = []
-    for part in parts:
-        match = re.match(r'\s*"((?:[^"\\]|\\.)*)"\s*:\s*(.*)$', part, re.S)
-        if not match:
-            return json_text
-        lines.append(f"{match.group(1)} = {match.group(2).strip()}")
-    return "\n".join(lines)
-
-
-def code_block(text):
-    """Bloque de código que no se rompe si el texto trae ```: la cerca es más larga que cualquier racha de `."""
-    longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
-    fence = "`" * max(3, longest + 1)
-    return f"{fence}\n{text}\n{fence}"
-
-
 def problem_markdown(problem):
-    # Con enunciado en PDF, aquí solo quedan la firma y los ejemplos (con su botón de copiar)
+    # La firma no se muestra: la plantilla ya la trae. Los ejemplos los agrega render_problem
     parts = [problem["statement"]] if problem.get("statement") else []
     if problem.get("signature") and problem.get("fullProgram"):
         # Categoría especial: programa completo que lee de la entrada; los ejemplos ya vienen como texto
@@ -485,16 +455,32 @@ def problem_markdown(problem):
             f"No escribas una función: tu programa lee los datos con input() en este orden: {order}, "
             "e imprime la respuesta al final. Con **Descargar plantilla** recibes la lectura ya escrita."
         )
-    elif problem.get("signature"):
-        parts.append(f"### Función\n\n{code_block(signature_text(problem['signature']))}")
     if problem.get("inputFormat"):
         parts.append(f"### Entrada\n\n{problem['inputFormat']}")
     if problem.get("outputFormat"):
         parts.append(f"### Salida\n\n{problem['outputFormat']}")
-    for i, sample in enumerate(problem.get("samples") or []):
-        parts.append(
-            f"### Ejemplo {i + 1}\n\n"
-            f"**Entrada** · [Copiar](copy:{i}:input)\n\n{code_block(case_input_text(sample['input']))}\n\n"
-            f"**Salida esperada** · [Copiar](copy:{i}:output)\n\n{code_block(sample['output'])}"
-        )
     return "\n\n".join(parts)
+
+
+def render_problem(document, problem):
+    """Enunciado en markdown y al final los ejemplos, como en LeetCode: "Entrada: …" y "Salida: …" en un bloque."""
+    document.setMarkdown(problem_markdown(problem))
+    cursor = QTextCursor(document)
+    cursor.movePosition(QTextCursor.MoveOperation.End)
+    for i, sample in enumerate(problem.get("samples") or []):
+        insert_heading(cursor, f"Ejemplo {i + 1}")
+        insert_example(cursor, case_input_line(sample["input"]), case_text(sample["output"]))
+    tune_rhythm(document)
+
+
+def insert_heading(cursor, text):
+    """Encabezado como los ### del markdown, en un bloque propio (insertHtml lo pegaría al párrafo anterior)."""
+    if cursor.block().text():
+        cursor.insertBlock()
+    block = QTextBlockFormat()
+    block.setHeadingLevel(3)
+    cursor.setBlockFormat(block)
+    char = QTextCharFormat()
+    char.setFontWeight(QFont.Weight.Bold)
+    char.setProperty(QTextFormat.Property.FontSizeAdjustment, 1)  # el mismo tamaño que da Qt a un ###
+    cursor.insertText(text, char)

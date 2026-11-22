@@ -3,7 +3,7 @@ import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } fr
 import { ActivatedRoute } from '@angular/router';
 import { debounceTime, distinctUntilChanged, forkJoin, map, of, switchMap, type Observable } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { EditionStatus, ICreateTeam, IRoomListItem, ITeamImportCredential, ITeamListItem, StaffRole } from '@concurso/shared-types';
+import { EditionStatus, ICreateTeam, IRoomListItem, ITeamListItem, StaffRole } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Icon } from '../../../../shared/ui/icon.component';
@@ -20,7 +20,7 @@ import { TeamsService } from '../../data/teams.service';
 import { RoomsService } from '../../../editions/rooms/data/rooms.service';
 import { StandingsService } from '../../../standings/data/standings.service';
 import { TeamImport } from '../team-import/team-import';
-import { downloadCredentialsPdf } from '../../data/credentials-pdf';
+import { downloadTeamCredentialsPdf, TeamCredentialPage } from '../../data/credentials-pdf';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
 
 const PAGE_SIZE = 20;
@@ -198,10 +198,7 @@ export class TeamList {
     // La contraseña se pide aquí y se usa solo para el PDF; nunca se guarda en el estado.
     this.service.getCredentials(team.id).subscribe({
       next: (cred) =>
-        this.makePdf(
-          [{ teamName: team.name, username: cred.username, password: cred.password }],
-          `credenciales-${slug(team.name)}.pdf`,
-        ),
+        this.makePdf([pdfPage(team, cred)], `credenciales-${slug(team.name)}.pdf`),
       error: (err) => {
         this.pdfBusy.set(null);
         this.actionError.set(backendMessage(err, 'No se pudo descargar el PDF.'));
@@ -217,12 +214,12 @@ export class TeamList {
       .pipe(
         switchMap((teams) =>
           teams.length === 0
-            ? of([] as ITeamImportCredential[])
+            ? of([] as TeamCredentialPage[])
             : forkJoin(
                 teams.map((t) =>
                   this.service
                     .getCredentials(t.id)
-                    .pipe(map((c) => ({ teamName: t.name, username: c.username, password: c.password }))),
+                    .pipe(map((c) => pdfPage(t, c))),
                 ),
               ),
         ),
@@ -243,13 +240,13 @@ export class TeamList {
       });
   }
 
-  private makePdf(creds: ITeamImportCredential[], fileName: string): void {
-    downloadCredentialsPdf(creds, fileName)
+  private makePdf(pages: TeamCredentialPage[], fileName: string): void {
+    downloadTeamCredentialsPdf(pages, fileName, this.editionName())
       .then(({ logoMissing }) => {
         this.pdfBusy.set(null);
         if (logoMissing) {
           this.logoWarning.set(
-            'No se encontró el logo (logo-cuvalles.png); el PDF se generó solo con el texto del encabezado.',
+            'No se encontró algún logo (logo-cuvalles.png o gatito-512.png); el PDF se generó sin esa imagen.',
           );
         }
       })
@@ -515,4 +512,16 @@ function focusFirstInvalid(): void {
     );
     el?.focus();
   });
+}
+
+// Hoja del PDF de un equipo: con su categoría, salón e integrantes para no confundir las hojas en el laboratorio
+function pdfPage(t: ITeamListItem, c: { username: string; password: string }): TeamCredentialPage {
+  return {
+    teamName: t.name,
+    username: c.username,
+    password: c.password,
+    category: t.category?.name ?? null,
+    room: t.room?.name ?? null,
+    members: t.members.map((m) => m.name),
+  };
 }

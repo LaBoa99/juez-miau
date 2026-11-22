@@ -1,6 +1,6 @@
 <oj-page-header
   title="Ediciones"
-  [subtitle]="editions().length + ' ediciones registradas'"
+  [subtitle]="editions().length + (auth.isSuperadmin() ? ' ediciones registradas' : ' ediciones donde tienes un rol')"
 >
   @if (auth.isSuperadmin()) {
     <button actions ojButton variant="primary" type="button" (click)="openPanel()">
@@ -21,6 +21,11 @@
       <p class="editions__loading">Cargando…</p>
     } @else if (error()) {
       <oj-alert tone="error">No se pudieron cargar las ediciones.</oj-alert>
+    } @else if (editions().length === 0 && !auth.isSuperadmin() && !filter()) {
+      <!-- Staff sin rol en ninguna edición: no es un error, falta que un superadmin lo asigne -->
+      <oj-empty-state message="Aún no tienes un rol en ninguna edición. Un superadministrador tiene que agregarte al staff de una edición (como administrador, juez u observador); cuando lo haga, aparecerá aquí.">
+        <button ojButton variant="secondary" type="button" (click)="recheck()">Revisar de nuevo</button>
+      </oj-empty-state>
     } @else if (editions().length === 0) {
       <oj-empty-state
         [message]="filter() ? 'No hay ediciones con este estado.' : 'Aún no hay ediciones.'"

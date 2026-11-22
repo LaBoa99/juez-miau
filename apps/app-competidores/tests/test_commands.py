@@ -53,13 +53,9 @@ def test_load_contest_sorts_by_letter():
     assert [p["letter"] for p in view["problems"]] == ["A", "B", "C"]
 
 
-def test_problem_markdown_has_sections_and_copy_links():
-    md = problem_markdown({
-        "statement": "Suma.", "inputFormat": "n", "outputFormat": "",
-        "samples": [{"input": "1 2", "output": "3"}],
-    })
+def test_problem_markdown_has_sections():
+    md = problem_markdown({"statement": "Suma.", "inputFormat": "n", "outputFormat": "", "samples": []})
     assert "### Entrada" in md and "### Salida" not in md
-    assert "(copy:0:input)" in md and "(copy:0:output)" in md
 
 
 def test_login_403_means_suspended_team():

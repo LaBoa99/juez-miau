@@ -298,6 +298,8 @@ export class AlertsPage {
     return flagMessage(f);
   }
   // ─── Suspender (acción rápida; el backend la permite al admin de la edición) ───
+  // El observador ve y levanta alertas; resolverlas es de admin y juez (igual que el backend)
+  protected readonly canResolve = computed(() => this.auth.isSuperadmin() || this.auth.roleInEdition(this.editionId) !== StaffRole.OBSERVER);
   protected readonly canSuspend = computed(
     () => this.auth.isSuperadmin() || this.auth.roleInEdition(this.editionId) === StaffRole.ADMIN,
   );

@@ -267,7 +267,21 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Concurso en vivo: reloj, envíos, ju
     const teamDetail = await api().get(`/api/v1/submissions/${results.ac}`).set(bearer(teamToken)).expect(200);
     expect(teamDetail.body).toMatchObject({ verdict: Verdict.AC, source: SOLUTIONS.ac.source });
     expect(teamDetail.body.cases).toBeUndefined();
+    expect(teamDetail.body.feedback).toMatchObject({ passed: 2, total: 2 });
+    expect(teamDetail.body.feedback.cases[0].example).toMatchObject({ number: 1, actual: '12', expected: '12' });
     await api().get(`/api/v1/submissions/${results.ac}`).set(bearer(otherTeamToken)).expect(404);
+
+    // Caso por caso: del ejemplo público, sus datos; del oculto, solo si pasó
+    const waDetail = await api().get(`/api/v1/submissions/${results.wa}`).set(bearer(teamToken)).expect(200);
+    expect(waDetail.body.feedback).toEqual({
+      passed: 0, total: 2,
+      cases: [
+        { number: 1, verdict: Verdict.WA, example: { number: 1, input: '{"nums":[1,2,3],"k":2}', expected: '12', actual: '8', stderr: null } },
+        { number: 2, verdict: Verdict.WA, example: null },
+      ],
+    });
+    const ceDetail = await api().get(`/api/v1/submissions/${results.ce}`).set(bearer(teamToken)).expect(200);
+    expect(ceDetail.body.feedback).toBeNull();
 
     const staffDetail = await api().get(`/api/v1/submissions/${results.ac}`).set(bearer(adminToken)).expect(200);
     expect(staffDetail.body.cases).toHaveLength(2);

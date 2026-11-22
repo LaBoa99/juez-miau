@@ -1,7 +1,7 @@
 import { EditionStatus, ProblemStatus, type IEdition, type IEditionListItem, type IEditionScheduleResponse } from '@concurso/shared-types';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CreateEditionDto } from '../dto/create-edition.dto.js';
 import { EditionFiltersDto } from '../dto/edition-filters.dto.js';
 import { ScheduleEditionDto } from '../dto/schedule-edition.dto.js';
@@ -9,6 +9,8 @@ import { UpdateEditionDto } from '../dto/update-edition.dto.js';
 import { Edition } from '../entities/edition.entity.js';
 import { Category } from '../entities/category.entity.js';
 import { Room } from '../entities/room.entity.js';
+import { EditionStaff } from '../entities/edition-staff.entity.js';
+import { StaffUser } from '../../staff/entities/staff-user.entity.js';
 import { Problem } from '../../problems/entities/problem.entity.js';
 import { Team } from '../../teams/entities/team.entity.js';
 import { ACTIVE_EDITION_STATUSES } from '../../teams/services/teams.service.js';
@@ -55,11 +57,19 @@ export class EditionsService {
         }
     }
 
-    async findAll(filters: EditionFiltersDto): Promise<IEditionListItem[]> {
-        
+    // El superadmin ve todas; el resto del staff solo las ediciones donde tiene un rol (las demás le darían 403)
+    async findAll(filters: EditionFiltersDto, staffUserId: number): Promise<IEditionListItem[]> {
+        const manager = this.editionRepository.manager
+        const user = await manager.findOneBy(StaffUser, { id: staffUserId })
+        const mine = user?.is_superadmin
+            ? null
+            : (await manager.findBy(EditionStaff, { staff_user_id: staffUserId })).map((assignment) => assignment.edition_id)
+        if(mine?.length === 0) return []
+
         return this.editionRepository.find({
             where: {
-                ...(filters.status && { status: filters.status })
+                ...(filters.status && { status: filters.status }),
+                ...(mine && { id: In(mine) }),
             },
             relations: {
                 categories: true

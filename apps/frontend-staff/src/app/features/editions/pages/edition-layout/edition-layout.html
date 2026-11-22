@@ -1,3 +1,4 @@
+@if (!ctx.forbidden()) {
 <nav class="edition-bar" aria-label="Secciones de la edición">
   <span class="edition-bar__code oj-mono">{{ code() }}</span>
   @for (s of sections(); track s.path) {
@@ -5,6 +6,7 @@
       class="edition-bar__link"
       [routerLink]="['/ediciones', id, s.path]"
       routerLinkActive="edition-bar__link--active"
+      (click)="trackSection(s.path)"
     >
       {{ s.label }}
       @if (s.path === 'revision' && reviewCount() > 0) {
@@ -19,10 +21,15 @@
     </a>
   }
 </nav>
+}
 
 <div class="edition-body">
-  @if (ctx.error()) {
-    <p class="edition-body__msg">No se pudo cargar la edición.</p>
+  @if (ctx.forbidden()) {
+    <oj-empty-state message="No tienes un rol en esta edición. Un superadministrador tiene que agregarte a su staff (como administrador, juez u observador) para que puedas entrar.">
+      <a ojButton variant="secondary" routerLink="/ediciones">Ir a mis ediciones</a>
+    </oj-empty-state>
+  } @else if (ctx.error()) {
+    <p class="edition-body__msg">No se pudo cargar la edición. Revisa tu conexión y recarga la página.</p>
   } @else {
     <router-outlet />
   }

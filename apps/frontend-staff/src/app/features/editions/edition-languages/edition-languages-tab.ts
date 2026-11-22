@@ -16,6 +16,9 @@ import { findEditionId, message } from '../tab-utils';
   styleUrl: './edition-languages-tab.css',
 })
 export class EditionLanguagesTab {
+  // Qué es esta pestaña: la página de Configuración lo muestra debajo de las pestañas
+  readonly intro = 'Los lenguajes en los que los equipos pueden enviar sus soluciones en esta edición. Solo aparecen los que están activos en el juez; desmarca los que no quieras permitir. El ×N es cuánto tiempo extra tiene ese lenguaje sobre el límite de cada problema.';
+
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(EditionLanguagesService);
   private readonly ctx = inject(EditionContext);

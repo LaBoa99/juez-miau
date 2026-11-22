@@ -242,6 +242,40 @@ describe('Auth staff con cookie httpOnly (e2e)', () => {
     });
   });
 
+  describe('PATCH /auth/me/password', () => {
+    const own = `e2e-pass-${Date.now()}@concurso.test`;
+    const change = (accessToken: string, body: object) =>
+      api().patch('/api/v1/auth/me/password').set('Authorization', `Bearer ${accessToken}`).send(body);
+
+    afterAll(async () => {
+      await staffRepo.delete({ email: own });
+    });
+
+    it('400 con la actual equivocada; 204 con la correcta, cierra las otras sesiones y deja abierta esta', async () => {
+      await staffRepo.save(staffRepo.create({
+        name: 'Cambia E2E', email: own, password: 'copia-cifrada',
+        password_hash: await app.get(PasswordService).hashPassword(password, 4),
+      }));
+      const other = refreshCookie(await login({ email: own, password }).expect(200)).value;
+      const { body } = await login({ email: own, password }).expect(200);
+
+      await change(body.accessToken, { currentPassword: 'equivocada', newPassword: 'NuevaClave1' }).expect(400);
+      await change(body.accessToken, { currentPassword: password, newPassword: 'corta' }).expect(400);
+
+      const res = await change(body.accessToken, { currentPassword: password, newPassword: 'NuevaClave1' }).expect(204);
+      const current = refreshCookie(res).value;
+
+      await api().post('/api/v1/auth/refresh').set('Cookie', `refresh_token=${other}`).expect(401);
+      await api().post('/api/v1/auth/refresh').set('Cookie', `refresh_token=${current}`).expect(200);
+      await login({ email: own, password }).expect(401);
+      await login({ email: own, password: 'NuevaClave1' }).expect(200);
+
+      // Sin copia cifrada: el PDF de credenciales ya no la muestra
+      const saved = await staffRepo.createQueryBuilder('u').addSelect('u.password').where('u.email = :own', { own }).getOne();
+      expect(saved!.password).toBeNull();
+    });
+  });
+
   describe('CORS', () => {
     it('permite el origen del frontend con credenciales', async () => {
       const res = await api()

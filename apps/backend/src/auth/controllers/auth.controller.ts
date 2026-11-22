@@ -1,9 +1,12 @@
-import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, Patch, Post, Req, Res } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import type { CookieOptions, Request, Response } from 'express'
 import { StaffLoginDto } from '../dto/staff-login.dto.js'
 import { TeamLoginDto } from '../dto/team-login.dto.js'
+import { ChangePasswordDto } from '../dto/change-password.dto.js'
 import { AuthService } from '../services/auth.service.js'
+import { RefreshTokensService } from '../services/refresh-tokens.service.js'
+import { StaffService } from '../../staff/services/staff.service.js'
 import type { AuthenticatedRequest } from '../guards/jwt-auth.guard.js'
 import { AllowTeam, Public } from '../decorators/access.decorators.js'
 
@@ -14,6 +17,8 @@ export class AuthController {
     constructor(
         private readonly authService: AuthService,
         private readonly config: ConfigService,
+        private readonly staffService: StaffService,
+        private readonly refreshTokensService: RefreshTokensService,
     ) {}
 
     // POST /api/v1/auth/staff/login
@@ -59,6 +64,15 @@ export class AuthController {
     @AllowTeam()
     me(@Req() req: AuthenticatedRequest) {
         return this.authService.me(req.user)
+    }
+
+    // PATCH /api/v1/auth/me/password (solo staff)
+    // Cierra las demás sesiones y deja abierta esta con un refresh token nuevo
+    @Patch('me/password')
+    @HttpCode(204)
+    async changePassword(@Req() req: AuthenticatedRequest, @Body() dto: ChangePasswordDto, @Res({ passthrough: true }) res: Response) {
+        await this.staffService.changeOwnPassword(req.user.sub, dto.currentPassword, dto.newPassword)
+        res.cookie(REFRESH_COOKIE, await this.refreshTokensService.issue(req.user.sub), this.refreshCookieOptions())
     }
 
     private refreshCookieOptions(): CookieOptions {

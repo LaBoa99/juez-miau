@@ -22,7 +22,7 @@ Ser el único canal del equipo con el juez: problemas, envíos, veredictos, marc
 
 ## Capabilities and Constraints
 - Sin editor de código. Perder el foco o pegar no es trampa.
-- El equipo nunca ve detalles por caso de prueba, de infraestructura ni de alertas de integridad.
+- El equipo ve si pasó cada caso de su envío; de los ejemplos públicos del enunciado ve además la entrada, su salida, la esperada y el error de su programa, pasara o no. De los casos ocultos nunca ve datos. Tampoco ve detalles de infraestructura ni de alertas de integridad.
 - Ligera: meta de menos de 60 MB.
 
 ## Product Principles

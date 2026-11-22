@@ -20,3 +20,4 @@ export * from "./interfaces/health.interface.js"
 export * from "./interfaces/clarification.interface.js"
 
 export * from "./constants/team-instructions.js"
+export * from "./constants/edition-sections.js"
