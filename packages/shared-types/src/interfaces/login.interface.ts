@@ -39,3 +39,9 @@ export interface IMeResponse extends IStaffUser {
 export interface IRefreshResponse {
     accessToken: string;
 }
+
+// PATCH /auth/me/password: el staff cambia su propia contraseña
+export interface IChangePassword {
+    currentPassword: string;
+    newPassword: string;
+}

@@ -64,6 +64,7 @@ const PATTERNS: readonly [RegExp, string][] = [
   [/blocked until the staff reviews an alert/i, 'Los envíos están bloqueados hasta que el staff revise una alerta del equipo.'],
   // ── Email / recursos ──
   [/email .* ya está registrado|already registered/i, 'Ese correo ya está registrado.'],
+  [/contraseña actual no es correcta/i, 'La contraseña actual no es correcta.'],
 ];
 
 // Textos fijos del juez en `message` de un caso (judge.service.ts, compare.ts). Lista aparte: los

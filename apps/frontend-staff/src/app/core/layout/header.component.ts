@@ -6,11 +6,12 @@ import { AuthService } from '../auth/auth.service';
 import { LiveClockService } from '../realtime/live-clock.service';
 import { ContestCountdown } from '../../shared/ui/contest-countdown.component';
 import { EditionStatus } from '@concurso/shared-types';
+import { ChangePassword } from './change-password.component';
 
 @Component({
   selector: 'oj-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive, ButtonDirective, ContestCountdown],
+  imports: [RouterLink, RouterLinkActive, ButtonDirective, ContestCountdown, ChangePassword],
   template: `
     <header>
       <div class="oj-hd__left">
@@ -37,9 +38,12 @@ import { EditionStatus } from '@concurso/shared-types';
         @if (runningClock(); as c) {
           <oj-contest-countdown variant="compact" [clock]="c" />
         }
+        <button ojButton variant="secondary" size="sm" type="button" (click)="pwd.open()">Cambiar contraseña</button>
         <button ojButton variant="secondary" size="sm" (click)="logout.emit()">Cerrar sesión</button>
       </div>
     </header>
+    <!-- Fuera del flex del header: el host vacío del modal sumaría un hueco extra -->
+    <oj-change-password #pwd />
   `,
   styles: `
     header {

@@ -57,6 +57,7 @@ Base `/auth`. Tipos: `ILoginResponse`, `IStaffUser`, `IRefreshResponse`, `IMeRes
 | POST | `/auth/refresh` | `@Public` | — (usa cookie) | `{ accessToken }` | 401 `Sesión expirada` (cookie ausente/revocada o usuario inactivo). |
 | POST | `/auth/logout` | `@Public` | — | 204 | — |
 | GET | `/auth/me` | `@AllowTeam` | — | staff: `{ type:'staff', id, name, roles[] }`; equipo: `{ type:'team', id, name, team:{…} }` | 401 si staff inactivo. |
+| PATCH | `/auth/me/password` | staff | `IChangePassword` = `{ currentPassword, newPassword (8–128) }` | 204; cierra las demás sesiones y emite un refresh token nuevo en la cookie. No guarda copia cifrada: el PDF de credenciales la muestra vacía | 400 si la actual no es correcta. |
 
 Reglas: el login de equipo reemplaza la sesión anterior del equipo; si cambia de máquina, levanta una alerta `SESSION_REPLACED`. `logout` con token de equipo cierra su `team_session`.
 

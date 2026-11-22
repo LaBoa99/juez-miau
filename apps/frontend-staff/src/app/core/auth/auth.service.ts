@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
+  IChangePassword,
   ILoginData,
   ILoginResponse,
   IMeResponse,
@@ -73,6 +74,11 @@ export class AuthService {
         );
     }
     return this.refreshInFlight;
+  }
+
+  // El backend responde con un refresh token nuevo en la cookie: esta sesión sigue abierta
+  changePassword(body: IChangePassword): Observable<void> {
+    return this.http.patch<void>(`${AUTH}/me/password`, body, { withCredentials: true });
   }
 
   logout(): void {
