@@ -15,6 +15,11 @@ ACCENT = "#006c4a"
 SELECTION = "#85f8c4"
 ERROR = "#ba1a1a"
 SUCCESS_BG = "#e6f6ef"
+ERROR_BG = "#ffdad6"  # contenedor de error del diseño de Stitch: la línea donde difiere una salida
+
+# Monoespaciada de la app (reloj, ejemplos, salidas): Consolas en los equipos Windows del laboratorio
+MONO = ("JetBrains Mono", "Consolas")
+MONO_CSS = ", ".join(f'"{family}"' for family in MONO) + ", monospace"
 
 def apply_theme(app):
     """Siempre claro, aunque el sistema use tema oscuro: Fusion + paleta propia + QSS."""
@@ -49,7 +54,7 @@ QLabel#success {{ color: {ACCENT}; font-weight: 600; background: {SUCCESS_BG}; b
 QLabel#section {{ font-weight: 600; }}
 
 #sidebarPanel {{ background: {PANEL}; border-right: 1px solid {BORDER}; }}
-QLabel#clock {{ font-size: 20pt; font-weight: 600; font-family: "JetBrains Mono", "Consolas", monospace; }}
+QLabel#clock {{ font-size: 20pt; font-weight: 600; font-family: {MONO_CSS}; }}
 QListWidget#sidebar {{
     background: transparent; border: none;
     outline: 0; padding: {SM}px 0;
@@ -93,6 +98,24 @@ QHeaderView::section {{
     padding: {XS}px {SM}px; font-weight: 600;
 }}
 QPlainTextEdit {{ border: none; background: {PANEL}; padding: {SM}px; }}
+
+QFrame#rule {{ background: {BORDER}; border: none; }}
+QSplitter#sections::handle {{ background: {SURFACE}; }}
+#attemptsPane {{ background: {SURFACE}; border-top: 1px solid {BORDER}; }}
+QPushButton#caseChip {{
+    min-width: 32px; max-width: 32px; min-height: 32px; max-height: 32px; padding: 0;
+    border-radius: 4px; border: 1px solid transparent; font-size: 9pt; font-weight: 600;
+}}
+QPushButton#caseChip[state="ok"] {{ background: {SUCCESS_BG}; color: {ACCENT}; }}
+QPushButton#caseChip[state="bad"] {{ background: {ERROR_BG}; color: {ERROR}; }}
+QPushButton#caseChip[state="skip"] {{ background: {SURFACE}; color: {TEXT_MUTED}; border: 1px dashed {BORDER}; }}
+QPushButton#caseChip:enabled:hover {{ border: 1px solid {TEXT_MUTED}; }}
+QPushButton#caseChip:checked {{ border: 2px solid {TEXT}; }}
+QLabel#caseLabel {{ color: {TEXT_MUTED}; font-size: 9pt; }}
+QLabel#caseBox {{
+    font-family: {MONO_CSS}; font-size: 9pt; background: {SURFACE};
+    border: 1px solid {BORDER}; border-radius: 4px; padding: {SM}px;
+}}
 
 QTextBrowser {{
     border: none; background: {SURFACE};

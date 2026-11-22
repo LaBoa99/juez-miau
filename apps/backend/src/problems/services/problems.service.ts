@@ -30,7 +30,7 @@ import { ProblemFiltersDto } from '../dto/problem-filters.dto.js';
 import { UpdateProblemDto } from '../dto/update-problem.dto.js';
 import { Problem } from '../entities/problem.entity.js';
 import { StaffUser } from '../../staff/entities/staff-user.entity.js';
-import { programInput, programOutput } from '../../judge/full-program.js';
+import { findSampleCases, sampleText } from '../../testsets/samples.js';
 import { Submission } from '../../submissions/entities/submission.entity.js';
 import { nextLetter } from '../letters.js';
 
@@ -230,20 +230,15 @@ export class ProblemsService {
         }
     }
 
-    // Casos públicos que ya tienen salida (calculada por el build), en orden. Con `asText` (programa completo)
-    // van como el texto que lee y escribe el programa
     private async findSamples(testset: Testset, asText: IProblemSignature | null): Promise<IProblemSample[]> {
-        const cases = await this.testCaseRepository.find({
-            where: { testset_id: testset.id, visibility: TestCaseVisibility.PUBLIC, output_sha: Not(IsNull()) },
-            order: { ordinal: 'ASC' },
-        })
+        const cases = await findSampleCases(this.testCaseRepository, testset.id)
         const contents = await this.blobsService.getManyText(cases.flatMap((testCase) => [testCase.input_sha, testCase.output_sha!]))
 
         return cases.flatMap((testCase) => {
             const input = contents.get(testCase.input_sha)
             const output = contents.get(testCase.output_sha!)
             if(input === undefined || output === undefined) return []
-            return [asText ? { input: programInput(asText, input), output: programOutput(asText.returns, output) } : { input, output }]
+            return [sampleText(asText, input, output)]
         })
     }
 

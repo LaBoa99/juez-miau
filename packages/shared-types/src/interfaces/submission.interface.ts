@@ -130,8 +130,36 @@ export interface IReviewSubmission {
     comment?: string
 }
 
+// Resultado de un caso como lo ve el equipo. Los datos solo vienen en los ejemplos públicos del enunciado
+export interface ISubmissionFeedbackCase {
+    // 1..N en el orden del juez
+    number: number
+    // null: no se ejecutó (el juicio se detiene en el primer TLE, MLE o RE)
+    verdict: Verdict | null
+    // Solo si el caso es el "Ejemplo N" del enunciado
+    example: {
+        number: number
+        input: string
+        expected: string
+        // Lo que devolvió el programa (AC o WA); null si no terminó bien
+        actual: string | null
+        // Salida de error del programa (recortada), solo con RE
+        stderr: string | null
+    } | null
+}
+
+// Cómo le fue a un envío caso por caso, tal como lo ve el equipo
+export interface ISubmissionFeedback {
+    // Casos aceptados y total de casos del testset del envío
+    passed: number
+    total: number
+    cases: ISubmissionFeedbackCase[]
+}
+
 export interface ISubmissionDetail extends ISubmission {
     source: string
+    // Solo en envíos ya juzgados con resultado por caso (AC, WA, TLE, MLE, RE)
+    feedback: ISubmissionFeedback | null
 }
 
 export interface IStaffSubmissionDetail extends IStaffSubmission {

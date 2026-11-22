@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injec
 import { InjectRepository } from '@nestjs/typeorm'
 import { In, LessThan, MoreThan, Not, Repository, type FindOptionsWhere } from 'typeorm'
 import {
+    CompareMode,
     ProblemStatus,
     SOCKET_EVENTS,
     StaffRole,
@@ -13,6 +14,7 @@ import {
     type ISubmissionReview,
     type ISubmission,
     type ISubmissionDetail,
+    type ISubmissionFeedback,
     type IStaffSubmission,
     type IStaffSubmissionDetail,
 } from '@concurso/shared-types'
@@ -37,11 +39,15 @@ import { SubmissionHistory } from '../entities/submission-history.entity.js'
 import { SubmissionReview } from '../entities/submission-review.entity.js'
 import { StaffUser } from '../../staff/entities/staff-user.entity.js'
 import { TestCase } from '../../testsets/entities/test-case.entity.js'
+import { findSampleCases, sampleText } from '../../testsets/samples.js'
 import { toStaffSubmissionDto, toSubmissionDto } from '../mappers/submission.mapper.js'
 import { MAX_SOURCE_BYTES, SUBMISSION_COOLDOWN_MS } from '../submissions.constants.js'
 import { SubmissionQueueService } from './submission-queue.service.js'
 
 const JUDGE_ROLES = [StaffRole.ADMIN, StaffRole.JUDGE]
+
+// Veredictos del juez con resultado por caso (CE no llega a ejecutar; la revisión manual no cambia los casos)
+const JUDGED = [Verdict.AC, Verdict.WA, Verdict.TLE, Verdict.MLE, Verdict.RE]
 
 const DEFAULT_PAGE = 50
 
@@ -159,9 +165,54 @@ export class SubmissionsService implements OnApplicationBootstrap {
     }
 
     async findOneForTeam(teamId: number, id: number): Promise<ISubmissionDetail> {
-        const submission = await this.submissionRepository.findOneBy({ id, team_id: teamId })
+        const submission = await this.submissionRepository.findOne({
+            where: { id, team_id: teamId },
+            relations: { cases: true, testset: true, problem: true },
+        })
         if(!submission) throw new NotFoundException('submission not found #' + id)
-        return { ...toSubmissionDto(submission), source: submission.source.toString('utf8') }
+        return { ...toSubmissionDto(submission), source: submission.source.toString('utf8'), feedback: await this.feedback(submission) }
+    }
+
+    // Resultado de cada caso. De los ejemplos públicos va también la entrada, la esperada y lo que dio el programa,
+    // pasara o no (para calibrar); de los ocultos, solo si pasó
+    private async feedback(submission: Submission): Promise<ISubmissionFeedback | null> {
+        if(submission.status !== SubmissionStatus.DONE || !submission.verdict || !JUDGED.includes(submission.verdict)) return null
+
+        const testCases = this.submissionRepository.manager.getRepository(TestCase)
+        const [all, samples] = await Promise.all([
+            testCases.find({ where: { testset_id: submission.testset_id }, order: { ordinal: 'ASC' }, select: { id: true, ordinal: true } }),
+            findSampleCases(testCases, submission.testset_id),
+        ])
+        const results = new Map(submission.cases.map((submissionCase) => [submissionCase.ordinal, submissionCase]))
+        const exampleNumber = new Map(samples.map((testCase, index) => [testCase.ordinal, index + 1]))
+        const contents = await this.blobsService.getManyText(samples.flatMap((testCase) => [testCase.input_sha, testCase.output_sha!]))
+        const fullProgram = submission.testset.compare_mode === CompareMode.PROGRAM ? submission.problem.signature : null
+        const samplesByOrdinal = new Map(samples.map((testCase) => [testCase.ordinal, testCase]))
+
+        return {
+            passed: submission.cases.filter((submissionCase) => submissionCase.verdict === Verdict.AC).length,
+            total: all.length,
+            cases: all.map((testCase, index) => {
+                const result = results.get(testCase.ordinal)
+                const sample = samplesByOrdinal.get(testCase.ordinal)
+                const input = sample && contents.get(sample.input_sha)
+                const expected = sample && contents.get(sample.output_sha!)
+                const text = input !== undefined && expected !== undefined ? sampleText(fullProgram, input, expected) : null
+                return {
+                    number: index + 1,
+                    // Sin resultado: el juicio se detuvo antes (TLE, MLE o RE en un caso anterior)
+                    verdict: result?.verdict ?? null,
+                    example: text && {
+                        number: exampleNumber.get(testCase.ordinal)!,
+                        input: text.input,
+                        expected: text.output,
+                        actual: result && (result.verdict === Verdict.AC || result.verdict === Verdict.WA) ? result.output : null,
+                        // En WA `message` es una nota interna del juez, no algo que imprimió el programa
+                        stderr: result?.verdict === Verdict.RE ? result.message : null,
+                    },
+                }
+            }),
+        }
     }
 
     async findForEdition(editionId: number, filters: SubmissionFiltersDto): Promise<IStaffSubmission[]> {
