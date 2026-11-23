@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, type Relation } from "typeorm";
-import { FlagType } from "@concurso/shared-types";
+import { FlagOutcome, FlagType } from "@concurso/shared-types";
 import { Edition } from "../../editions/entities/edition.entity.js";
 import { Team } from "../../teams/entities/team.entity.js";
 
@@ -40,6 +40,22 @@ export class Flag {
 
     @Column({ type: 'text', nullable: true })
     declare resolution_note: string | null
+
+    // Decisión del juez; null si sigue abierta o se resolvió antes de existir esta regla (no penaliza)
+    @Column({ type: 'enum', enum: FlagOutcome, nullable: true })
+    declare outcome: FlagOutcome | null
+
+    // Tiempo de concurso al confirmarla: el marcador congelado no muestra lo confirmado después
+    @Column({ type: 'int', nullable: true })
+    declare outcome_contest_ms: number | null
+
+    // Última vez que se detectó: si sigue presente tras resolverla, es el mismo incidente
+    @Column({ type: 'timestamptz', default: () => 'now()' })
+    declare last_seen_at: Date
+
+    // Número de falta de este tipo y llave: 2 o más es reincidencia
+    @Column({ type: 'int', default: 1 })
+    declare offense: number
 
     @ManyToOne(() => Edition, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'edition_id' })

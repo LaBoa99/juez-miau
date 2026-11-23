@@ -9,6 +9,7 @@ class LoginView(QWidget):
 
     submitted = Signal(str, str)
     server_requested = Signal()
+    check_requested = Signal()
 
     def __init__(self):
         super().__init__()
@@ -35,6 +36,12 @@ class LoginView(QWidget):
         self.error.hide()
         self.button = QPushButton("Entrar")
         self.button.setDefault(True)
+        self.check_button = QPushButton("Probar conexión")
+        self.check_button.setObjectName("secondary")
+        self.check_button.clicked.connect(self.check_requested.emit)
+        self.connection = QLabel()
+        self.connection.setWordWrap(True)
+        self.connection.hide()
         # Solo aparece si no hay conexión; pide credenciales de staff
         self.server_button = QPushButton("Configurar servidor (staff)")
         self.server_button.setObjectName("secondary")
@@ -63,10 +70,14 @@ class LoginView(QWidget):
         layout.addSpacing(SM)
         buttons = QHBoxLayout()
         buttons.setSpacing(SM)
-        buttons.addWidget(self.server_button)
+        buttons.addWidget(self.check_button)
         buttons.addStretch()
         buttons.addWidget(self.button)
         layout.addLayout(buttons)
+        layout.addSpacing(SM)
+        layout.addWidget(self.connection)
+        layout.addSpacing(SM)
+        layout.addWidget(self.server_button, alignment=Qt.AlignmentFlag.AlignLeft)
 
         page = QHBoxLayout(self)
         page.addWidget(form, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -83,6 +94,20 @@ class LoginView(QWidget):
         self.button.setText("Entrando…" if busy else "Entrar")
         if busy:
             self.error.hide()
+
+    def set_checking(self, busy):
+        self.check_button.setDisabled(busy)
+        self.check_button.setText("Probando…" if busy else "Probar conexión")
+        if busy:
+            self.connection.hide()
+
+    def show_connection(self, message, ok):
+        self.connection.setObjectName("success" if ok else "error")
+        self.connection.style().polish(self.connection)
+        self.connection.setText(message)
+        self.connection.show()
+        if ok:
+            self.server_button.hide()
 
     def show_server_hint(self):
         self.server_button.show()

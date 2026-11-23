@@ -61,10 +61,22 @@
 /* Letra: columna angosta (~80px). */
 
 
-/* Puntos: input angosto; la ayuda queda en una línea. */
-.pp__points-input {
-  width: 120px;
-  max-width: 100%;
+.pp__check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--oj-space-sm);
+  font-size: 13px;
+  font-weight: 600;
+}
+.pp__check input {
+  margin: 2px 0 0;
+}
+.pp__check-hint {
+  display: block;
+  margin-top: var(--oj-space-2xs);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--oj-text-muted);
 }
 
 /* Textarea de código: solo la fuente mono; el tamaño viene de styles.css. */

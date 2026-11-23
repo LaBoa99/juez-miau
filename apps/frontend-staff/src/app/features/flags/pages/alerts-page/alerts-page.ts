@@ -5,7 +5,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { IEditionStaffListItem, IFlag, StaffRole } from '@concurso/shared-types';
+import { FlagOutcome, IEditionStaffListItem, IFlag, StaffRole } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Badge } from '../../../../shared/ui/badge.component';
@@ -61,6 +61,7 @@ export class AlertsPage {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly editionId = findEditionId(this.route);
+  protected readonly FlagOutcome = FlagOutcome;
 
   // Lista maestra (más reciente primero); la vista se filtra en el cliente.
   protected readonly all = signal<IFlag[]>([]);
@@ -260,12 +261,12 @@ export class AlertsPage {
   // ─── Resolver ───
   openResolve(f: IFlag): void {
     this.resolveTarget.set(f);
-    this.noteCtrl.reset('');
+    this.noteCtrl.reset(f.resolutionNote ?? '');
     this.actionError.set(null);
     this.resolveModal().open();
   }
 
-  confirmResolve(): void {
+  confirmResolve(outcome: FlagOutcome): void {
     const f = this.resolveTarget();
     if (!f || this.noteCtrl.invalid) {
       this.noteCtrl.markAsTouched();
@@ -274,7 +275,7 @@ export class AlertsPage {
     this.resolving.set(true);
     this.actionError.set(null);
     const note = this.noteCtrl.value.trim();
-    this.service.resolve(f.id, note ? { note } : {}).subscribe({
+    this.service.resolve(f.id, { outcome, ...(note && { note }) }).subscribe({
       next: (updated) => {
         this.resolving.set(false);
         this.upsert(updated);
@@ -344,7 +345,7 @@ export class AlertsPage {
     return r.id === this.myRoomId() ? `Mi salón: ${r.name}` : r.name;
   }
   showBlockNotice(f: IFlag): boolean {
-    return this.blocksSubmissions() && f.resolvedAt == null;
+    return (this.blocksSubmissions() || f.offense > 1) && f.resolvedAt == null;
   }
 }
 

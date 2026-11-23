@@ -1,20 +1,21 @@
 from html import escape
 
-from PySide6.QtCore import QRectF, QTimer, Qt, Signal
-from PySide6.QtGui import QColor, QPainter, QPen
+from PySide6.QtCore import QPointF, QRectF, QSize, QTimer, Qt, Signal
+from PySide6.QtGui import QColor, QIcon, QPainter, QPen, QPixmap, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractItemView, QBoxLayout, QGridLayout, QHBoxLayout, QHeaderView, QLabel, QPushButton, QScrollArea, QTableWidget,
     QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from services.submission_service import LANGUAGE_NAMES, VERDICTS, has_cases, is_final, verdict_text
+from services.submission_service import LANGUAGE_NAMES, VERDICTS, has_cases, verdict_state, verdict_text
 from views.case_table import case_input_text, case_text
-from views.style import ACCENT, ERROR, ERROR_BG, LG, MD, TEXT_MUTED, XS
+from views.style import ACCENT, ERROR, ERROR_BG, LG, MD, SURFACE, TEXT_MUTED, XS
 
 # Tiempo y memoria no se muestran: el veredicto ya dice si se pasó de alguno. "Envío" es #1, #2… del problema
 COLUMNS = ("Envío", "Lenguaje", "Veredicto")
 CHIP = 32  # lado del cuadro de un caso, en px
 LIST_WIDTH = 300  # la lista es angosta: el ancho que sobra es para el detalle
+VERDICT_COLORS = {"ok": ACCENT, "bad": ERROR, "wait": TEXT_MUTED}
 
 # En lugar del cuadro "Tu salida fue" cuando el programa no dejó un resultado que mostrar
 NO_OUTPUT = {
@@ -40,6 +41,7 @@ class AttemptsView(QWidget):
         self.requested = set()  # pedidos en curso, para no pedir dos veces el mismo
         self.picked = {}  # submissionId → número de caso abierto por el equipo
         self.chips_per_row = 0  # con cuántos por fila se acomodaron los cuadros la última vez
+        self.icons = {state: _verdict_icon(state) for state in VERDICT_COLORS}
 
         heading = QLabel("Intentos")
         heading.setObjectName("section")
@@ -55,6 +57,7 @@ class AttemptsView(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.table.setIconSize(QSize(16, 16))
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -145,7 +148,9 @@ class AttemptsView(QWidget):
                 if col == 0:
                     item.setToolTip(f"Enviado en el minuto {sub['contestMs'] // 60000} del concurso")
                 if col == 2:
-                    item.setForeground(QColor(_verdict_color(sub)))
+                    state = verdict_state(sub)
+                    item.setIcon(self.icons[state])
+                    item.setForeground(QColor(VERDICT_COLORS[state]))
                     if sub["compileLog"] or sub["reviewComment"] or has_cases(sub):
                         item.setToolTip("Selecciona el intento para ver el detalle")
                 self.table.setItem(row, col, item)
@@ -191,7 +196,7 @@ class AttemptsView(QWidget):
         sub = next((s for s in self.rows if s["id"] == self._selected_id()), None)
         _clear(self.detail_layout)
         if sub and sub["reviewComment"]:
-            self.detail_layout.addWidget(_text(sub["reviewComment"]))
+            self.detail_layout.addWidget(_judge_note(sub["reviewComment"], verdict_state(sub)))
         if sub and sub["compileLog"]:
             self.detail_layout.addLayout(_case("Error de compilación", sub["compileLog"]))
         missing = sub and has_cases(sub) and sub["id"] not in self.feedback
@@ -317,6 +322,55 @@ def _text(text, muted=False):
     return label
 
 
+def _judge_note(comment, state):
+    """Comentario de la revisión manual: arriba del detalle y en grande, porque decide qué debe corregir el equipo."""
+    note = QLabel()
+    note.setObjectName("judgeNote")
+    note.setProperty("state", state)
+    note.setWordWrap(True)
+    note.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+    note.setAccessibleName("Comentario del juez")
+    note.setAccessibleDescription(f"Comentario del juez\n{comment}")
+    body = "<br>".join(escape(line) or "&nbsp;" for line in comment.split("\n"))
+    note.setText(
+        "<div style='font-size: 9pt; font-weight: 600'>Comentario del juez</div>"
+        f"<div style='font-size: 16pt; font-weight: 600; white-space: pre-wrap'>{body}</div>"
+    )
+    return note
+
+
+def _verdict_icon(state):
+    """Check, alto o reloj. Se dibujan, como los puntos de la lista, para no depender de los emojis de cada equipo."""
+    size, ratio = 16, 2
+    pixmap = QPixmap(size * ratio, size * ratio)
+    pixmap.setDevicePixelRatio(ratio)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    color = QColor(VERDICT_COLORS[state])
+    mark = QPen(QColor(SURFACE), 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(color)
+    if state == "ok":
+        painter.drawEllipse(QRectF(1, 1, 14, 14))
+        painter.setPen(mark)
+        painter.drawPolyline(QPolygonF([QPointF(4.5, 8.2), QPointF(7, 10.7), QPointF(11.5, 5.5)]))
+    elif state == "bad":
+        points = ((5.2, 1), (10.8, 1), (15, 5.2), (15, 10.8), (10.8, 15), (5.2, 15), (1, 10.8), (1, 5.2))
+        painter.drawPolygon(QPolygonF([QPointF(x, y) for x, y in points]))
+        painter.setPen(mark)
+        painter.drawLine(QPointF(5, 8), QPointF(11, 8))
+    else:
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(QPen(color, 1.6, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        painter.drawEllipse(QRectF(1.8, 1.8, 12.4, 12.4))
+        painter.drawPolyline(QPolygonF([QPointF(8, 4.6), QPointF(8, 8.2), QPointF(10.6, 9.8)]))
+    painter.end()
+    icon = QIcon(pixmap)
+    icon.addPixmap(pixmap, QIcon.Mode.Selected)  # sin esto Qt lo tiñe al seleccionar la fila y se pierde el color
+    return icon
+
+
 def _case(title, text, diff=None):
     """Etiqueta gris y abajo el cuadro monoespaciado, igual que los casos del panel de staff."""
     column = QVBoxLayout()
@@ -363,9 +417,3 @@ def _clear(layout):
             widget.deleteLater()
         elif item.layout():
             _clear(item.layout())
-
-
-def _verdict_color(sub):
-    if not is_final(sub) or sub["verdict"] == "PENDING_REVIEW":
-        return TEXT_MUTED
-    return ACCENT if sub["verdict"] == "AC" else ERROR

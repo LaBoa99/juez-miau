@@ -126,7 +126,7 @@ type PanelKey = 'generador' | 'aleatorios' | 'pegar';
 const STEP_TEXT: Record<TestsetStep, { title: string; hint: string }> = {
   solucion: {
     title: 'Solución y firma',
-    hint: 'Sube la solución oficial: de ella se lee la firma (la función que implementa el concursante) y con ella se calculan las salidas esperadas.',
+    hint: 'Sube la solución oficial: de ella se lee la firma (la función que implementa el equipo) y con ella se calculan las salidas esperadas.',
   },
   casos: { title: 'Casos de prueba', hint: 'Al menos un caso público (sale como ejemplo en el enunciado). Agrega manuales, aleatorios por rangos o con un generador.' },
   construir: {
@@ -1166,7 +1166,7 @@ export class TestsetWorkspace {
     const elapsed = seconds ? ` · ${seconds} s` : '';
     if (!run || run.status === 'queued') return `En la cola del juez: empieza en cuanto se libere${elapsed}`;
     if (run.judged === 0) return `Compilando la solución oficial (en C# y Java tarda unos segundos)${elapsed}`;
-    return `Corriendo los casos: ${run.judged} de ${run.total}${elapsed}`;
+    return `Ejecutando los casos: ${run.judged} de ${run.total}${elapsed}`;
   });
   protected readonly verifyError = computed(() => {
     const run = this.verifyRun();

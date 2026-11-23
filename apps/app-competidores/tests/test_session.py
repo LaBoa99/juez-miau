@@ -1,7 +1,11 @@
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
+from controllers.session_controller import SessionController
 from services.api_client import ApiError
 from services.auth_service import AuthService
 
@@ -30,6 +34,15 @@ def test_logout_without_network_still_forgets():
     auth.team = {"id": 1}
     auth.logout()
     assert api.token is None and auth.team is None
+
+
+def test_first_session_lost_reason_is_not_overwritten():
+    auth = AuthService(Api())
+    auth.team = {"id": 1}
+    controller = SimpleNamespace(auth=auth, window=MagicMock(), login_view=MagicMock(), notifier=MagicMock(), _open=MagicMock())
+    SessionController.session_lost(controller, "Tu equipo fue suspendido por los jueces")
+    SessionController.session_lost(controller, "Tu sesión terminó. Inicia sesión de nuevo.")
+    controller.login_view.show_error.assert_called_once_with("Tu equipo fue suspendido por los jueces")
 
 
 def test_server_shortcut_only_on_login_page():

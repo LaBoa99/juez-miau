@@ -10,6 +10,7 @@ import { Category } from '../entities/category.entity.js';
 import { Room } from '../entities/room.entity.js';
 import { Team } from '../../teams/entities/team.entity.js';
 import { EditionsService } from './editions.service.js';
+import { HEARTBEAT_LOST_AFTER_MS } from '../../integrity/heartbeat.constants.js';
 
 // Formato: NombreEquipo, Integrante1Nombre, Integrante1Carrera… hasta 3, Categoria, Usuario, Password
 // Usuario y Password siempre vienen vacíos: se generan al importar
@@ -218,6 +219,8 @@ export class EditionTeamsService {
                 room: team.room ? { id: team.room.id, name: team.room.name } : null,
                 members: team.members.map((member) => ({ id: member.id, name: member.full_name, career: member.career })),
                 online: false,
+                lastHeartbeatAt: null,
+                signalLost: false,
                 suspended: false,
             },
             credentials: { teamName: team.name, username: team.username, password },
@@ -227,18 +230,25 @@ export class EditionTeamsService {
     async findAllByEdition(editionId: number, filters: TeamFiltersDto) {
         await this.editionService.getById(editionId)
         const { teams, total } = await this.teamsService.findAllByEdition(editionId, filters)
+        const now = Date.now()
 
         return {
-            items: teams.map((team) => ({
-                id: team.id,
-                name: team.name,
-                username: team.username,
-                category: team.category ? { id: team.category.id, code: team.category.code, name: team.category.name } : null,
-                room: team.room ? { id: team.room.id, name: team.room.name } : null,
-                members: team.members.map((member) => ({ id: member.id, name: member.full_name, career: member.career })),
-                online: !!team.teamSession && !team.teamSession.ended_at,
-                suspended: team.suspended_at !== null,
-            })),
+            items: teams.map((team) => {
+                const session = team.teamSession && !team.teamSession.ended_at ? team.teamSession : null
+                return {
+                    id: team.id,
+                    name: team.name,
+                    username: team.username,
+                    category: team.category ? { id: team.category.id, code: team.category.code, name: team.category.name } : null,
+                    room: team.room ? { id: team.room.id, name: team.room.name } : null,
+                    members: team.members.map((member) => ({ id: member.id, name: member.full_name, career: member.career })),
+                    online: !!session,
+                    lastHeartbeatAt: session?.last_heartbeat_at ?? null,
+                    // Una app cerrada de golpe deja la sesión abierta: "online" solo no dice si sigue ahí
+                    signalLost: !!session && now - new Date(session.last_heartbeat_at).getTime() > HEARTBEAT_LOST_AFTER_MS,
+                    suspended: team.suspended_at !== null,
+                }
+            }),
             total,
         }
     }

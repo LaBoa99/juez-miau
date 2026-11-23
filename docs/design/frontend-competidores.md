@@ -135,7 +135,9 @@ Esta lista sale de revisar el HTML de Stitch.
 
 ## Despliegue en más de 90 equipos
 - Se copia **un solo archivo** por equipo: `app-competidores.exe`. No hay `config.json` (un archivo editable junto al .exe es un riesgo).
-- **Servidor:** la app usa por defecto el nombre de red `http://juez.concurso.local`. El DNS del laboratorio, o el archivo `hosts` de cada equipo, lo apunta a la IP del servidor; si cambia la IP no se toca ningún equipo.
+- **Servidor:** la app usa por defecto `http://10.225.32.8:3000`. Si cambia la IP, el staff la actualiza en *Configurar servidor* o se genera otro `.exe`.
+- **Cable y Wi-Fi:** los equipos del laboratorio tienen las dos interfaces y solo el cable llega al servidor. La app respeta la ruta del sistema si llega al servidor; si no, prueba cada interfaz (primero las de cable) y fija en todas sus conexiones la que lo alcanza, sin permisos de administrador. No apaga el Wi-Fi: los demás programas lo pueden seguir usando.
+- **Probar conexión:** botón del login, sin credenciales. Consulta `/health` y dice por qué interfaz llegó o qué falta revisar.
 - **Cambiar el servidor (staff):** en el login, Ctrl+Shift+S o el botón *Configurar servidor (staff)* que aparece cuando no hay conexión. Pide la dirección y credenciales de staff; la app comprueba `/health`, valida las credenciales en **ese** servidor (y cierra esa sesión de staff) y solo entonces guarda la dirección en la configuración de Windows del usuario (`HKCU\Software\Concurso\AppCompetidores`).
 - `machineId`: un hash estable del equipo (MachineGuid de Windows), sin configuración manual.
 - Checklist por equipo: abrir la app, iniciar sesión de prueba, ver el toast de prueba y revisar que el reloj del sistema esté en hora. Se suma a la checklist previa al concurso de `server-specs.md`.

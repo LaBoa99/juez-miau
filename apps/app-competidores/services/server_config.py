@@ -4,10 +4,10 @@ from urllib.parse import urlsplit
 from PySide6.QtCore import QSettings
 
 from services.api_client import ApiClient, ApiError
+from services.network_route import interface_for
 
-# Nombre de red del servidor en el laboratorio: el DNS o el archivo hosts de cada equipo lo apunta a la IP
-# real, así un cambio de IP no obliga a tocar los 90 equipos
-DEFAULT_URL = "http://juez.concurso.local"
+# Servidor de producción. shortcut: IP fija; si cambia, el staff la actualiza con Configurar servidor o se genera otro .exe
+DEFAULT_URL = "http://10.225.32.8:3000"
 SETTINGS_KEY = "serverUrl"
 
 
@@ -46,6 +46,24 @@ def normalize_url(text):
     except ValueError:
         return None
     return f"{parts.scheme}://{parts.netloc}"
+
+
+def check_server(url):
+    """Comprueba sin credenciales que el juez responde. Regresa la interfaz de red usada (None si no se fijó una)."""
+    not_judge = "Esa dirección respondió, pero no es el juez del concurso. Avisa al staff."
+    try:
+        health = ApiClient(url, timeout=5).get("/health")
+    except ValueError:  # respondió algo que no es JSON (otro servicio en ese puerto)
+        raise ApiError(0, not_judge)
+    except ApiError as error:
+        if error.status == 0:
+            raise ApiError(0, "No se pudo conectar con el servidor. Revisa el cable de red o avisa al staff.")
+        if error.status == 503:
+            raise ApiError(503, "El servidor está encendido, pero todavía no está listo. Avisa al staff.")
+        raise ApiError(error.status, not_judge)
+    if not isinstance(health, dict) or health.get("status") != "ok":
+        raise ApiError(0, not_judge)
+    return interface_for(url)
 
 
 def verify_server(url, email, password):

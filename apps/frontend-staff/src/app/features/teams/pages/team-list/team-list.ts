@@ -1,9 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged, forkJoin, map, of, switchMap, type Observable } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { EditionStatus, ICreateTeam, IRoomListItem, ITeamListItem, StaffRole } from '@concurso/shared-types';
+import { EditionStatus, FlagOutcome, ICreateTeam, IFlag, IRoomListItem, IStaffSubmission, ITeamListItem, StaffRole } from '@concurso/shared-types';
+import { VerdictPipe } from '../../../../shared/pipes/verdict.pipe';
+import { FlagsService } from '../../../flags/data/flags.service';
+import { flagLabel, flagMessage, flagTone } from '../../../flags/flag-display';
+import { ProblemsService } from '../../../problems/data/problems.service';
+import { SubmissionsService } from '../../../submissions/data/submissions.service';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Icon } from '../../../../shared/ui/icon.component';
@@ -24,6 +30,9 @@ import { downloadTeamCredentialsPdf, TeamCredentialPage } from '../../data/crede
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
 
 const PAGE_SIZE = 20;
+const REFRESH_MS = 15_000;
+const WATCH_SUBMISSIONS = 10;
+const SESSION_LABEL = { on: 'Sesión iniciada', lost: 'Sesión iniciada, sin señal', off: 'Sin sesión' } as const;
 
 const MEMBERS_INCOMPLETE = 'Cada integrante necesita nombre y carrera.';
 
@@ -31,6 +40,9 @@ const MEMBERS_INCOMPLETE = 'Cada integrante necesita nombre y carrera.';
   selector: 'oj-team-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    DatePipe,
+    RouterLink,
+    VerdictPipe,
     ReactiveFormsModule,
     PageHeader,
     ButtonDirective, Icon, TooltipDirective,
@@ -53,6 +65,10 @@ export class TeamList {
   private readonly auth = inject(AuthService);
   private readonly roomsService = inject(RoomsService);
   private readonly standings = inject(StandingsService);
+  private readonly flagsService = inject(FlagsService);
+  private readonly submissions = inject(SubmissionsService);
+  private readonly problems = inject(ProblemsService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly editionId = findEditionId(this.route);
   protected readonly pageSize = PAGE_SIZE;
@@ -130,8 +146,26 @@ export class TeamList {
     members: this.fb.array<FormGroup>([]),
   });
 
+  // ─── Vigilar un equipo ───
+  protected readonly watchModal = viewChild.required<Modal>('watchModal');
+  protected readonly watched = signal<ITeamListItem | null>(null);
+  protected readonly watchFlags = signal<IFlag[]>([]);
+  protected readonly watchSubmissions = signal<IStaffSubmission[]>([]);
+  protected readonly watchLoading = signal(false);
+  protected readonly watchError = signal(false);
+  protected readonly openFlags = computed(() => this.watchFlags().filter((f) => !f.resolvedAt).length);
+  private readonly problemLetters = signal<Map<number, string>>(new Map());
+  private loadSeq = 0;
+  protected readonly flagMessage = flagMessage;
+
   constructor() {
     this.load();
+    // La sesión no llega por socket: mientras la página esté abierta se actualiza sola
+    const refresh = setInterval(() => {
+      if (!this.loading()) this.load(true);
+      if (this.watched()) this.loadWatch();
+    }, REFRESH_MS);
+    this.destroyRef.onDestroy(() => clearInterval(refresh));
     this.editForm.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
       if (this.editError() === MEMBERS_INCOMPLETE && this.members().valid) this.editError.set(null);
     });
@@ -148,9 +182,13 @@ export class TeamList {
       });
   }
 
-  load(): void {
-    this.loading.set(true);
-    this.error.set(false);
+  // silent: actualización de fondo, sin "Cargando…" que quite la tabla
+  load(silent = false): void {
+    const seq = ++this.loadSeq;
+    if (!silent) {
+      this.loading.set(true);
+      this.error.set(false);
+    }
     this.service
       .list(this.editionId, {
         categoryId: this.categoryCtrl.value ?? undefined,
@@ -160,15 +198,89 @@ export class TeamList {
       })
       .subscribe({
         next: (res) => {
+          if (seq !== this.loadSeq) return; // ya se pidió otra página o filtro
           this.items.set(res.items);
           this.total.set(res.total);
           this.loading.set(false);
+          const watched = res.items.find((t) => t.id === this.watched()?.id);
+          if (watched) this.watched.set(watched);
         },
         error: () => {
-          this.error.set(true);
+          if (seq !== this.loadSeq) return;
+          if (!silent) this.error.set(true);
           this.loading.set(false);
         },
       });
+  }
+
+  sessionState(t: ITeamListItem): keyof typeof SESSION_LABEL {
+    return !t.online ? 'off' : t.signalLost ? 'lost' : 'on';
+  }
+
+  sessionLabel(t: ITeamListItem): string {
+    return SESSION_LABEL[this.sessionState(t)];
+  }
+
+  openWatch(team: ITeamListItem): void {
+    this.watched.set(team);
+    this.watchFlags.set([]);
+    this.watchSubmissions.set([]);
+    this.watchError.set(false);
+    this.watchLoading.set(true);
+    this.watchModal().open();
+    this.loadWatch();
+    if (!this.problemLetters().size) {
+      this.problems.list(this.editionId).subscribe({
+        next: (ps) => this.problemLetters.set(new Map(ps.map((p) => [p.id, p.letter ?? '—']))),
+        error: () => {},
+      });
+    }
+  }
+
+  closeWatch(): void {
+    this.watched.set(null);
+  }
+
+  private loadWatch(): void {
+    const teamId = this.watched()?.id;
+    if (teamId === undefined) return;
+    forkJoin({
+      flags: this.flagsService.list(this.editionId, { teamId }),
+      submissions: this.submissions.listForEdition(this.editionId, { teamId, limit: WATCH_SUBMISSIONS }),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ flags, submissions }) => {
+          if (this.watched()?.id !== teamId) return;
+          this.watchFlags.set(flags);
+          this.watchSubmissions.set(submissions);
+          this.watchError.set(false);
+          this.watchLoading.set(false);
+        },
+        error: () => {
+          if (this.watched()?.id !== teamId) return;
+          this.watchError.set(true);
+          this.watchLoading.set(false);
+        },
+      });
+  }
+
+  flagStatus(f: IFlag): string {
+    if (!f.resolvedAt) return f.offense > 1 ? `REINCIDENCIA · ${f.offense}.ª FALTA` : flagLabel(f.type);
+    return f.outcome === FlagOutcome.CONFIRMED ? 'CONFIRMADA · +20' : f.outcome === FlagOutcome.DISMISSED ? 'DESCARTADA' : 'RESUELTA';
+  }
+
+  flagStatusTone(f: IFlag) {
+    if (f.outcome === FlagOutcome.CONFIRMED || (!f.resolvedAt && f.offense > 1)) return 'danger';
+    return f.resolvedAt ? 'neutral' : flagTone(f.type);
+  }
+
+  problemLetter(id: number): string {
+    return this.problemLetters().get(id) ?? '#' + id;
+  }
+
+  minute(contestMs: number): number {
+    return Math.max(0, Math.floor(contestMs / 60000));
   }
 
   prev(): void {

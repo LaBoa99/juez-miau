@@ -13,6 +13,8 @@ function flag(type: FlagType, details: string): IFlag {
     resolvedAt: null,
     resolvedBy: null,
     resolutionNote: null,
+    outcome: null,
+    offense: 1,
   };
 }
 

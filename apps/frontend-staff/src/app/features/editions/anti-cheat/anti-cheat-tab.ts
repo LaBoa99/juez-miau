@@ -21,7 +21,7 @@ import {
 })
 export class AntiCheatTab {
   // Qué es esta pestaña: la página de Configuración lo muestra debajo de las pestañas
-  readonly intro = 'Lo que la app de equipos vigila durante el concurso: programas prohibidos (navegadores, chats, asistentes de IA…), monitores de más, memorias USB y conexiones de red nuevas. Si detecta algo, levanta una alerta para el staff; con «bloquear envíos» el equipo no puede enviar hasta que alguien la revise.';
+  readonly intro = 'La app de los equipos vigila programas prohibidos (navegadores, chats, asistentes de IA…), monitores adicionales, memorias USB y conexiones de red nuevas. Si detecta algo, levanta una alerta para el staff. Con «bloquear envíos», el equipo no puede enviar hasta que alguien la revise.';
 
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(EditionsService);

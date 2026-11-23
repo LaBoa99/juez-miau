@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { EditionStatus, type IContestClock } from '@concurso/shared-types';
 import { msToClock } from '../time';
 
@@ -11,6 +11,7 @@ const STATUS: Record<EditionStatus, { label: string; tone: string }> = {
   [EditionStatus.PAUSED]: { label: 'Pausado', tone: 'warning' },
   [EditionStatus.FINISHED]: { label: 'Finalizado', tone: 'solid' },
 };
+const FROZEN = { label: 'Marcador congelado · El tiempo sigue', tone: 'frozen' };
 
 // Tiempo restante del concurso en HH:MM:SS. Se ancla al último reloj del servidor (elapsedMs) y
 // avanza localmente cada segundo mientras corre; en pausa se congela, al terminar marca 00:00:00.
@@ -24,6 +25,8 @@ const STATUS: Record<EditionStatus, { label: string; tone: string }> = {
       <span class="oj-cd__time oj-mono" [attr.aria-label]="'Tiempo restante ' + time()">{{ time() }}</span>
       @if (paused()) {
         <span class="oj-cd__compact-status">Pausado</span>
+      } @else if (status() === frozenStatus) {
+        <span class="oj-cd__compact-status">Congelado</span>
       }
     } @else {
       <section class="oj-cd__card" aria-label="Tiempo restante">
@@ -58,11 +61,20 @@ const STATUS: Record<EditionStatus, { label: string; tone: string }> = {
       --cd-tone: var(--oj-primary);
       --cd-tone-bg: var(--oj-neutral-bg);
     }
+    :host(.oj-cd--frozen) {
+      --cd-tone: var(--oj-ice);
+      --cd-tone-bg: var(--oj-ice-bg);
+    }
+    :host(.oj-cd--frozen) .oj-cd__card {
+      border-color: var(--oj-ice);
+    }
     .oj-cd__time {
       font-variant-numeric: tabular-nums;
       font-weight: 700;
       line-height: 1;
       letter-spacing: 0.02em;
+      /* Solo cambia de color: los dígitos nunca se mueven ni se ocultan al congelar */
+      transition: color 300ms ease-out;
     }
 
     /* Compacto (header) */
@@ -78,6 +90,9 @@ const STATUS: Record<EditionStatus, { label: string; tone: string }> = {
     .oj-cd__compact-status {
       font-size: 12px;
       color: var(--oj-warning);
+    }
+    :host(.oj-cd--frozen) .oj-cd__compact-status {
+      color: var(--oj-ice);
     }
 
     /* Tarjeta */
@@ -156,27 +171,35 @@ const STATUS: Record<EditionStatus, { label: string; tone: string }> = {
 export class ContestCountdown {
   readonly clock = input.required<IContestClock>();
   readonly variant = input<Variant>('card');
+  // El servidor no manda evento al empezar el congelamiento: se detecta aquí, con el reloj local
+  readonly frozenChange = output<boolean>();
 
   protected readonly repeat = Array.from({ length: 16 }, (_, i) => i);
+  protected readonly frozenStatus = FROZEN;
   private readonly now = signal(Date.now());
-  private anchorAt = Date.now();
+  // Cada reloj nuevo del servidor reinicia el ancla local
+  private readonly anchorAt = linkedSignal({ source: this.clock, computation: () => Date.now() });
 
-  protected readonly status = computed(() => STATUS[this.clock().status]);
+  private readonly elapsed = computed(() => {
+    const c = this.clock();
+    return c.status === EditionStatus.RUNNING ? c.elapsedMs + Math.max(0, this.now() - this.anchorAt()) : c.elapsedMs;
+  });
+  private readonly frozen = computed(() => {
+    const c = this.clock();
+    return c.status !== EditionStatus.FINISHED && c.freezeDurationMs > 0 && this.elapsed() >= c.durationMs - c.freezeDurationMs;
+  });
+  protected readonly status = computed(() =>
+    this.frozen() && this.clock().status === EditionStatus.RUNNING ? FROZEN : STATUS[this.clock().status],
+  );
   protected readonly paused = computed(() => this.clock().status === EditionStatus.PAUSED);
   protected readonly time = computed(() => {
     const c = this.clock();
     if (c.status === EditionStatus.FINISHED) return msToClock(0);
-    const elapsed = c.status === EditionStatus.RUNNING ? c.elapsedMs + (this.now() - this.anchorAt) : c.elapsedMs;
-    return msToClock(c.durationMs - Math.min(elapsed, c.durationMs));
+    return msToClock(c.durationMs - Math.min(this.elapsed(), c.durationMs));
   });
 
   constructor() {
-    // Cada reloj nuevo del servidor reinicia el ancla local
-    effect(() => {
-      this.clock();
-      this.anchorAt = Date.now();
-      this.now.set(this.anchorAt);
-    });
+    effect(() => this.frozenChange.emit(this.frozen()));
     const tick = setInterval(() => this.now.set(Date.now()), 1000);
     inject(DestroyRef).onDestroy(() => clearInterval(tick));
   }

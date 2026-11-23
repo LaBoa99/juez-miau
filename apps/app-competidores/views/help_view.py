@@ -6,12 +6,12 @@ from views.style import LG, MD
 HELP = """
 # Cómo usar la app del concurso
 
-La app es tu canal con el juez: aquí lees los problemas, envías tus soluciones y recibes los veredictos.
-**Programa en tu IDE**; la app solo sirve para descargar plantillas y subir archivos.
+En esta app lees los problemas, envías tus soluciones y recibes los veredictos.
+**Programa en tu IDE**: aquí solo descargas la plantilla y subes el archivo.
 
 ## 1. Iniciar sesión
 Usa el usuario y la contraseña que te dio el staff. Marca *Mostrar contraseña* si quieres revisar lo que escribiste.
-Al entrar te preguntamos tu lenguaje preferido; puedes cambiarlo después en la lista de cada problema.
+Al entrar eliges tu lenguaje preferido; puedes cambiarlo después en la lista de cada problema.
 
 ## 2. Leer un problema
 - A la izquierda están los problemas. El punto junto a cada uno indica su estado:
@@ -46,16 +46,16 @@ Aunque la app esté detrás de tu IDE, te llega una notificación con cada vered
 | Memoria excedida | Usó más memoria que el límite. |
 | Error en ejecución | El programa terminó con un error. |
 | Error de compilación | No compiló. Selecciona el intento para ver el mensaje del compilador. |
-| En revisión del juez | Un juez lo revisa a mano; te avisamos cuando termine. |
+| En revisión del juez | Un juez lo revisa a mano; recibirás un aviso cuando termine. |
 
 Cada envío rechazado suma 20 minutos de penalización, pero solo si después resuelves ese problema.
-Los errores de compilación no cuentan.
+Los errores de compilación no cuentan. Cada falta a las reglas confirmada por un juez también suma 20 minutos.
 
-## 6. Clarificaciones
-Si algo de un enunciado no es claro, ve a la pestaña **Clarificaciones**, elige el problema (o *General del concurso*)
-y escribe tu pregunta. El mismo selector filtra la lista: ves las clarificaciones de ese tema, de la más reciente
+## 6. Aclaraciones
+Si un enunciado no es claro, ve a la pestaña **Aclaraciones**, elige el problema (o *General del concurso*)
+y escribe tu pregunta. El mismo selector filtra la lista: ves las aclaraciones de ese tema, de la más reciente
 a la más antigua, con la hora en que se enviaron y se respondieron; el número entre paréntesis es cuántas hay. Cuando el staff responda te llega una notificación.
-Las respuestas las ven todos los equipos de tu categoría, sin tu nombre; revísalas de vez en cuando.
+Todos los equipos de tu categoría ven las respuestas, sin el nombre de tu equipo. Revísalas durante el concurso.
 
 ## 7. Durante el concurso
 - **Deja la app abierta todo el concurso.** Si cierras la ventana, la app se cierra por completo y deja de
@@ -64,7 +64,7 @@ Las respuestas las ven todos los equipos de tu categoría, sin tu nombre; revís
   `42′` = resuelto en el minuto 42, `(+2)` = rechazos antes de resolverlo, `−3` = rechazos sin resolverlo.
   La leyenda está arriba de la tabla. Los equipos suspendidos por el staff aparecen tachados, al final y sin lugar.
 - Cuando falta poco para el final, el marcador se congela: los envíos posteriores salen como `?` hasta que termine el concurso.
-  Tus propios veredictos siguen llegando normal.
+  Tus propios veredictos siguen llegando.
 - Abajo a la derecha ves si la app está *Sincronizado* o *Sin conexión*.
 - **Cerrar sesión** (arriba a la derecha) desconecta la app del juez hasta que vuelvas a entrar; úsalo solo si el staff te lo pide.
 

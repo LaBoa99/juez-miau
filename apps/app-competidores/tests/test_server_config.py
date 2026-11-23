@@ -3,9 +3,10 @@ import sys
 import pytest
 from PySide6.QtCore import QSettings
 
-from commands.configure_server import ConfigureServerCommand
+from commands.configure_server import CheckServerCommand, ConfigureServerCommand
+from services import server_config
 from services.api_client import ApiError
-from services.server_config import DEFAULT_URL, load_url, normalize_url, save_url
+from services.server_config import DEFAULT_URL, check_server, load_url, normalize_url, save_url
 
 
 @pytest.mark.parametrize("text, expected", [
@@ -26,6 +27,44 @@ def test_settings_default_and_save(tmp_path):
     assert load_url(settings) == DEFAULT_URL
     save_url("http://192.168.1.10:3000", settings)
     assert load_url(QSettings(str(tmp_path / "s.ini"), QSettings.Format.IniFormat)) == "http://192.168.1.10:3000"
+
+
+def test_default_points_to_production():
+    assert DEFAULT_URL == "http://10.225.32.8:3000"
+
+
+def fake_health(monkeypatch, result):
+    class Api:
+        def __init__(self, url, timeout):
+            pass
+
+        def get(self, path):
+            assert path == "/health"
+            if isinstance(result, Exception):
+                raise result
+            return result
+
+    monkeypatch.setattr(server_config, "ApiClient", Api)
+    monkeypatch.setattr(server_config, "interface_for", lambda url: "Ethernet")
+
+
+def test_check_server_needs_no_credentials_and_reports_interface(monkeypatch):
+    fake_health(monkeypatch, {"status": "ok"})
+    assert CheckServerCommand("http://x").execute() == "Ethernet"
+
+
+@pytest.mark.parametrize("result, expected", [
+    (ApiError(0, "sin red"), "cable de red"),
+    (ApiError(503, "x"), "no está listo"),
+    (ApiError(404, "x"), "no es el juez"),
+    (ValueError("html"), "no es el juez"),
+    ({"status": "error"}, "no es el juez"),
+])
+def test_check_server_explains_each_failure(monkeypatch, result, expected):
+    fake_health(monkeypatch, result)
+    with pytest.raises(ApiError) as error:
+        check_server("http://x")
+    assert expected in error.value.message
 
 
 def test_command_normalizes_then_verifies():

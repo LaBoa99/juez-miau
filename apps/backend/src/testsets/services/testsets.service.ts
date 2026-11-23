@@ -203,7 +203,12 @@ export class TestsetsService {
 
     async update(testsetId: number, dto: UpdateTestsetDto, staffUserId: number): Promise<IProblemTestset> {
         const { testset, problem } = await this.getTestsetForAuthor(testsetId, staffUserId)
-        this.assertEditable(testset)
+        // La revisión manual no cambia casos ni salidas: no pide reconstruir mientras el problema no esté en el concurso
+        const reviewOnly = [dto.timeLimitMs, dto.memoryLimitMb, dto.compareMode, dto.floatTolerance, dto.schema]
+            .every((value) => value === undefined)
+        const reviewEditable = reviewOnly && testset.status === TestsetStatus.READY
+            && testset.id === problem.current_testset_id && problem.status !== ProblemStatus.PUBLISHED
+        if(!reviewEditable) this.assertEditable(testset)
 
         if(dto.timeLimitMs !== undefined) testset.time_limit_ms = dto.timeLimitMs
         if(dto.memoryLimitMb !== undefined) testset.memory_limit_mb = dto.memoryLimitMb

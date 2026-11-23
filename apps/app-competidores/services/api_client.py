@@ -44,7 +44,9 @@ class ApiClient:
                 return res.content
             return res.json() if res.content else None
         detail = _server_message(res)
-        raise ApiError(res.status_code, MESSAGES.get(res.status_code) or detail, detail)
+        # La suspensión también llega como 401, pero el equipo debe saber por qué se cerró su sesión
+        suspended = res.status_code == 401 and "suspendido" in detail
+        raise ApiError(res.status_code, detail if suspended else MESSAGES.get(res.status_code) or detail, detail)
 
     def get(self, path):
         return self.request("GET", path)

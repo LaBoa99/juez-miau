@@ -24,6 +24,20 @@ const base = (submissions: StandingsSubmission[]): StandingsInput => ({
 })
 
 describe('computeStandings (ICPC)', () => {
+    it('cada alerta confirmada suma 20 minutos, pero no supera a quien resolvió más', () => {
+        const input = base([
+            // Alfa: 10 min; Beta: 5 min; Gama: dos resueltos en 50 min
+            sub(10, 101, Verdict.AC, 10), sub(11, 101, Verdict.AC, 5),
+            sub(12, 101, Verdict.AC, 20), sub(12, 100, Verdict.AC, 30),
+        ])
+        const [principiantes] = computeStandings({ ...input, confirmedAlerts: new Map([[11, 1], [12, 2]]) }, null)
+        expect(principiantes.rows.map((row) => [row.rank, row.teamName, row.solved, row.penalty])).toEqual([
+            [1, 'Gama', 2, 90],
+            [2, 'Alfa', 1, 10],
+            [3, 'Beta', 1, 25],
+        ])
+    })
+
     it('ordena por resueltos y penalización; CE no penaliza y lo posterior al AC no cuenta', () => {
         const [principiantes, avanzados] = computeStandings(base([
             // Alfa: A en el minuto 10 con un WA y un CE antes → 10 + 20 = 30; luego un WA que no cuenta

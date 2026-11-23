@@ -1,5 +1,7 @@
 /* Button directive styles — [ojButton]. Solo tokens de tokens.css, sin sombras. */
 .oj-btn {
+  /* Un <a> usa content-box por omisión: sin esto queda más alto que un <button> del mismo tamaño */
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ContestClockModule } from '../contest-clock/contest-clock.module.js';
 import { Category } from '../editions/entities/category.entity.js';
 import { Edition } from '../editions/entities/edition.entity.js';
+import { FlagsModule } from '../flags/flags.module.js';
 import { Problem } from '../problems/entities/problem.entity.js';
 import { RealtimeModule } from '../realtime/realtime.module.js';
 import { Submission } from '../submissions/entities/submission.entity.js';
@@ -18,6 +19,7 @@ import { StandingsService } from './standings.service.js';
   imports: [
     TypeOrmModule.forFeature([Edition, Category, Team, Problem, Submission]),
     SubmissionsModule,
+    FlagsModule,
     ContestClockModule,
     RealtimeModule,
     TeamsModule,

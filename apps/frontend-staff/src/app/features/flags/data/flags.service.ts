@@ -10,9 +10,10 @@ export class FlagsService {
   private readonly http = inject(HttpClient);
 
   // Sin `open` devuelve todas (abiertas y resueltas); la vista las separa en el cliente.
-  list(editionId: number, opts: { open?: boolean } = {}): Observable<IFlag[]> {
+  list(editionId: number, opts: { open?: boolean; teamId?: number } = {}): Observable<IFlag[]> {
     let params = new HttpParams();
     if (opts.open !== undefined) params = params.set('open', opts.open);
+    if (opts.teamId !== undefined) params = params.set('teamId', opts.teamId);
     return this.http.get<IFlag[]>(`${API}/editions/${editionId}/flags`, { params });
   }
 

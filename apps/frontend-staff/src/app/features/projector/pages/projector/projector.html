@@ -19,36 +19,17 @@
             (valueChange)="onCategory($event)"
           />
         }
-        @if (rooms().length) {
-          <label class="pj__room">
-            <span>Salón</span>
-            <select [value]="roomId() ?? ''" (change)="onRoom($any($event.target).value)">
-              <option value="">Todos los salones</option>
-              @for (r of rooms(); track r.id) {
-                <option [value]="r.id">{{ r.name }}</option>
-              }
-            </select>
-          </label>
-        }
-        @if (categoryOptions().length > 1) {
-          <button ojButton variant="secondary" type="button" title="Cambia de categoría cada 20 s" (click)="paused.set(!paused())">
-            {{ paused() ? 'Reanudar rotación' : 'Pausar rotación' }}
-          </button>
-        }
-        @if (!isFullscreen()) {
-          <button ojButton variant="secondary" type="button" (click)="toggleFullscreen()">Pantalla completa</button>
-        }
       </div>
     </div>
     <div class="pj__clock">
       @if (clock(); as c) {
-        <oj-contest-countdown variant="projector" [clock]="c" />
+        <oj-contest-countdown variant="projector" [clock]="c" (frozenChange)="onFrozen($event)" />
       }
     </div>
   </header>
 
   <!-- Cinta como en el sitio: azul en vivo/final, calcomanía roja si está congelado -->
-  <div class="pj__band" [class.pj__band--frozen]="frozen()">
+  <div class="pj__band" role="status" [class.pj__band--frozen]="frozen()" [class.pj__band--freezing]="freezing()">
     <span class="pj__band-text">
       @if (frozen()) {
         Congelado · minuto {{ standings()?.freezeMinute }}
@@ -58,7 +39,7 @@
         Marcador en vivo
       }
       @if (current(); as cat) {
-        · {{ cat.name }}{{ roomName() ? ' · ' + roomName() : '' }}
+        · {{ cat.name }}
       }
     </span>
     @if (frozen()) {
@@ -66,7 +47,7 @@
     }
   </div>
 
-  <section class="pj__body">
+  <section class="pj__body" [class.pj__body--frozen]="frozen()" [class.pj__body--freezing]="freezing()">
     @if (current(); as cat) {
       <div class="oj-table-wrap">
         <table class="oj-table pj__table">
@@ -82,7 +63,7 @@
           <tbody>
             @for (row of cat.rows.slice(0, top); track row.teamId) {
               @let place = podium(row, cat.rows);
-              <tr [class]="place ? 'oj-podium-' + place : ''">
+              <tr [class]="place ? 'oj-podium-' + place : ''" [style.--i]="$index">
                 <td class="pj__rank oj-mono">{{ row.rank ?? '—' }}</td>
                 <td class="pj__team">{{ row.teamName }}@if (place) {<span class="pj__medal" aria-hidden="true">{{ podiumEmoji(place) }}</span>}</td>
                 @for (p of cat.problems; track p.id; let i = $index) {
@@ -96,6 +77,13 @@
       @if (cat.rows.length > top) {
         <p class="pj__more">Top {{ top }} de {{ cat.rows.length }} equipos</p>
       }
+    }
+    <!-- El hielo vive solo en la tabla: el reloj queda fuera y no se tapa -->
+    @if (frozen()) {
+      <div class="pj__frost" aria-hidden="true"></div>
+    }
+    @if (freezing()) {
+      <div class="pj__edge" aria-hidden="true"></div>
     }
   </section>
 }

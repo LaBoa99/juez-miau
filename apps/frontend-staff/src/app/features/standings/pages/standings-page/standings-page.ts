@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { ActivatedRoute } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { IContestClock, IStandings, IStandingsCategory } from '@concurso/shared-types';
+import { IContestClock, IStandings } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Alert } from '../../../../shared/ui/alert.component';
@@ -16,8 +16,6 @@ import { ContestClockService } from '../../../contest/data/contest-clock.service
 import { podium, podiumEmoji } from '../../podium';
 import { StandingsService } from '../../data/standings.service';
 import { ContestCountdown } from '../../../../shared/ui/contest-countdown.component';
-import { RoomsService } from '../../../editions/rooms/data/rooms.service';
-import { filterByRoom } from '../../room-filter';
 
 @Component({
   selector: 'oj-standings-page',
@@ -35,7 +33,6 @@ export class StandingsPage {
   protected readonly ctx = inject(EditionContext);
   private readonly rt = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly roomsService = inject(RoomsService);
 
   protected readonly editionId = findEditionId(this.route);
 
@@ -49,24 +46,10 @@ export class StandingsPage {
   protected readonly suspending = signal<number | null>(null);
 
   protected readonly categories = computed(() => this.data()?.categories ?? []);
-  // Filtro por salón: cada fila del marcador trae el salón del equipo
-  protected readonly rooms = signal<{ id: number; name: string }[]>([]);
-  protected readonly roomId = signal<number | null>(null);
-
-  // "Todos los salones" muestra cada categoría en su tabla. Un salón muestra una tabla por cada
-  // categoría que tiene equipos ahí (manda la categoría del equipo; el salón es solo el lugar)
-  protected readonly shown = computed<IStandingsCategory[]>(() => {
-    const roomId = this.roomId();
-    if (roomId == null) return this.categories();
-    return this.categories()
-      .filter((c) => c.rows.some((r) => r.roomId === roomId))
-      .map((c) => filterByRoom(c, roomId));
-  });
-  protected readonly roomEmpty = computed(() => this.shown().every((c) => c.rows.length === 0));
   protected readonly hasRows = computed(() => this.categories().some((c) => c.rows.length > 0));
 
-  // El público está congelado según el reloj (el backend ya lo calcula en IContestClock).
-  protected readonly frozen = computed(() => this.clock()?.frozen ?? false);
+  // Lo avisa el reloj: el servidor no manda evento al empezar el congelamiento
+  protected readonly frozen = signal(false);
   // Hora en que empezó el congelamiento del público. shortcut: no descuenta pausas; si se usa mucho
   // con concursos pausados, calcularla desde el reloj del servidor.
   protected readonly freezeAt = computed<Date | null>(() => {
@@ -78,10 +61,6 @@ export class StandingsPage {
 
   constructor() {
     this.load();
-    this.roomsService.list(this.editionId).subscribe({
-      next: (rooms) => this.rooms.set(rooms.map((r) => ({ id: r.id, name: r.name }))),
-      error: () => {},
-    });
     this.clockService.get(this.editionId).subscribe({ next: (c) => this.clock.set(c), error: () => {} });
 
     this.rt.joinEdition(this.editionId);
@@ -130,10 +109,6 @@ export class StandingsPage {
         this.actionError.set(backendMessage(err, 'No se pudo cambiar la suspensión del equipo.'));
       },
     });
-  }
-
-  onRoom(value: string): void {
-    this.roomId.set(value ? Number(value) : null);
   }
 
   openProjector(): void {

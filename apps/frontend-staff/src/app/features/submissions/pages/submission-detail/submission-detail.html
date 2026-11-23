@@ -25,6 +25,9 @@
           {{ reviewSaving() ? 'Enviando…' : 'Revisar manualmente' }}
         </button>
       }
+      @if (canGoToReview()) {
+        <a ojButton variant="warning" [routerLink]="['/ediciones', editionId, 'revision']" [queryParams]="{ envio: d.id }">Ir a revisión</a>
+      }
       <!-- Re-evaluar queda solo para fallas del sistema (status ERROR), que no tienen veredicto -->
       @if (canRejudge() && d.status === SubmissionStatus.ERROR) {
         <button ojButton variant="success" type="button" (click)="openRejudge()">Re-evaluar</button>
@@ -182,12 +185,14 @@
     }
   </section>
 
-  <oj-confirm-dialog
-    title="Revisar manualmente"
-    message="El envío pasará a revisión manual. El equipo verá el estado 'En revisión'."
-    confirmLabel="Mandar a revisión"
-    (confirmed)="sendToReview()"
-  />
+  <oj-modal #reviewModal title="Revisar manualmente" size="md" [closeOnBackdrop]="false">
+    <p class="sd__muted">El envío pasará a revisión manual. El equipo verá el estado "En revisión".</p>
+    <div footer class="oj-actions">
+      <button ojButton variant="secondary" type="button" (click)="closeReview()">Cancelar</button>
+      <button ojButton variant="secondary" type="button" (click)="sendToReview(false)">Enviar a revisión</button>
+      <button ojButton variant="primary" type="button" (click)="sendToReview(true)">Enviar a revisión e ir</button>
+    </div>
+  </oj-modal>
 
   <!-- Modal Re-evaluar -->
   <!-- Modal detalle de caso -->

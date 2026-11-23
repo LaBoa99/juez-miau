@@ -25,7 +25,7 @@
 
 <div class="edition-body">
   @if (ctx.forbidden()) {
-    <oj-empty-state message="No tienes un rol en esta edición. Un superadministrador tiene que agregarte a su staff (como administrador, juez u observador) para que puedas entrar.">
+    <oj-empty-state message="No tienes un rol en esta edición. Pide a un superadministrador que te agregue a su staff.">
       <a ojButton variant="secondary" routerLink="/ediciones">Ir a mis ediciones</a>
     </oj-empty-state>
   } @else if (ctx.error()) {

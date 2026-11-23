@@ -22,6 +22,8 @@ export function flagLabel(type: FlagType): string {
       return 'MEMORIA USB';
     case FlagType.NETWORK_CHANGE:
       return 'RED NUEVA';
+    case FlagType.SESSION_CLOSED:
+      return 'CERRÓ SESIÓN';
   }
 }
 
@@ -40,6 +42,8 @@ export function flagToastText(type: FlagType): string {
       return 'Memoria USB';
     case FlagType.NETWORK_CHANGE:
       return 'Red nueva';
+    case FlagType.SESSION_CLOSED:
+      return 'Cerró sesión';
     case FlagType.MANUAL:
       return 'Alerta manual';
   }
@@ -55,6 +59,7 @@ export function flagTone(type: FlagType): FlagTone {
     case FlagType.EXTRA_MONITOR:
     case FlagType.USB_STORAGE:
     case FlagType.NETWORK_CHANGE:
+    case FlagType.SESSION_CLOSED:
       return 'warning';
     case FlagType.MANUAL:
       return 'neutral';
@@ -72,7 +77,7 @@ export function flagMessage(flag: IFlag): string {
     case FlagType.SESSION_REPLACED:
       return 'El equipo inició sesión desde otra máquina mientras el concurso estaba en curso.';
     case FlagType.HEARTBEAT_LOST:
-      return 'El equipo dejó de reportar actividad: se perdió la señal de su cliente.';
+      return 'El equipo dejó de reportar actividad: se perdió la conexión con su app.';
     case FlagType.MANUAL:
       return stripStaffTag(flag.details) || 'Alerta levantada por el staff.';
     case FlagType.EXTRA_MONITOR:
@@ -85,6 +90,8 @@ export function flagMessage(flag: IFlag): string {
       const name = afterColon(flag.details);
       return name ? `Apareció una conexión de red nueva: ${name}` : 'Apareció una conexión de red nueva en el equipo.';
     }
+    case FlagType.SESSION_CLOSED:
+      return flag.details;
   }
 }
 

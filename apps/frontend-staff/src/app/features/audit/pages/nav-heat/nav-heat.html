@@ -1,6 +1,6 @@
 <oj-page-header
   title="Uso de la barra de secciones"
-  subtitle="Prueba de calor: cada clic del staff en la barra de una edición, por rol. Sirve para decidir el orden de las secciones."
+  subtitle="Clics del staff en la barra de cada edición, por rol. Sirven para decidir el orden de las secciones."
 />
 
 <div class="heat__filters">
@@ -27,7 +27,7 @@
 } @else if (error()) {
   <oj-alert tone="error">No se pudo cargar el uso de la barra.</oj-alert>
 } @else if (total() === 0) {
-  <oj-empty-state message="Aún no hay clics registrados con estos filtros. La barra empieza a registrarlos desde ahora; se llena con el próximo simulacro o concurso." />
+  <oj-empty-state message="No hay clics registrados con estos filtros. Aparecerán con el próximo simulacro o concurso." />
 } @else {
   <section class="heat__block" aria-labelledby="heat-usage">
     <h3 class="heat__title" id="heat-usage">Secciones que se abren</h3>

@@ -15,6 +15,14 @@ export enum FlagType {
     USB_STORAGE = "USB_STORAGE",
     // Interfaz de red que no estaba al iniciar sesión (Edition.watch_network)
     NETWORK_CHANGE = "NETWORK_CHANGE",
+    // El equipo cerró sesión con el concurso en curso o en pausa
+    SESSION_CLOSED = "SESSION_CLOSED",
+}
+
+// Decisión del juez sobre una alerta: solo la confirmada suma minutos en el marcador
+export enum FlagOutcome {
+    CONFIRMED = "CONFIRMED",
+    DISMISSED = "DISMISSED",
 }
 
 export interface IFlag {
@@ -27,6 +35,10 @@ export interface IFlag {
     resolvedAt: Date | null
     resolvedBy: number | null
     resolutionNote: string | null
+    // null: abierta, o resuelta antes de que existiera esta decisión
+    outcome: FlagOutcome | null
+    // Número de falta de este tipo: 2 o más es reincidencia y frena los envíos mientras siga abierta
+    offense: number
 }
 
 export interface ICreateFlag {
@@ -35,6 +47,7 @@ export interface ICreateFlag {
 }
 
 export interface IResolveFlag {
+    outcome: FlagOutcome
     note?: string
 }
 
