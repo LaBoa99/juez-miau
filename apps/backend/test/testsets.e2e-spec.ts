@@ -7,7 +7,7 @@ import request from 'supertest';
 import { App } from 'supertest/types.js';
 import type { Queue } from 'bullmq';
 import { Repository } from 'typeorm';
-import { StaffRole, TestCaseOrigin, TestsetStatus } from '@concurso/shared-types';
+import { ProblemStatus, StaffRole, TestCaseOrigin, TestsetStatus } from '@concurso/shared-types';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
 import { StaffUser } from '../src/staff/entities/staff-user.entity.js';
@@ -345,6 +345,17 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
     // El problema sigue usando la v1 y la v1 ya no se edita
     expect((await problemRepo.findOneByOrFail({ id: problemId })).current_testset_id).toBe(testsetId);
     await api().patch(`/api/v1/testsets/${testsetId}`).set(as('judge')).send({ timeLimitMs: 1000 }).expect(409);
+
+    // La revisión manual no cambia casos: se ajusta sin reconstruir, salvo con el problema en el concurso
+    const review = (manualReview: boolean) => api().patch(`/api/v1/testsets/${testsetId}`).set(as('judge')).send({ manualReview });
+    await review(true).expect(200);
+    expect(await testsetRepo.findOneByOrFail({ id: testsetId })).toMatchObject({ manual_review: true, status: TestsetStatus.READY });
+    const { status } = await problemRepo.findOneByOrFail({ id: problemId });
+    await problemRepo.update(problemId, { status: ProblemStatus.PUBLISHED });
+    await review(false).expect(409);
+    await problemRepo.update(problemId, { status });
+    await review(false).expect(200);
+
     // Solo una versión en curso a la vez
     await api().post(`/api/v1/problems/${problemId}/testsets`).set(as('judge')).send({ reason: 'otra' }).expect(409);
   });

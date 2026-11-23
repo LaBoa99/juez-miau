@@ -52,6 +52,7 @@ Si hace falta un componente nuevo, propónlo y espera confirmación antes de cre
 - `/ediciones` y `/lenguajes` son mixtos: las acciones superadmin-only se ocultan en la UI, no en la ruta. Dentro de una
   edición manda `roleInEdition(editionId)` (con bypass de superadmin); un OBSERVER solo ve Envíos, Marcador y Alertas.
 - Rutas desconocidas dentro del shell muestran la 404 (`core/layout/not-found.component.ts`); `/403` es `Forbidden`.
+- En Equipos, el ícono de sesión distingue con señal, sin señal (`signalLost`, más de 90 s) y sin sesión; se actualiza cada 15 s.
 - Pendiente: probar el acceso (superadmin, admin, juez, observador y sin sesión) en el simulacro con el hardware nuevo
   (ver `deploy/README.md`).
 

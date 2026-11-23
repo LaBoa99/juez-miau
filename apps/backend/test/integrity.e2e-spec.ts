@@ -5,13 +5,14 @@ import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { Repository } from 'typeorm';
-import { EditionStatus, FlagType, StaffRole, type IAuditEntry, type IFlag } from '@concurso/shared-types';
+import { EditionStatus, FlagOutcome, FlagType, StaffRole, type IAuditEntry, type IFlag, type IStandings } from '@concurso/shared-types';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
 import { StaffUser } from '../src/staff/entities/staff-user.entity.js';
 import { Edition } from '../src/editions/entities/edition.entity.js';
 import { EditionStaff } from '../src/editions/entities/edition-staff.entity.js';
 import { Category } from '../src/editions/entities/category.entity.js';
+import { Flag } from '../src/flags/entities/flag.entity.js';
 import { Team } from '../src/teams/entities/team.entity.js';
 import { TeamSession } from '../src/teams/entities/team-session.entity.js';
 import { PasswordService } from '../src/utils/services/password.service.js';
@@ -136,9 +137,38 @@ describe('Integridad: alertas, heartbeat, auditoría y exportaciones (e2e)', () 
     await repo(Team).update(team.id, { suspended_at: new Date() });
     const res = await api().post('/api/v1/auth/team/login')
       .send({ username: team.username, password: teamPassword, machineId: 'maquina-b' }).expect(403);
-    expect(res.body.message).toBe('Tu equipo fue suspendido por el staff');
+    expect(res.body.message).toBe('Tu equipo fue suspendido por los jueces');
     await repo(Team).update(team.id, { suspended_at: null });
     teamToken = await login('maquina-b');
+  });
+
+  it('un equipo suspendido con la app abierta recibe el motivo, no un cierre de sesión genérico', async () => {
+    const heartbeat = (token: string) => api().post('/api/v1/contest/heartbeat').set(bearer(token)).send({}).expect(401);
+    const suspended = await api().put(`/api/v1/editions/${edition.id}/teams/${team.id}/suspension`)
+      .set(bearer(adminToken)).send({ suspended: true });
+    expect(suspended.ok).toBe(true);
+    expect((await heartbeat(teamToken)).body.message).toBe('Tu equipo fue suspendido por los jueces');
+
+    await api().put(`/api/v1/editions/${edition.id}/teams/${team.id}/suspension`).set(bearer(adminToken)).send({ suspended: false });
+    const oldToken = teamToken;
+    teamToken = await login('maquina-b');
+    expect((await heartbeat(oldToken)).body.message).not.toMatch(/suspendido/);
+  });
+
+  it('el listado de equipos distingue sesión con señal, sin señal y sin sesión', async () => {
+    const row = async (id: number) => (await api().get(`/api/v1/editions/${edition.id}/teams`).set(bearer(adminToken)).expect(200))
+      .body.items.find((item: { id: number }) => item.id === id);
+    expect(await row(team.id)).toMatchObject({ online: true, signalLost: false });
+
+    await repo(TeamSession).update(team.id, { last_heartbeat_at: new Date(Date.now() - 120_000) });
+    expect(await row(team.id)).toMatchObject({ online: true, signalLost: true });
+    await repo(TeamSession).update(team.id, { last_heartbeat_at: new Date() });
+
+    const second = await repo(Team).save({
+      edition_id: edition.id, category_id: team.category_id, name: 'Sin sesión', username: `integridad-sin-${stamp}`, password: 'x', password_hash: 'x',
+    });
+    expect(await row(second.id)).toMatchObject({ online: false, signalLost: false, lastHeartbeatAt: null });
+    await repo(Team).delete(second.id);
   });
 
   it('con alertas abiertas no se puede enviar; al resolverlas sí', async () => {
@@ -152,16 +182,18 @@ describe('Integridad: alertas, heartbeat, auditoría y exportaciones (e2e)', () 
       await app.get<Repository<EditionStaff>>(getRepositoryToken(EditionStaff)).save({ edition_id: edition.id, staff_user_id: observer.id, role: StaffRole.OBSERVER });
       const observerToken = await app.get(JwtService).signAsync({ ...AccessTokenPayloadFactory.forStaff(observer) });
       await api().get(`/api/v1/editions/${edition.id}/flags`).set(bearer(observerToken)).expect(200);
-      await api().post(`/api/v1/flags/${(await flags('?open=true'))[0].id}/resolve`).set(bearer(observerToken)).send({}).expect(403);
+      await api().post(`/api/v1/flags/${(await flags('?open=true'))[0].id}/resolve`).set(bearer(observerToken)).send({ outcome: FlagOutcome.DISMISSED }).expect(403);
     } finally {
       await app.get<Repository<StaffUser>>(getRepositoryToken(StaffUser)).delete([observer.id]);
     }
 
     for (const flag of await flags('?open=true')) {
-      const res = await api().post(`/api/v1/flags/${flag.id}/resolve`).set(bearer(adminToken)).send({ note: 'revisado en sala' }).expect(200);
-      expect(res.body).toMatchObject({ resolvedBy: admin.id, resolutionNote: 'revisado en sala' });
+      const res = await api().post(`/api/v1/flags/${flag.id}/resolve`).set(bearer(adminToken))
+        .send({ outcome: FlagOutcome.DISMISSED, note: 'revisado en sala' }).expect(200);
+      expect(res.body).toMatchObject({ resolvedBy: admin.id, resolutionNote: 'revisado en sala', outcome: FlagOutcome.DISMISSED });
     }
-    await api().post(`/api/v1/flags/${(await flags())[0].id}/resolve`).set(bearer(adminToken)).send({}).expect(409);
+    await api().post(`/api/v1/flags/${(await flags())[0].id}/resolve`).set(bearer(adminToken)).send({}).expect(400);
+    await api().post(`/api/v1/flags/${(await flags())[0].id}/resolve`).set(bearer(adminToken)).send({ outcome: FlagOutcome.DISMISSED }).expect(409);
     expect(await flags('?open=true')).toEqual([]);
     // Ya no está bloqueado: falla por el problema, que no existe
     await submit().expect(404);
@@ -180,6 +212,102 @@ describe('Integridad: alertas, heartbeat, auditoría y exportaciones (e2e)', () 
     expect(res.body).toMatchObject({ type: FlagType.MANUAL, details: `Usa el celular (staff #${admin.id})` });
     await api().post(`/api/v1/editions/${edition.id}/flags`).set(bearer(adminToken)).send({ teamId: otherTeam.id, details: 'x' }).expect(404);
     await api().get(`/api/v1/editions/${otherEdition.id}/flags`).set(bearer(adminToken)).expect(403);
+  });
+
+  it('una alerta confirmada suma 20 minutos una vez por incidente, se corrige y no se filtra con el marcador congelado', async () => {
+    const heartbeat = () => api().post('/api/v1/contest/heartbeat').set(bearer(teamToken)).send({ processes: ['chrome'] }).expect(200);
+    const decide = (id: number, outcome: FlagOutcome) => api().post(`/api/v1/flags/${id}/resolve`).set(bearer(adminToken)).send({ outcome });
+    const chrome = async () => (await flags()).filter((flag) => flag.type === FlagType.FORBIDDEN_PROCESS && flag.details.endsWith('chrome'));
+    const penalty = async (path: string) => ((await api().get(path).set(bearer(adminToken)).expect(200)).body as IStandings)
+      .categories[0].rows.find((row) => row.teamId === team.id)!.penalty;
+    const staff = `/api/v1/editions/${edition.id}/standings`;
+    const reopened = () => repo(Flag).update({ team_id: team.id }, { last_seen_at: new Date(Date.now() - 60_000) });
+
+    // El programa se cerró hace rato y se vuelve a abrir: incidente nuevo
+    await reopened();
+    const before = (await chrome()).length;
+    await heartbeat();
+    const [flag] = await chrome();
+    expect((await chrome()).length).toBe(before + 1);
+
+    await decide(flag.id, FlagOutcome.CONFIRMED).expect(200);
+    expect(await penalty(staff)).toBe(20);
+    await decide(flag.id, FlagOutcome.CONFIRMED).expect(409);
+
+    // Sigue abierto después de la decisión: mismo incidente, no se penaliza otra vez
+    await heartbeat();
+    expect((await chrome()).length).toBe(before + 1);
+
+    // Confirmada durante el congelamiento: el staff la ve; el público todavía no
+    await repo(Edition).update(edition.id, { freeze_duration_ms: 3_600_000 });
+    await decide(flag.id, FlagOutcome.DISMISSED).expect(200);
+    await decide(flag.id, FlagOutcome.CONFIRMED).expect(200);
+    expect(await penalty(staff)).toBe(20);
+    expect(await penalty(`/api/v1/public/editions/${edition.id}/standings`)).toBe(0);
+    await repo(Edition).update(edition.id, { freeze_duration_ms: 0 });
+
+    await decide(flag.id, FlagOutcome.DISMISSED).expect(200);
+    expect(await penalty(staff)).toBe(0);
+
+    await reopened();
+    await heartbeat();
+    expect((await chrome()).length).toBe(before + 2);
+    await decide((await chrome())[0].id, FlagOutcome.DISMISSED).expect(200);
+  });
+
+  it('la reincidencia sale tras el margen, frena los envíos aunque la edición no bloquee y se libera al decidir', async () => {
+    const heartbeat = () => api().post('/api/v1/contest/heartbeat').set(bearer(teamToken)).send({ processes: ['chrome'] }).expect(200);
+    const decide = (id: number, outcome: FlagOutcome) => api().post(`/api/v1/flags/${id}/resolve`).set(bearer(adminToken)).send({ outcome });
+    const chrome = async () => (await flags()).filter((flag) => flag.type === FlagType.FORBIDDEN_PROCESS && flag.details.endsWith('chrome'));
+    const submit = () => api().post('/api/v1/submissions').set(bearer(teamToken))
+      .send({ problemId: 999999, languageId: '00000000-0000-4000-8000-000000000000', source: 'x' });
+
+    await repo(Edition).update(edition.id, { block_submissions_on_alert: false });
+    await repo(Flag).update({ team_id: team.id }, { last_seen_at: new Date(Date.now() - 60_000) });
+    await heartbeat();
+    const [first] = await chrome();
+    expect(first.offense).toBe(1);
+    await decide(first.id, FlagOutcome.CONFIRMED).expect(200);
+    const total = (await chrome()).length;
+
+    // Dentro del margen para cerrarlo: ni alerta nueva ni bloqueo
+    await heartbeat();
+    expect((await chrome()).length).toBe(total);
+    await submit().expect(404);
+
+    // Pasó el margen y se sigue detectando
+    await repo(Flag).update(first.id, { resolved_at: new Date(Date.now() - 3 * 60_000) });
+    await heartbeat();
+    const [repeat] = await chrome();
+    expect(repeat).toMatchObject({ offense: 2, resolvedAt: null });
+    expect(repeat.id).not.toBe(first.id);
+    await submit().expect(403);
+
+    // Descartada: libera los envíos y no vuelve a sonar mientras siga abierto
+    await decide(repeat.id, FlagOutcome.DISMISSED).expect(200);
+    await submit().expect(404);
+    await heartbeat();
+    expect((await chrome()).length).toBe(total + 1);
+
+    await decide(first.id, FlagOutcome.DISMISSED).expect(200);
+    await repo(Edition).update(edition.id, { block_submissions_on_alert: true });
+  });
+
+  it('cerrar sesión con el concurso en curso levanta una alerta con el tiempo fuera', async () => {
+    const closed = async () => (await flags()).filter((flag) => flag.type === FlagType.SESSION_CLOSED);
+    await api().post('/api/v1/auth/logout').set(bearer(teamToken)).expect(204);
+    const [flag] = await closed();
+    expect(flag.details).toContain('aún no vuelve');
+
+    // Un segundo logout con el mismo token ya no cierra nada ni crea otra alerta
+    await api().post('/api/v1/auth/logout').set(bearer(teamToken)).expect(204);
+    expect(await closed()).toHaveLength(1);
+
+    teamToken = await login('maquina-b');
+    const [back] = await closed();
+    expect(back.id).toBe(flag.id);
+    expect(back.details).toMatch(/volvió después de 0 min \d+ s\./);
+    await api().post(`/api/v1/flags/${back.id}/resolve`).set(bearer(adminToken)).send({ outcome: FlagOutcome.DISMISSED }).expect(200);
   });
 
   it('los cambios del staff quedan en la bitácora sin datos sensibles; solo la ve un superadmin', async () => {

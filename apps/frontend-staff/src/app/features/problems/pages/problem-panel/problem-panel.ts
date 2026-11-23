@@ -110,7 +110,7 @@ export class ProblemPanel {
     categoryId: [null as number | null, [withMessage(Validators.required, 'Elige una categoría.')]],
     title: ['', [Validators.required, Validators.maxLength(255)]],
     statement: ['', [Validators.required]],
-    points: [1, [Validators.required, Validators.min(0), Validators.max(100000)]],
+    manualReview: [false],
   });
 
   protected readonly title = computed(() => {
@@ -210,6 +210,13 @@ export class ProblemPanel {
     this.previewPdfUrl.set(null);
   }
 
+  // Guarda la casilla de revisión manual solo si cambió
+  private saveReview(testsetId: number, current: boolean): Observable<unknown> {
+    const control = this.form.controls.manualReview;
+    if (control.disabled || control.value === current) return of(null);
+    return this.testsets.update(testsetId, { manualReview: control.value, ...(!control.value && { reviewInstructions: null }) });
+  }
+
   // Markdown saneado igual que lo ve el concursante, listo para [innerHTML].
   renderMd(md: string | null | undefined): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(renderMarkdown(md));
@@ -254,7 +261,12 @@ export class ProblemPanel {
     const draft = loadDraft<ReturnType<typeof this.form.getRawValue>>(this.datosKey());
     this.datosRestored.set(false);
     if (!draft || this.form.disabled) return;
-    this.form.patchValue({ title: draft.title, statement: draft.statement, ...(this.isNew() && { categoryId: draft.categoryId, points: draft.points }) });
+    this.form.patchValue({
+      title: draft.title,
+      statement: draft.statement,
+      ...(this.isNew() && { categoryId: draft.categoryId }),
+      ...(this.form.controls.manualReview.enabled && draft.manualReview !== undefined && { manualReview: draft.manualReview }),
+    });
     if (draft.statement?.trim()) this.setStmtMode('markdown');
     this.form.markAsDirty();
     this.bus.dirty.set(true);
@@ -285,10 +297,10 @@ export class ProblemPanel {
         categoryId: this.categories()[0]?.id ?? null,
         title: '',
         statement: '',
-        points: 1,
+        manualReview: false,
       });
       this.form.get('categoryId')?.enable();
-      this.form.get('points')?.enable();
+      this.form.controls.manualReview.enable();
       this.setStmtMode('pdf');
       this.bus.dirty.set(false);
       this.restoreDatosDraft();
@@ -304,17 +316,21 @@ export class ProblemPanel {
         this.detail.set(d);
         // Problemas con enunciado en markdown siguen en markdown; los demás, en PDF
         this.setStmtMode(d.statement.trim() && !d.hasStatementPdf ? 'markdown' : 'pdf');
+        const testset = reviewTestset(d);
         this.form.reset({
           categoryId: d.categoryId,
           title: d.title,
           statement: d.statement,
-          points: d.points,
+          manualReview: testset?.manualReview ?? false,
         });
-        // El backend no permite cambiar categoría ni puntos al editar; sin permiso no se edita nada.
+        // El backend no permite cambiar la categoría al editar; sin permiso no se edita nada.
         if (d.canEdit) {
           this.form.enable();
           this.form.get('categoryId')?.disable();
-          this.form.get('points')?.disable();
+          // En el concurso o construyéndose, cambiar la revisión alteraría cómo se juzgan los envíos
+          if (d.status === ProblemStatus.PUBLISHED || testset?.status === TestsetStatus.BUILDING) {
+            this.form.controls.manualReview.disable();
+          }
         } else {
           this.form.disable();
         }
@@ -419,11 +435,11 @@ export class ProblemPanel {
           categoryId: v.categoryId!,
           title: v.title,
           statement: this.stmtMode() === 'markdown' ? v.statement : '',
-          points: v.points,
         })
         .pipe(
-          // Si falla el PDF el problema ya existe: se abre igual y el aviso pide volver a subirlo
-          switchMap((res) => this.uploadPdf(res.id).pipe(map(() => res), catchError(() => of({ ...res, pdfFailed: true })))),
+          // Si falla el PDF o la casilla el problema ya existe: se abre igual y el aviso pide repetirlo
+          switchMap((res) => this.uploadPdf(res.id).pipe(map(() => ({ ...res, pdfFailed: false })), catchError(() => of({ ...res, pdfFailed: true })))),
+          switchMap((res) => this.saveReview(res.testsetId, false).pipe(map(() => ({ ...res, reviewFailed: false })), catchError(() => of({ ...res, reviewFailed: true })))),
         )
         .subscribe({
           next: (res) => {
@@ -433,9 +449,11 @@ export class ProblemPanel {
             this.bus.dirty.set(false);
             this.bus.load();
             // Creado el problema, sigue en su página con el paso que va después de Datos
-            const pdfFailed = 'pdfFailed' in res;
-            this.router.navigate(['..', res.id], { relativeTo: this.route, queryParams: { paso: pdfFailed ? 'datos' : STEPS[1].key } });
-            if (pdfFailed) setTimeout(() => this.actionError.set('El problema se creó, pero no se pudo subir el PDF. Vuelve a subirlo.'));
+            const failed = res.pdfFailed
+              ? 'El problema se creó, pero no se pudo subir el PDF. Vuelve a subirlo.'
+              : res.reviewFailed ? 'El problema se creó, pero no se pudo activar la revisión manual. Vuelve a marcarla.' : null;
+            this.router.navigate(['..', res.id], { relativeTo: this.route, queryParams: { paso: failed ? 'datos' : STEPS[1].key } });
+            if (failed) setTimeout(() => this.actionError.set(failed));
           },
           error: (err) => {
             this.saving.set(false);
@@ -446,13 +464,17 @@ export class ProblemPanel {
     }
 
     const id = this.detail()!.id;
+    const testset = reviewTestset(this.detail()!);
     this.service
       .update(id, {
         title: v.title,
         // En modo markdown, guardarlo quita el PDF en el backend
         ...(this.stmtMode() === 'markdown' && { statement: v.statement }),
       })
-      .pipe(switchMap(() => this.uploadPdf(id)))
+      .pipe(
+        switchMap(() => this.uploadPdf(id)),
+        switchMap(() => (testset ? this.saveReview(testset.id, testset.manualReview) : of(null))),
+      )
       .subscribe({
         next: () => {
           this.saving.set(false);
@@ -546,6 +568,11 @@ const STEPS: { key: Step; label: string }[] = [
   { key: 'casos', label: 'Casos' },
   { key: 'construir', label: 'Evaluación y proponer' },
 ];
+
+// La versión en curso, o la vigente si no hay otra: es la que usa la casilla de revisión manual
+function reviewTestset(d: IProblemDetail) {
+  return d.testsets.find((t) => t.id === defaultTestsetId(d)) ?? null;
+}
 
 function findEditionId(route: ActivatedRoute): number {
   const param = route.pathFromRoot.map((r) => r.snapshot.paramMap.get('id')).find((v) => v != null);

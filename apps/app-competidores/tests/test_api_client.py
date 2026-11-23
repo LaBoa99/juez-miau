@@ -49,6 +49,13 @@ def test_known_status_uses_team_message(status):
     assert error.value.message == MESSAGES[status]
 
 
+def test_suspended_team_sees_the_server_reason():
+    with pytest.raises(ApiError) as error:
+        client_returning(FakeResponse(401, {"message": "Tu equipo fue suspendido por los jueces"})).get("/x")
+    assert error.value.status == 401
+    assert error.value.message == "Tu equipo fue suspendido por los jueces"
+
+
 def test_validation_list_uses_first_server_message():
     with pytest.raises(ApiError) as error:
         client_returning(FakeResponse(400, {"message": ["source too long", "otro"]})).get("/x")

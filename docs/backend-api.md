@@ -360,9 +360,9 @@ Alertas de integridad. Definidas en `IntegrityController` (no hay controlador `f
 |---|---|---|---|---|
 | GET | `/editions/:editionId/flags?open=&teamId=` | `RequireEditionRole(ANY)` | — | `IFlag[]` |
 | POST | `/editions/:editionId/flags` | `RequireEditionRole(ANY)` | `{ teamId (int≥1), details (≤1000) }` | `IFlag` (tipo `MANUAL`) |
-| POST | `/flags/:id/resolve` | ADMIN o JUDGE de la edición (servicio; el observador solo ve y levanta) | `{ note? (≤1000) }` | `IFlag` |
+| POST | `/flags/:id/resolve` | ADMIN o JUDGE de la edición (servicio; el observador solo ve y levanta) | `{ outcome: CONFIRMED\|DISMISSED, note? (≤1000) }` | `IFlag`; 409 si ya tiene esa decisión. Sirve también para corregirla |
 
-**`FlagType`:** `SESSION_REPLACED`, `FORBIDDEN_PROCESS`, `HEARTBEAT_LOST`, `MANUAL`. `IFlag` = `{ id, editionId, teamId, type, details, createdAt, resolvedAt, resolvedBy, resolutionNote }`. Filtro `open=true` = sin resolver. Las automáticas se deduplican; las `MANUAL` siempre se crean. Al crear/resolver se emite `flag:update` a la sala de staff. El filtro por salón se arma en el cliente (equipo → salón).
+**`FlagType`:** `SESSION_REPLACED`, `FORBIDDEN_PROCESS`, `HEARTBEAT_LOST`, `MANUAL`, `EXTRA_MONITOR`, `USB_STORAGE`, `NETWORK_CHANGE`, `SESSION_CLOSED`. `IFlag` = `{ id, editionId, teamId, type, details, createdAt, resolvedAt, resolvedBy, resolutionNote, outcome, offense }`. Con `offense ≥ 2` (reincidencia) y abierta, el equipo no puede enviar. Filtro `open=true` = sin resolver. Las automáticas generan una alerta por incidente (ver `docs/design/evaluacion-alertas.md`); las `MANUAL` siempre se crean. Cada alerta `CONFIRMED` suma 20 minutos a la penalización. Al crear/resolver se emite `flag:update` a la sala de staff. El filtro por salón se arma en el cliente (equipo → salón).
 
 ---
 

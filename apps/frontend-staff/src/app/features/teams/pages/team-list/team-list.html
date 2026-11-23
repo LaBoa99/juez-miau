@@ -54,25 +54,31 @@
     <table class="oj-table">
       <thead>
         <tr>
+          <th class="teams__center">Sesión</th>
           <th>Equipo</th>
-          <th>Integrantes</th>
+          <th class="teams__center" title="Integrantes" aria-label="Integrantes">Int.</th>
           <th>Usuario</th>
           <th>Categoría</th>
           <th>Salón</th>
-          <th>Sesión</th>
-          <th></th>
+          <th aria-label="Acciones"></th>
         </tr>
       </thead>
       <tbody>
         @for (t of items(); track t.id) {
           <tr>
+            <td class="teams__center">
+              <span class="teams__dot" [class]="'teams__dot--' + sessionState(t)" role="img"
+                    [attr.aria-label]="sessionLabel(t)" [ojTooltip]="sessionLabel(t)"></span>
+            </td>
             <td class="teams__name">
               {{ t.name }}
               @if (t.suspended) {
                 <oj-badge tone="danger">Suspendido</oj-badge>
               }
             </td>
-            <td class="teams__members">{{ t.members.length ? memberNames(t) : '—' }}</td>
+            <td class="teams__center oj-mono">
+              <span [ojTooltip]="t.members.length ? memberNames(t) : 'Sin integrantes'">{{ t.members.length }}</span>
+            </td>
             <td class="oj-mono">{{ t.username }}</td>
             <td>
               @if (t.category) {
@@ -89,11 +95,9 @@
               }
             </td>
             <td>
-              <span class="teams__dot" [class.teams__dot--on]="t.online"></span>
-              {{ t.online ? 'Conectado' : 'Sin sesión' }}
-            </td>
-            <td>
               <div class="teams__row-actions">
+                <button ojButton variant="secondary" size="sm" class="oj-btn--icon" type="button"
+                        [attr.aria-label]="'Ver detalle de ' + t.name" ojTooltip="Ver detalle" (click)="openWatch(t)"><oj-icon name="view" /></button>
                 @if (canEdit()) {
                   <button ojButton variant="secondary" size="sm" class="oj-btn--icon" type="button"
                           [attr.aria-label]="'Descargar PDF de credenciales de ' + t.name" ojTooltip="Descargar PDF de credenciales"
@@ -126,6 +130,89 @@
     </div>
   </div>
 }
+
+<oj-modal #watchModal [title]="watched()?.name ?? 'Equipo'" size="lg" (closed)="closeWatch()">
+  @if (watched(); as t) {
+    <div class="teams__watch">
+      <p class="teams__watch-status">
+        <span class="teams__dot" [class]="'teams__dot--' + sessionState(t)" aria-hidden="true"></span>
+        @switch (sessionState(t)) {
+          @case ('on') { Sesión iniciada · última señal {{ t.lastHeartbeatAt | date: 'HH:mm:ss' }} }
+          @case ('lost') { Sesión iniciada · sin señal desde {{ t.lastHeartbeatAt | date: 'HH:mm:ss' }} }
+          @case ('off') { Sin sesión }
+        }
+        @if (t.suspended) {
+          <oj-badge tone="danger">Suspendido</oj-badge>
+        }
+      </p>
+
+      <dl class="teams__watch-facts">
+        <div><dt>Usuario</dt><dd class="oj-mono">{{ t.username }}</dd></div>
+        <div><dt>Categoría</dt><dd>{{ t.category?.name ?? '—' }}</dd></div>
+        <div><dt>Salón</dt><dd>{{ t.room?.name ?? 'Sin salón' }}</dd></div>
+      </dl>
+
+      <section class="teams__watch-block">
+        <h3 class="teams__watch-title">Integrantes ({{ t.members.length }})</h3>
+        @for (m of t.members; track m.id) {
+          <p class="teams__watch-row"><strong>{{ m.name }}</strong> · {{ m.career }}</p>
+        } @empty {
+          <p class="teams__hint">Sin integrantes.</p>
+        }
+      </section>
+
+      @if (watchError()) {
+        <oj-alert tone="error">No se pudieron cargar las alertas y los envíos del equipo.</oj-alert>
+      }
+      @if (watchLoading()) {
+        <p class="teams__loading">Cargando…</p>
+      } @else {
+        <section class="teams__watch-block">
+          <h3 class="teams__watch-title">Alertas ({{ openFlags() }} abiertas de {{ watchFlags().length }})</h3>
+          @for (f of watchFlags(); track f.id) {
+            <div class="teams__watch-flag" [class.teams__watch-flag--done]="f.resolvedAt">
+              <oj-badge [tone]="flagStatusTone(f)">{{ flagStatus(f) }}</oj-badge>
+              <span class="teams__watch-grow">{{ flagMessage(f) }}</span>
+              <span class="oj-mono teams__hint">{{ f.createdAt | date: 'HH:mm:ss' }}</span>
+            </div>
+          } @empty {
+            <p class="teams__hint">Sin alertas.</p>
+          }
+        </section>
+
+        <section class="teams__watch-block">
+          <h3 class="teams__watch-title">Últimos envíos</h3>
+          @if (watchSubmissions().length) {
+            <div class="oj-table-wrap">
+              <table class="oj-table">
+                <thead><tr><th>Envío</th><th>Problema</th><th>Veredicto</th><th>Minuto</th></tr></thead>
+                <tbody>
+                  @for (s of watchSubmissions(); track s.id) {
+                    @let v = s.verdict | verdict: s.status;
+                    <tr>
+                      <td class="oj-mono">
+                        <a [routerLink]="['/ediciones', editionId, 'envios', s.id]" (click)="watchModal.close()">#{{ s.id }}</a>
+                      </td>
+                      <td class="oj-mono">{{ problemLetter(s.problemId) }}</td>
+                      <td><oj-badge [tone]="v.tone" [dashed]="v.dashed" [ojTooltip]="v.hint">{{ v.label }}</oj-badge></td>
+                      <td class="oj-mono">{{ minute(s.contestMs) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <p class="teams__hint">Aún no hay envíos.</p>
+          }
+        </section>
+      }
+    </div>
+  }
+  <div footer class="oj-actions">
+    <a ojButton variant="secondary" [routerLink]="['/ediciones', editionId, 'alertas']" (click)="watchModal.close()">Ir a Alertas</a>
+    <button ojButton variant="primary" type="button" (click)="watchModal.close()">Cerrar</button>
+  </div>
+</oj-modal>
 
 <oj-modal #editModal title="Editar equipo" size="md">
     <form class="teams__form" [formGroup]="editForm" (ngSubmit)="submitEdit()">

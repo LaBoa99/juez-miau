@@ -83,6 +83,7 @@ class ContestController(QObject):
     def _set_clock(self, clock):
         self.clock = clock
         self.clock_received = time.monotonic()
+        self.window.problems.set_paused(clock["status"] == "PAUSED")
         self._tick()
 
     @Slot()

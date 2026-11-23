@@ -111,6 +111,9 @@ QPushButton#caseChip[state="bad"] {{ background: {ERROR_BG}; color: {ERROR}; }}
 QPushButton#caseChip[state="skip"] {{ background: {SURFACE}; color: {TEXT_MUTED}; border: 1px dashed {BORDER}; }}
 QPushButton#caseChip:enabled:hover {{ border: 1px solid {TEXT_MUTED}; }}
 QPushButton#caseChip:checked {{ border: 2px solid {TEXT}; }}
+QLabel#judgeNote {{ background: {PANEL}; border: 2px solid {TEXT_MUTED}; border-radius: 4px; padding: {MD}px; }}
+QLabel#judgeNote[state="ok"] {{ background: {SUCCESS_BG}; border-color: {ACCENT}; color: {ACCENT}; }}
+QLabel#judgeNote[state="bad"] {{ background: {ERROR_BG}; border-color: {ERROR}; color: {ERROR}; }}
 QLabel#caseLabel {{ color: {TEXT_MUTED}; font-size: 9pt; }}
 QLabel#caseBox {{
     font-family: {MONO_CSS}; font-size: 9pt; background: {SURFACE};

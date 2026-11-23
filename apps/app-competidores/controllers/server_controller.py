@@ -1,6 +1,6 @@
 from PySide6.QtCore import QObject, Slot
 
-from commands.configure_server import ConfigureServerCommand
+from commands.configure_server import CheckServerCommand, ConfigureServerCommand
 from services.server_config import save_url
 from views.server_view import ServerDialog
 
@@ -17,6 +17,25 @@ class ServerController(QObject):
         self.dialog = None
         window.server_requested.connect(self.open)
         window.login.server_requested.connect(self.open)
+        window.login.check_requested.connect(self.check)
+
+    @Slot()
+    def check(self):
+        self.window.login.set_checking(True)
+        self.invoker.run(CheckServerCommand(self.api.server_url), self._checked, self._check_failed)
+
+    @Slot(object)
+    def _checked(self, interface):
+        login = self.window.login
+        login.set_checking(False)
+        login.show_connection(f"Servidor disponible por {interface}." if interface else "Servidor disponible.", ok=True)
+
+    @Slot(object)
+    def _check_failed(self, error):
+        login = self.window.login
+        login.set_checking(False)
+        login.show_connection(getattr(error, "message", None) or str(error), ok=False)
+        login.show_server_hint()
 
     @Slot()
     def open(self):

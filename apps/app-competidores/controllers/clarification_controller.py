@@ -38,7 +38,7 @@ class ClarificationController(QObject):
         view = self.window.clarifications
         view.set_sending(False)
         view.clear_question()
-        view.show_message("Pregunta enviada. Te avisamos cuando el staff responda.")
+        view.show_message("Pregunta enviada. Recibirás un aviso cuando el staff responda.")
         self.clarifications = [clarification] + [c for c in self.clarifications if c["id"] != clarification["id"]]
         view.set_clarifications(self.clarifications)
 
@@ -59,7 +59,7 @@ class ClarificationController(QObject):
         self.window.clarifications.set_clarifications(self.clarifications)
         if incoming["answer"] and (not previous or previous["answer"] != incoming["answer"]):
             mine = previous and previous.get("mine")
-            self.notifier.notify("Respondieron tu pregunta" if mine else "Nueva clarificación", incoming["answer"][:200])
+            self.notifier.notify("Respondieron tu pregunta" if mine else "Nueva aclaración", incoming["answer"][:200])
 
     @Slot(dict)
     def _on_delete(self, payload):

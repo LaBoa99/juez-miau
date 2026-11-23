@@ -51,7 +51,7 @@ class MainWindow(QMainWindow):
         self.tabs.setExpanding(False)
         self.tabs.addTab("Problemas")
         self.tabs.addTab("Marcador")
-        self.tabs.addTab("Clarificaciones")
+        self.tabs.addTab("Aclaraciones")
         self.tabs.currentChanged.connect(lambda i: self.pages.setCurrentIndex(i + 1))
         help_button = QPushButton("Ayuda")
         help_button.setObjectName("topbarButton")

@@ -4,7 +4,7 @@ import { JwtService, type JwtSignOptions } from '@nestjs/jwt'
 import type { Team } from '../../teams/entities/team.entity.js'
 import { StaffService } from '../../staff/services/staff.service.js'
 import { PasswordService } from '../../utils/services/password.service.js'
-import { TeamSessionsService } from '../../teams/services/team-sessions.service.js'
+import { TEAM_SUSPENDED_MESSAGE, TeamSessionsService } from '../../teams/services/team-sessions.service.js'
 import { ACTIVE_EDITION_STATUSES, TeamsService } from '../../teams/services/teams.service.js'
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js'
 import { RefreshTokensService } from './refresh-tokens.service.js'
@@ -75,10 +75,11 @@ export class AuthService {
             throw new UnauthorizedException('Credenciales inválidas')
         }
         if (team.suspended_at) {
-            throw new ForbiddenException('Tu equipo fue suspendido por el staff')
+            throw new ForbiddenException(TEAM_SUSPENDED_MESSAGE)
         }
 
-        const { session, replaced } = await this.teamSessionsService.start(team.id, dto.machineId)
+        const { session, replaced, loggedOutAt } = await this.teamSessionsService.start(team.id, dto.machineId)
+        if (loggedOutAt) await this.flagsService.teamReturned(team.id, Date.now() - loggedOutAt.getTime())
         if (replaced && replaced.machine_id !== dto.machineId) {
             await this.flagsService.raise(
                 team.id,
@@ -110,7 +111,8 @@ export class AuthService {
     // payload: token de acceso si llegó uno válido (para cerrar la sesión del equipo)
     async logout(refreshToken: string | undefined, payload?: AccessTokenPayload) {
         if (payload?.type === AccessTokenType.TEAM) {
-            await this.teamSessionsService.revoke(payload.sub, 'logout', payload.sid)
+            const closed = await this.teamSessionsService.revoke(payload.sub, 'logout', payload.sid)
+            if (closed) await this.flagsService.teamLoggedOut(payload.sub)
         }
 
         if (refreshToken) {

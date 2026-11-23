@@ -18,8 +18,9 @@ export class SubmissionsService {
   private readonly http = inject(HttpClient);
 
   // Ventana de envíos de la edición (paginación hacia atrás con `before`).
-  listForEdition(editionId: number, opts: { before?: number; limit?: number } = {}): Observable<IStaffSubmission[]> {
+  listForEdition(editionId: number, opts: { before?: number; limit?: number; teamId?: number } = {}): Observable<IStaffSubmission[]> {
     let params = new HttpParams();
+    if (opts.teamId !== undefined) params = params.set('teamId', opts.teamId);
     if (opts.before !== undefined) params = params.set('before', opts.before);
     if (opts.limit !== undefined) params = params.set('limit', opts.limit);
     return this.http.get<IStaffSubmission[]>(`${API}/editions/${editionId}/submissions`, { params });

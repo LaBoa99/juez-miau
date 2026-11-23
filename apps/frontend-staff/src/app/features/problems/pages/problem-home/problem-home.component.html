@@ -19,8 +19,8 @@
 } @else {
   <p class="home__hint">
     @if (paused() && canDecide()) {
-      El concurso está en pausa: puedes agregar y quitar problemas. Uno que aceptes toma la siguiente letra de su
-      categoría y los equipos lo ven al reanudar. Uno con envíos no se elimina: quítalo del concurso.
+      El concurso está en pausa: puedes agregar y quitar problemas. Cada problema aceptado recibe la siguiente letra de su
+      categoría y los equipos lo ven al reanudar. Si ya tiene envíos, no se elimina: quítalo del concurso.
     } @else if (canDecide()) {
       Los jueces proponen sus problemas y tú decides cuáles entran. Las letras se asignan al iniciar el concurso.
     } @else if (isAdmin()) {

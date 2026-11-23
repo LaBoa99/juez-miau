@@ -1,7 +1,11 @@
-<oj-page-header 
-title="Revisión manual" 
-subtitle="" 
+<oj-page-header
+title="Revisión manual"
+subtitle=""
 />
+
+@if (missingId(); as id) {
+  <oj-alert tone="warning">El envío #{{ id }} ya no está pendiente de revisión.</oj-alert>
+}
 
 @if (error()) {
   <oj-alert tone="error">No se pudo cargar la cola de revisión.</oj-alert>
@@ -14,7 +18,7 @@ subtitle=""
     <!-- Columna izquierda: pendientes -->
     <aside class="rev__list" aria-label="Pendientes de revisión">
       <p class="rev__list-head">Pendientes de revisión</p>
-      <p class="rev__list-help">El juez automático no pudo decidir solo.</p>
+      <p class="rev__list-help">Requieren la decisión de un juez.</p>
       @for (s of queue(); track s.id) {
         <button
           type="button"
@@ -38,8 +42,12 @@ subtitle=""
       <section class="rev__panel">
         <header class="rev__panel-head">
           <h2 class="rev__panel-title">Envío <span class="oj-mono">#{{ s.id }}</span></h2>
-          <oj-badge tone="warning" [dashed]="true" ojTooltip="En revisión: pasó los casos y espera la revisión de un juez.">REVISIÓN</oj-badge>
-          <a [routerLink]="['/ediciones', editionId, 'envios', s.id]" class="rev__detail-link">Ver detalle completo</a>
+          <oj-badge tone="warning" [dashed]="true" ojTooltip="Espera la decisión de un juez.">REVISIÓN</oj-badge>
+          <a [routerLink]="['/ediciones', editionId, 'envios', s.id]" class="rev__detail-link">Ver historial</a>
+          <div class="oj-actions rev__decide">
+            <button ojButton variant="danger-outline" type="button" (click)="openDecision(false)">Rechazar</button>
+            <button ojButton variant="success" type="button" (click)="openDecision(true)">Aceptar</button>
+          </div>
         </header>
 
         <dl class="rev__facts">
@@ -49,10 +57,6 @@ subtitle=""
           <div><dt>Ejecución máx.</dt><dd class="oj-mono">{{ maxTime(s) }}</dd></div>
         </dl>
 
-        <div class="rev__why">
-          <strong>Por qué está en revisión:</strong> {{ reason }}
-        </div>
-
         @if (instructions(); as text) {
           <div class="rev__rule">
             <strong>Qué debe revisar el juez</strong>
@@ -60,44 +64,108 @@ subtitle=""
           </div>
         }
 
-        <form class="rev__decision" (submit)="$event.preventDefault(); openConfirm()">
-          <h3 class="rev__decision-title">Decisión del juez</h3>
+        @if (detailError()) {
+          <oj-alert tone="error">No se pudo cargar el código y los casos de este envío.</oj-alert>
+        } @else if (detailLoading()) {
+          <p class="rev__muted">Cargando…</p>
+        } @else if (detail(); as d) {
+          <div class="rev__why">{{ reason() }}</div>
 
-          @if (actionError()) {
-            <oj-alert tone="error">{{ actionError() }}</oj-alert>
-          }
+          <div class="rev__panes">
+            <section class="rev__box" aria-labelledby="rev-cases">
+              <h3 class="rev__box-title" id="rev-cases">Resultado por caso</h3>
+              @if (d.cases.length) {
+                <div class="rev__cases">
+                  @for (c of d.cases; track c.ordinal) {
+                    <button
+                      type="button"
+                      class="rev__case"
+                      [class.rev__case--ac]="c.verdict === Verdict.AC"
+                      [class.rev__case--bad]="c.verdict !== Verdict.AC"
+                      [class.rev__case--open]="c.ordinal === openOrdinal()"
+                      [attr.aria-pressed]="c.ordinal === openOrdinal()"
+                      [attr.aria-label]="'Ver caso ' + c.ordinal + (c.verdict === Verdict.AC ? ', correcto' : ', con error')"
+                      (click)="openOrdinal.set(c.ordinal)"
+                    >{{ c.ordinal }}</button>
+                  }
+                </div>
 
-          <oj-form-field label="Veredicto final" for="rev-verdict">
-            <select id="rev-verdict" class="oj-mono" [formControl]="verdictCtrl">
-              @for (o of verdictOptions; track o.value) {
-                <option [value]="o.value">{{ o.label }}</option>
+                @if (openCase(); as c) {
+                  <h4 class="rev__case-title">Caso {{ c.ordinal }} · {{ c.verdict === Verdict.AC ? 'Correcto' : 'Con error' }}</h4>
+                  @if (c.verdict !== Verdict.AC) {
+                    @let problem = caseProblem(c);
+                    <p class="rev__case-reason">{{ problem.text }}</p>
+                    @if (problem.detail) {
+                      <pre class="rev__mono">{{ problem.detail }}</pre>
+                    }
+                  }
+                  @if (caseError()) {
+                    <oj-alert tone="error">{{ caseError() }}</oj-alert>
+                  } @else if (caseLoading()) {
+                    <p class="rev__muted">Cargando…</p>
+                  } @else if (caseData(); as cd) {
+                    <div class="rev__io">
+                      <span class="rev__io-label">Entrada</span>
+                      <pre class="rev__mono">{{ cd.input }}</pre>
+                    </div>
+                    <div class="rev__compare">
+                      <div class="rev__io">
+                        <span class="rev__io-label">Salida del equipo</span>
+                        @if (cd.actual != null) {
+                          <pre class="rev__mono">@for (l of lines(cd.actual); track $index) {<span class="rev__line" [class.rev__line--diff]="$index === diffLine()">{{ l }}</span>}</pre>
+                        } @else {
+                          <p class="rev__muted">El programa no produjo una salida válida.</p>
+                        }
+                      </div>
+                      <div class="rev__io">
+                        <span class="rev__io-label">Salida esperada</span>
+                        @if (cd.expected != null) {
+                          <pre class="rev__mono">@for (l of lines(cd.expected); track $index) {<span class="rev__line" [class.rev__line--diff]="$index === diffLine()">{{ l }}</span>}</pre>
+                        } @else {
+                          <p class="rev__muted">Este caso no tiene salida esperada (lo decide el checker).</p>
+                        }
+                      </div>
+                    </div>
+                  }
+                }
+              } @else {
+                <p class="rev__muted">No hay casos ejecutados.</p>
               }
-            </select>
-          </oj-form-field>
+            </section>
 
-          <oj-form-field
-            label="Nota (queda en la bitácora)"
-            for="rev-note"
-            [optional]="true"
-            [error]="noteCtrl.touched && noteCtrl.invalid ? 'Máximo 1000 caracteres.' : undefined"
-          >
-            <textarea id="rev-note" rows="3" [formControl]="noteCtrl"></textarea>
-          </oj-form-field>
-
-          <div class="oj-actions">
-            <button ojButton variant="primary" type="submit" [disabled]="saving()">
-              {{ saving() ? 'Guardando…' : 'Confirmar veredicto' }}
-            </button>
+            <section class="rev__box" aria-labelledby="rev-code">
+              <h3 class="rev__box-title" id="rev-code">Código enviado</h3>
+              <div class="rev__code"><oj-code-block [code]="d.source" /></div>
+            </section>
           </div>
-        </form>
+        }
       </section>
     }
   </div>
-
-  <oj-confirm-dialog
-    title="Confirmar veredicto"
-    [message]="confirmMessage()"
-    confirmLabel="Confirmar veredicto"
-    (confirmed)="confirmVerdict()"
-  />
 }
+
+<oj-modal #decisionModal [title]="(decision()?.accept ? 'Aceptar' : 'Rechazar') + ' envío #' + (decision()?.id ?? '')" size="sm" [closeOnBackdrop]="false">
+  <form id="rev-decision" class="rev__modal-form" (submit)="$event.preventDefault(); confirmDecision()">
+    <p class="rev__muted">
+      {{ decision()?.accept ? 'El problema contará como resuelto para el equipo.' : 'Contará como un intento rechazado.' }}
+    </p>
+    @if (decisionError()) {
+      <oj-alert tone="error">{{ decisionError() }}</oj-alert>
+    }
+    <oj-form-field
+      label="Comentario para el equipo"
+      for="rev-note"
+      [optional]="true"
+      hint="El equipo lo verá junto al veredicto."
+      [error]="noteCtrl.touched && noteCtrl.invalid ? 'Máximo 1000 caracteres.' : undefined"
+    >
+      <textarea id="rev-note" rows="4" [formControl]="noteCtrl"></textarea>
+    </oj-form-field>
+  </form>
+  <div footer class="oj-actions">
+    <button ojButton variant="secondary" type="button" (click)="closeDecision()">Cancelar</button>
+    <button ojButton [variant]="decision()?.accept ? 'success' : 'danger'" type="submit" form="rev-decision" [disabled]="saving()">
+      {{ saving() ? 'Guardando…' : (decision()?.accept ? 'Aceptar envío' : 'Rechazar envío') }}
+    </button>
+  </div>
+</oj-modal>

@@ -62,17 +62,6 @@ oj-alert,
 .st__countdown {
   flex: 0 0 280px;
 }
-.st__filter {
-  display: flex;
-  flex-direction: column;
-  gap: var(--oj-space-xs);
-  min-width: 220px;
-}
-.st__filter label {
-  font-size: var(--oj-text-label);
-  font-weight: var(--oj-text-label-weight);
-  color: var(--oj-text-muted);
-}
 .st__none {
   text-align: center;
   color: var(--oj-text-muted);

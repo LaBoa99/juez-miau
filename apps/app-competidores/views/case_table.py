@@ -65,16 +65,9 @@ def case_text(text):
     return spaced(text) if text.lstrip()[:1] in ("[", "{") else text
 
 
-def case_input_line(json_text):
-    """Entrada de un ejemplo en una sola línea, como LeetCode: "nums = [1, 1, 1], k = 2". La de programa
-    completo (texto que lee el programa) va tal cual."""
-    text = case_input_text(json_text)
-    return ", ".join(text.split("\n")) if json_text.strip().startswith("{") else text
-
-
 def insert_example(cursor, input_text, output_text):
-    """Un ejemplo del enunciado: un bloque con borde fino y sin fondo, con "Entrada:" y "Salida:" en negritas
-    y los valores en monoespaciada."""
+    """Un ejemplo del enunciado: tabla con borde fino y sin fondo, una columna Entrada y otra Salida, con los
+    títulos en negritas y los valores en monoespaciada."""
     fmt = QTextTableFormat()
     fmt.setBorderStyle(QTextFrameFormat.BorderStyle.BorderStyle_Solid)
     fmt.setBorderBrush(QColor(BORDER))
@@ -84,18 +77,16 @@ def insert_example(cursor, input_text, output_text):
     fmt.setCellPadding(SM)
     fmt.setBottomMargin(SM)
     fmt.setWidth(QTextLength(QTextLength.Type.PercentageLength, 100))
-    table = cursor.insertTable(1, 1, fmt)  # va justo después del encabezado, sin párrafo vacío en medio
-    cell = table.cellAt(0, 0).firstCursorPosition()
+    fmt.setColumnWidthConstraints([QTextLength(QTextLength.Type.PercentageLength, 50)] * 2)
+    table = cursor.insertTable(2, 2, fmt)  # va justo después del encabezado, sin párrafo vacío en medio
     label = QTextCharFormat()
     label.setFontWeight(QFont.Weight.DemiBold)
     mono = QTextCharFormat()
     mono.setFontFamilies(list(MONO))
     mono.setFontStyleHint(QFont.StyleHint.Monospace)
     mono.setFontFixedPitch(True)
-    cell.insertText("Entrada: ", label)
-    cell.insertText(input_text, mono)
-    cell.insertBlock()
-    cell.insertText("Salida: ", label)
-    cell.insertText(output_text, mono)
+    for column, (title, value) in enumerate((("Entrada", input_text), ("Salida", output_text))):
+        table.cellAt(0, column).firstCursorPosition().insertText(title, label)
+        table.cellAt(1, column).firstCursorPosition().insertText(value, mono)
 
     cursor.movePosition(QTextCursor.MoveOperation.End)

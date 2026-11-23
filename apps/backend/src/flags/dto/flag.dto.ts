@@ -1,6 +1,6 @@
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
-import type { ICreateFlag, IResolveFlag } from '@concurso/shared-types';
+import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { FlagOutcome, type ICreateFlag, type IResolveFlag } from '@concurso/shared-types';
 
 export class CreateFlagDto implements ICreateFlag {
 
@@ -15,6 +15,9 @@ export class CreateFlagDto implements ICreateFlag {
 }
 
 export class ResolveFlagDto implements IResolveFlag {
+
+    @IsEnum(FlagOutcome)
+    declare outcome: FlagOutcome;
 
     @IsOptional()
     @IsString()

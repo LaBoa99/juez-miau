@@ -13,7 +13,7 @@ from PySide6.QtPdfWidgets import QPdfView
 
 from services.submission_service import CODE_TO_EXTENSION, EXTENSION_TO_CODE, LANGUAGE_NAMES, problem_states
 from views.attempts_view import AttemptsView
-from views.case_table import case_input_line, case_text, insert_example
+from views.case_table import case_input_text, case_text, insert_example
 from views.style import ACCENT, BORDER, ERROR, LG, MD, SM, TEXT_MUTED, XS
 
 READING_WIDTH = 760  # ~75 caracteres por línea
@@ -51,6 +51,8 @@ class ProblemsView(QWidget):
         self.languages = []
         self.submissions = []
         self.progress = {}
+        self.paused = False
+        self.submitting = False
         self.icons = {
             None: _dot(BORDER, False),
             "pending": _dot(TEXT_MUTED, False),
@@ -176,7 +178,7 @@ class ProblemsView(QWidget):
     def _empty_state(self):
         title = QLabel("El concurso aún no inicia")
         title.setObjectName("title")
-        text = QLabel("Los problemas aparecen aquí en cuanto empiece. Mientras tanto, ten listo tu IDE.")
+        text = QLabel("Los problemas aparecerán aquí cuando inicie el concurso. Mientras tanto, prepara tu IDE.")
         text.setObjectName("muted")
         text.setWordWrap(True)
         button = QPushButton("Revisar de nuevo")
@@ -251,7 +253,7 @@ class ProblemsView(QWidget):
         names = [LANGUAGE_NAMES.get(lang["code"], lang["code"]) for lang in self.languages]
         dialog = QInputDialog(self.window())
         dialog.setWindowTitle("Lenguaje preferido")
-        dialog.setLabelText("¿En qué lenguaje vas a programar?\nLo dejamos elegido para plantillas y envíos; puedes cambiarlo cuando quieras.")
+        dialog.setLabelText("¿En qué lenguaje vas a programar?\nSe usará en plantillas y envíos. Puedes cambiarlo después.")
         dialog.setComboBoxItems(names)
         dialog.setTextValue(self.language.currentText() or names[0])
         dialog.setOkButtonText("Usar este lenguaje")
@@ -265,10 +267,18 @@ class ProblemsView(QWidget):
             self.language.setCurrentIndex(names.index(dialog.textValue()))
 
     def set_submitting(self, busy):
-        self.submit_button.setDisabled(busy)
-        self.submit_button.setText("Enviando…" if busy else "Enviar solución")
+        self.submitting = busy
+        self._refresh_submit()
         if busy:
             self.message.hide()
+
+    def set_paused(self, paused):
+        self.paused = paused
+        self._refresh_submit()
+
+    def _refresh_submit(self):
+        self.submit_button.setDisabled(self.submitting or self.paused)
+        self.submit_button.setText("Enviando…" if self.submitting else "Concurso en pausa" if self.paused else "Enviar solución")
 
     def offer_open_template(self, path):
         box = QMessageBox(self.window())
@@ -400,12 +410,28 @@ class ProblemsView(QWidget):
         problem = self._current()
         if not problem:
             return
+        solved = problem_states(self.submissions).get(problem["id"], (None, 0))[0] == "solved"
+        if solved and not self._confirm_resubmit(problem):
+            return
         patterns = " ".join(f"*{ext}" for ext in EXTENSION_TO_CODE)
         path = self._file_dialog(
             f"Enviar solución de {problem['letter']}", filters=[f"Código fuente ({patterns})", "Todos los archivos (*)"]
         )
         if path:
             self.submit_requested.emit(problem["id"], path, self.language.currentData() or "")
+
+    def _confirm_resubmit(self, problem):
+        box = QMessageBox(self.window())
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle("Problema ya resuelto")
+        box.setText(f"Ya resolviste el problema {problem['letter']}.")
+        box.setInformativeText("Otro envío no cambia tu lugar en el marcador. ¿Quieres enviarlo de todos modos?")
+        cancel = box.addButton("Cancelar", QMessageBox.ButtonRole.RejectRole)
+        cancel.setObjectName("secondary")
+        send = box.addButton("Enviar de todos modos", QMessageBox.ButtonRole.AcceptRole)
+        box.setDefaultButton(cancel)
+        box.exec()
+        return box.clickedButton() is send
 
     def _file_dialog(self, title, save_as=None, filters=()):
         # Diálogo de Qt (no el nativo) para que respete el tema claro, del tamaño de la ventana
@@ -451,9 +477,12 @@ def problem_markdown(problem):
         # Categoría especial: programa completo que lee de la entrada; los ejemplos ya vienen como texto
         order = ", ".join(f"`{p['name']}`" for p in problem["signature"]["params"])
         parts.append(
-            "### Programa completo\n\n"
-            f"No escribas una función: tu programa lee los datos con input() en este orden: {order}, "
-            "e imprime la respuesta al final. Con **Descargar plantilla** recibes la lectura ya escrita."
+            "### Cómo resolverlo\n\n"
+            "Escribe un programa completo:\n\n"
+            f"1. Lee los datos en este orden: {order}.\n"
+            "2. Calcula la respuesta.\n"
+            "3. Imprime solo la respuesta.\n\n"
+            "**Descargar plantilla** ya incluye la lectura de los datos."
         )
     if problem.get("inputFormat"):
         parts.append(f"### Entrada\n\n{problem['inputFormat']}")
@@ -463,13 +492,13 @@ def problem_markdown(problem):
 
 
 def render_problem(document, problem):
-    """Enunciado en markdown y al final los ejemplos, como en LeetCode: "Entrada: …" y "Salida: …" en un bloque."""
+    """Enunciado en markdown y al final los ejemplos, cada uno con su columna Entrada y su columna Salida."""
     document.setMarkdown(problem_markdown(problem))
     cursor = QTextCursor(document)
     cursor.movePosition(QTextCursor.MoveOperation.End)
     for i, sample in enumerate(problem.get("samples") or []):
         insert_heading(cursor, f"Ejemplo {i + 1}")
-        insert_example(cursor, case_input_line(sample["input"]), case_text(sample["output"]))
+        insert_example(cursor, case_input_text(sample["input"]), case_text(sample["output"]))
     tune_rhythm(document)
 
 

@@ -13,7 +13,8 @@ LEGEND = (
     f"<span style='color:{TEXT_MUTED}'>? 2</span> envíos pendientes &nbsp;·&nbsp; "
     "<b>negritas</b> primero en resolverlo &nbsp;·&nbsp; <s>tachado</s> equipo suspendido<br>"
     "Se ordena por problemas resueltos y, en empate, por menor penalización: minuto de cada problema resuelto "
-    "más 20 minutos por cada rechazo previo (los errores de compilación no cuentan)."
+    "más 20 minutos por cada rechazo previo (los errores de compilación no cuentan) "
+    "y por cada falta a las reglas confirmada por un juez."
 )
 
 

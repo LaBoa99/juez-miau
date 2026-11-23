@@ -119,6 +119,11 @@ oj-modal oj-form-field + oj-form-field {
 .al__card-actions {
   margin-top: var(--oj-space-sm);
 }
+.al__decision {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oj-space-md);
+}
 .al__muted {
   margin: 0;
   color: var(--oj-text-muted);

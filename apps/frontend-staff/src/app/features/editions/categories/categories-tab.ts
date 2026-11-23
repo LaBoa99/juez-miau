@@ -24,7 +24,7 @@ import { findEditionId, message } from '../tab-utils';
 })
 export class CategoriesTab {
   // Qué es esta pestaña: la página de Configuración lo muestra debajo de las pestañas
-  readonly intro = 'Las categorías dividen a los equipos por nivel (por ejemplo Básico, Intermedio y Avanzado). Cada equipo compite en una sola categoría, con sus propios problemas y su propio marcador. Una categoría especial de programa completo pide programas que leen los datos y muestran la respuesta, en lugar de escribir una función.';
+  readonly intro = 'Las categorías agrupan a los equipos por nivel, por ejemplo Básico, Intermedio y Avanzado. Cada categoría tiene sus propios problemas y marcador, y cada equipo compite en una sola. En una categoría de programa completo, los equipos envían un programa que lee los datos e imprime la respuesta en lugar de una función.';
 
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(CategoriesService);

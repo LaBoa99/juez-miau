@@ -3,16 +3,15 @@ import { ActivatedRoute } from '@angular/router';
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { EditionStatus, IContestClock, IStandings, IStandingsCategory } from '@concurso/shared-types';
-import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Segmented } from '../../../../shared/ui/segmented.component';
 import { StandingsCell } from '../../../../shared/ui/standings-cell.component';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { ProjectorService } from '../../data/projector.service';
 import { ContestCountdown } from '../../../../shared/ui/contest-countdown.component';
-import { AuthService } from '../../../../core/auth/auth.service';
-import { RoomsService } from '../../../editions/rooms/data/rooms.service';
-import { filterByRoom } from '../../../standings/room-filter';
 import { confetti, podium, podiumEmoji } from '../../../standings/podium';
+
+// Dura lo mismo que la secuencia de projector.freeze.css
+const FREEZE_ANIMATION_MS = 1000;
 
 // Pantalla 17: proyector público (1920×1080). Fuera del shell, sin guards, sin token.
 // Carga por HTTP al entrar, se actualiza por socket (joinPublic) y, si se pierde la conexión,
@@ -20,18 +19,16 @@ import { confetti, podium, podiumEmoji } from '../../../standings/podium';
 @Component({
   selector: 'oj-projector',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonDirective, Segmented, StandingsCell, ContestCountdown],
+  imports: [Segmented, StandingsCell, ContestCountdown],
   host: { class: 'oj-theme-bodega' },
   templateUrl: './projector.html',
-  styleUrl: './projector.css',
+  styleUrls: ['./projector.css', './projector.freeze.css'],
 })
 export class Projector {
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(ProjectorService);
   private readonly rt = inject(RealtimeService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly auth = inject(AuthService);
-  private readonly roomsService = inject(RoomsService);
 
   private readonly editionId = toSignal(this.route.paramMap.pipe(map((p) => Number(p.get('editionId')))));
 
@@ -39,8 +36,6 @@ export class Projector {
   protected readonly standings = signal<IStandings | null>(null);
   protected readonly loaded = signal(false);
   protected readonly unavailable = signal(false);
-  protected readonly isFullscreen = signal(!!document.fullscreenElement);
-  protected readonly paused = signal(false);
   protected readonly categorySeg = signal<string>('');
 
   protected readonly podium = podium;
@@ -50,30 +45,20 @@ export class Projector {
 
   private started = false;
   private celebrated = false;
-  private readonly reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  private freezeTimer: ReturnType<typeof setTimeout> | undefined;
 
   protected readonly finished = computed(() => this.clock()?.status === EditionStatus.FINISHED);
-  protected readonly frozen = computed(() => this.clock()?.frozen ?? false);
-
-  // Filtro por salón: cada fila del marcador trae su salón, pero los nombres de los salones solo
-  // se piden con sesión de staff en este navegador (sin sesión no hay selector y se ve todo)
-  protected readonly rooms = signal<{ id: number; name: string }[]>([]);
-  protected readonly roomId = signal<number | null>(null);
-  protected readonly roomName = computed(() => this.rooms().find((r) => r.id === this.roomId())?.name ?? null);
+  protected readonly frozen = signal(false);
+  // Solo durante la animación: al abrir un proyector ya congelado se ve el estado final
+  protected readonly freezing = signal(false);
 
   protected readonly categories = computed(() => this.standings()?.categories ?? []);
-  // Con un salón elegido solo cuentan las categorías que tienen equipos ahí (un salón puede
-  // tener equipos de varias categorías)
-  protected readonly categoryOptions = computed(() => {
-    const roomId = this.roomId();
-    return this.categories()
-      .filter((c) => roomId == null || c.rows.some((r) => r.roomId === roomId))
-      .map((c) => ({ value: String(c.categoryId), label: c.name }));
-  });
+  protected readonly categoryOptions = computed(() =>
+    this.categories().map((c) => ({ value: String(c.categoryId), label: c.name })),
+  );
   protected readonly current = computed<IStandingsCategory | null>(() => {
     const cats = this.categories();
-    const cat = cats.find((c) => String(c.categoryId) === this.categorySeg()) ?? cats[0] ?? null;
-    return cat && filterByRoom(cat, this.roomId());
+    return cats.find((c) => String(c.categoryId) === this.categorySeg()) ?? cats[0] ?? null;
   });
 
   constructor() {
@@ -100,20 +85,15 @@ export class Projector {
       confetti();
     });
 
-    const rotate = setInterval(() => this.rotate(), 20_000);
     // Respaldo: mientras el socket no esté conectado, recarga por HTTP.
     const fallback = setInterval(() => {
       const id = this.editionId();
       if (id && this.rt.connectionState() !== 'connected') this.fetch(id);
     }, 30_000);
 
-    const onFs = () => this.isFullscreen.set(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', onFs);
-
     this.destroyRef.onDestroy(() => {
-      clearInterval(rotate);
       clearInterval(fallback);
-      document.removeEventListener('fullscreenchange', onFs);
+      clearTimeout(this.freezeTimer);
       const id = this.editionId();
       if (id) this.rt.leave(id);
     });
@@ -121,12 +101,6 @@ export class Projector {
 
   private init(id: number): void {
     this.fetch(id);
-    if (this.auth.isAuthenticated()) {
-      this.roomsService.list(id).subscribe({
-        next: (rooms) => this.rooms.set(rooms.map((r) => ({ id: r.id, name: r.name }))),
-        error: () => {},
-      });
-    }
     this.rt.joinPublic(id);
     this.rt
       .onClock()
@@ -153,38 +127,22 @@ export class Projector {
     this.service.standings(id).subscribe({ next: (s) => this.standings.set(s), error: () => {} });
   }
 
+  onFrozen(frozen: boolean): void {
+    if (frozen === this.frozen()) return;
+    this.frozen.set(frozen);
+    clearTimeout(this.freezeTimer);
+    this.freezing.set(frozen);
+    if (frozen) this.freezeTimer = setTimeout(() => this.freezing.set(false), FREEZE_ANIMATION_MS);
+  }
+
   private setClock(c: IContestClock): void {
+    if (!this.clock()) this.frozen.set(c.frozen);
     this.clock.set(c);
     this.loaded.set(true);
     this.unavailable.set(c.status === EditionStatus.DRAFT);
   }
 
-  onRoom(value: string): void {
-    const id = value ? Number(value) : null;
-    this.roomId.set(id);
-    // Salón con una sola categoría: se fija y se detiene la rotación. Con varias: sigue rotando entre
-    // ellas (categoryOptions ya las filtra). "Todos" reanuda la rotación.
-    const opts = this.categoryOptions();
-    this.paused.set(id != null && opts.length === 1);
-    if (id != null && opts.length === 1) this.categorySeg.set(opts[0].value);
-  }
-
-  // Elegir la categoría a mano detiene la rotación para que no se cambie sola a los 20 s
   onCategory(value: string | null | undefined): void {
     this.categorySeg.set(value ?? '');
-    this.paused.set(true);
-  }
-
-  private rotate(): void {
-    if (this.paused() || this.reducedMotion) return;
-    const opts = this.categoryOptions();
-    if (opts.length < 2) return;
-    const i = opts.findIndex((o) => o.value === this.categorySeg());
-    this.categorySeg.set(opts[(i + 1) % opts.length].value);
-  }
-
-  toggleFullscreen(): void {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else document.documentElement.requestFullscreen();
   }
 }

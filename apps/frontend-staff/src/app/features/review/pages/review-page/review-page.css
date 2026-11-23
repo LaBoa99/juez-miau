@@ -3,17 +3,22 @@
 }
 
 .rev__muted {
-  margin: var(--oj-space-lg) 0 0;
+  margin: 0;
   color: var(--oj-text-muted);
   font-size: 13px;
 }
 
 .rev__split {
   display: grid;
-  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
   gap: var(--oj-space-lg);
   margin-top: var(--oj-space-lg);
   align-items: start;
+}
+@media (max-width: 900px) {
+  .rev__split {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ─── Columna izquierda ─── */
@@ -94,9 +99,16 @@
 }
 
 /* ─── Panel ─── */
-.rev__panel {
+.rev__panel,
+.rev__box,
+.rev__rule,
+.rev__io,
+.rev__modal-form {
   display: flex;
   flex-direction: column;
+}
+
+.rev__panel {
   gap: var(--oj-space-lg);
 }
 
@@ -115,8 +127,11 @@
 }
 
 .rev__detail-link {
-  margin-left: auto;
   font-size: 13px;
+}
+
+.rev__decide {
+  margin-left: auto;
 }
 
 .rev__facts {
@@ -156,26 +171,120 @@
   color: var(--oj-text);
 }
 
-.rev__decision {
-  display: flex;
-  flex-direction: column;
+/* ─── Casos y código, lado a lado ─── */
+.rev__panes,
+.rev__compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--oj-space-md);
+}
+
+.rev__panes {
+  gap: var(--oj-space-lg);
+  align-items: start;
+}
+@media (max-width: 1200px) {
+  .rev__panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.rev__box {
+  gap: var(--oj-space-md);
+  min-width: 0;
   padding: var(--oj-space-md);
   border: 1px solid var(--oj-border);
   border-radius: var(--oj-radius);
 }
 
-.rev__decision-title {
+.rev__box-title {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--oj-text);
+}
+
+.rev__cases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oj-space-xs);
+}
+
+.rev__case {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--oj-radius);
+  font-family: var(--oj-font-mono);
+  font-size: 11px;
+  color: var(--oj-bg);
+  cursor: pointer;
+}
+.rev__case--ac {
+  background: var(--oj-success);
+}
+.rev__case--bad {
+  background: var(--oj-danger);
+}
+.rev__case--open {
+  outline: 2px solid var(--oj-text);
+  outline-offset: 1px;
+}
+
+.rev__case-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rev__case-reason {
+  margin: 0;
+  font-size: 13px;
+  color: var(--oj-danger);
+}
+
+.rev__io {
+  gap: var(--oj-space-xs);
+  min-width: 0;
+}
+
+.rev__io-label {
+  font-size: 12px;
+  color: var(--oj-text-muted);
+}
+
+.rev__mono {
+  max-height: 220px;
+  margin: 0;
+  padding: var(--oj-space-sm);
+  overflow: auto;
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+  font-family: var(--oj-font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.rev__line {
+  display: block;
+  min-height: 1lh;
+}
+.rev__line--diff {
+  background: var(--oj-danger-bg);
+}
+
+.rev__code {
+  max-height: 560px;
+  overflow: auto;
+}
+
+.rev__modal-form {
+  gap: var(--oj-space-md);
 }
 
 /* Regla del problema que el juez debe comprobar (testset.review_instructions) */
 .rev__rule {
-  display: flex;
-  flex-direction: column;
   gap: var(--oj-space-2xs);
   padding: var(--oj-space-md);
   border: 1px solid var(--oj-border);

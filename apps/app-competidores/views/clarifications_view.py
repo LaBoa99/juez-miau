@@ -26,9 +26,9 @@ class ClarificationsView(QWidget):
         self.problems = []
         self.items = []
 
-        title = QLabel("Clarificaciones")
+        title = QLabel("Aclaraciones")
         title.setObjectName("title")
-        hint = QLabel("Pregunta al staff si algo de un enunciado no es claro. Tu pregunta y su respuesta las ven todos los equipos, pero de forma anónima: solo el staff sabe qué equipo preguntó.")
+        hint = QLabel("Pregunta al staff si un enunciado no es claro. Los demás equipos verán la pregunta y la respuesta, pero solo el staff sabrá quién preguntó.")
         hint.setObjectName("muted")
         hint.setWordWrap(True)
 
@@ -113,7 +113,7 @@ class ClarificationsView(QWidget):
     def _render(self):
         shown = by_topic(self.items, self.topic.currentData())
         if not shown:
-            self.list.setHtml(f"<p style='color:{TEXT_MUTED}'>Aún no hay clarificaciones sobre este tema.</p>")
+            self.list.setHtml(f"<p style='color:{TEXT_MUTED}'>Aún no hay aclaraciones sobre este tema.</p>")
             return
         blocks = []
         for i, c in enumerate(shown):

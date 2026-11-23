@@ -50,6 +50,6 @@ export class IntegrityController {
     async resolve(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest, @Body() dto: ResolveFlagDto): Promise<IFlag> {
         // El observador ve y levanta alertas; resolverlas es de admin y juez
         await this.editionStaffService.assertRole(req.user.sub, await this.flagsService.getEditionId(id), [StaffRole.ADMIN, StaffRole.JUDGE])
-        return this.flagsService.resolve(id, req.user.sub, dto.note)
+        return this.flagsService.resolve(id, req.user.sub, dto.outcome, dto.note)
     }
 }

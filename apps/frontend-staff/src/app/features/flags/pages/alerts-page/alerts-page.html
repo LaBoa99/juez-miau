@@ -36,6 +36,9 @@
       >
         <div class="al__card-top">
           <oj-badge [tone]="f.resolvedAt ? 'neutral' : tone(f)">{{ label(f) }}</oj-badge>
+          @if (f.offense > 1) {
+            <oj-badge [tone]="f.resolvedAt ? 'neutral' : 'danger'">REINCIDENCIA · {{ f.offense }}.ª FALTA</oj-badge>
+          }
           <span class="al__team">{{ teamName(f.teamId) }}</span>
           <span class="al__room-name">{{ roomName(f.teamId) }}</span>
           <span class="al__time oj-mono">{{ f.createdAt | date: 'HH:mm' }}</span>
@@ -49,12 +52,17 @@
 
         @if (f.resolvedAt) {
           <p class="al__resolved-by">
-            Resuelta por {{ resolverName(f) }}@if (f.resolutionNote) { · “{{ f.resolutionNote }}”}
+            @switch (f.outcome) {
+              @case (FlagOutcome.CONFIRMED) { <strong>Confirmada · +20 min</strong> por {{ resolverName(f) }} }
+              @case (FlagOutcome.DISMISSED) { Descartada por {{ resolverName(f) }} }
+              @default { Resuelta por {{ resolverName(f) }} }
+            }
+            @if (f.resolutionNote) { · “{{ f.resolutionNote }}”}
           </p>
         }
         <div class="oj-actions al__card-actions">
-          @if (!f.resolvedAt && canResolve()) {
-            <button ojButton variant="secondary" size="sm" type="button" (click)="openResolve(f)">Resolver</button>
+          @if (canResolve()) {
+            <button ojButton variant="secondary" size="sm" type="button" (click)="openResolve(f)">{{ f.resolvedAt ? 'Corregir' : 'Resolver' }}</button>
           }
           @if (canSuspend()) {
             <button ojButton size="sm" type="button" [variant]="isSuspended(f.teamId) ? 'success' : 'warning'" (click)="askSuspend(f)">
@@ -106,22 +114,36 @@
   </div>
 </oj-modal>
 
-<oj-modal #resolveModal title="Resolver alerta" size="sm">
-  @if (actionError()) {
-    <oj-alert tone="error">{{ actionError() }}</oj-alert>
-  }
-  <oj-form-field
-    label="Nota"
-    for="al-note"
-    [optional]="true"
-    [error]="noteCtrl.touched && noteCtrl.invalid ? 'Máximo 1000 caracteres.' : undefined"
-  >
-    <textarea id="al-note" rows="3" [formControl]="noteCtrl"></textarea>
-  </oj-form-field>
-  <div footer>
-    <button ojButton variant="primary" type="button" [disabled]="resolving()" (click)="confirmResolve()">
-      {{ resolving() ? 'Guardando…' : 'Marcar como resuelta' }}
-    </button>
+<oj-modal #resolveModal [title]="resolveTarget()?.resolvedAt ? 'Corregir decisión' : 'Resolver alerta'" size="sm">
+  <div class="al__decision">
+    @if (actionError()) {
+      <oj-alert tone="error">{{ actionError() }}</oj-alert>
+    }
+    <p class="al__muted">Confirmar suma 20 minutos a la penalización del equipo. Descartar no afecta su lugar.</p>
+    @if ((resolveTarget()?.offense ?? 1) > 1 && !resolveTarget()?.resolvedAt) {
+      <oj-alert tone="warning">
+        Es su falta número {{ resolveTarget()?.offense }} de este tipo y no puede enviar hasta que decidas.
+        Si la trampa es clara, suspende al equipo.
+      </oj-alert>
+    }
+    <oj-form-field
+      label="Nota interna"
+      for="al-note"
+      [optional]="true"
+      [error]="noteCtrl.touched && noteCtrl.invalid ? 'Máximo 1000 caracteres.' : undefined"
+    >
+      <textarea id="al-note" rows="3" [formControl]="noteCtrl"></textarea>
+    </oj-form-field>
+  </div>
+  <div footer class="oj-actions">
+    @if (resolveTarget()?.outcome !== FlagOutcome.DISMISSED) {
+      <button ojButton variant="secondary" type="button" [disabled]="resolving()" (click)="confirmResolve(FlagOutcome.DISMISSED)">Descartar</button>
+    }
+    @if (resolveTarget()?.outcome !== FlagOutcome.CONFIRMED) {
+      <button ojButton variant="danger" type="button" [disabled]="resolving()" (click)="confirmResolve(FlagOutcome.CONFIRMED)">
+        {{ resolving() ? 'Guardando…' : 'Confirmar · +20 min' }}
+      </button>
+    }
   </div>
 </oj-modal>
 

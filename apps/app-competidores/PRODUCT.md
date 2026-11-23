@@ -18,7 +18,7 @@ Ser el único canal del equipo con el juez: problemas, envíos, veredictos, marc
 ## Operating Context
 - La app vive detrás del IDE: los veredictos llegan como notificación nativa de Windows.
 - Cerrar la ventana la minimiza a la bandeja; salir pide confirmación.
-- La instalación por equipo es copiar solo `app-competidores.exe`. El servidor se encuentra por el nombre de red `juez.concurso.local`; si hace falta otro, el staff lo cambia desde la app con sus credenciales.
+- La instalación por equipo es copiar solo `app-competidores.exe`. El servidor por defecto es `10.225.32.8:3000`; si hace falta otro, el staff lo cambia desde la app con sus credenciales. Los equipos tienen cable y Wi-Fi, y la app usa la interfaz que llega al servidor.
 
 ## Capabilities and Constraints
 - Sin editor de código. Perder el foco o pegar no es trampa.

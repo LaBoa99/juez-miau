@@ -65,7 +65,7 @@ class SubmissionController(QObject):
     @Slot(object)
     def _submitted(self, submission):
         self.window.problems.set_submitting(False)
-        self.window.problems.show_message("✓ Envío recibido. Te avisamos cuando tenga veredicto.", success=True)
+        self.window.problems.show_message("✓ Envío recibido. Recibirás un aviso con el veredicto.", success=True)
         self.notifier.notify(f"Problema {self._letter(submission)}", "Envío recibido")
         self._awaiting = submission["id"]
         self._on_update(submission)

@@ -3,7 +3,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QTextDocument
+from PySide6.QtGui import QTextCursor, QTextDocument
 from PySide6.QtWidgets import QApplication
 
 from views import problems_view
@@ -16,6 +16,22 @@ def rendered(problem):
     document = QTextDocument()
     render_problem(document, problem)
     return document
+
+
+def example_cells(document):
+    """Por cada tabla de ejemplo: encabezados y valores, de izquierda a derecha."""
+    result = []
+    for table in document.rootFrame().childFrames():
+        cells = []
+        for row in range(table.rows()):
+            for column in range(table.columns()):
+                cell = table.cellAt(row, column)
+                cursor = cell.firstCursorPosition()
+                cursor.setPosition(cell.lastCursorPosition().position(), QTextCursor.MoveMode.KeepAnchor)
+                cells.append(cursor.selection().toPlainText())
+        result.append(cells)
+    return result
+
 
 SIGNATURE = {
     "functionName": "total",
@@ -39,14 +55,17 @@ def test_full_program_shows_the_read_order_instead_of_the_function():
     assert "### Función" not in md
     assert "en este orden: `n`, `grid`" in md
     # El texto que lee el programa va tal cual, con sus saltos de línea
-    assert "Entrada: 5\n3\nSalida: 8" in rendered(problem).toPlainText()
+    assert example_cells(rendered(problem))[0] == ["Entrada", "Salida", "5\n3", "8"]
 
 
-def test_samples_look_like_leetcode():
+def test_samples_show_input_and_output_in_two_columns():
     document = rendered({"statement": "Suma.", "samples": [{"input": '{"nums":[1,1,1],"k":2}', "output": "2"}, {"input": "4", "output": "4"}]})
     text = document.toPlainText()
     assert text.index("Suma.") < text.index("Ejemplo 1") < text.index("Ejemplo 2")
-    assert "Entrada: nums = [1, 1, 1], k = 2\nSalida: 2" in text
+    assert example_cells(document) == [
+        ["Entrada", "Salida", "nums = [1, 1, 1]\nk = 2", "2"],
+        ["Entrada", "Salida", "4", "4"],
+    ]
     assert "Copiar" not in text  # cada lenguaje lee distinto: copiar no servía tal cual
 
 
@@ -57,6 +76,36 @@ def test_statement_links_open_outside(monkeypatch):
     view = ProblemsView()
     view.body.anchorClicked.emit(QUrl("https://example.com/a:b"))
     assert opened == ["https://example.com/a:b"]
+
+
+def test_paused_contest_disables_submit_even_after_a_send_finishes():
+    QApplication.instance() or QApplication([])
+    view = ProblemsView()
+    view.set_paused(True)
+    view.set_submitting(True)
+    view.set_submitting(False)
+    assert not view.submit_button.isEnabled() and view.submit_button.text() == "Concurso en pausa"
+    view.set_paused(False)
+    assert view.submit_button.isEnabled() and view.submit_button.text() == "Enviar solución"
+
+
+def test_solved_problem_asks_before_another_submission():
+    QApplication.instance() or QApplication([])
+    view = ProblemsView()
+    view.problems = [{"id": 1, "letter": "A", "title": "Suma"}]
+    view.sidebar.addItem("A")
+    view.sidebar.setCurrentRow(0)
+    asked, dialogs = [], []
+    view._confirm_resubmit = lambda problem: asked.append(problem["id"]) or False
+    view._file_dialog = lambda *a, **k: dialogs.append(a)
+
+    view.submissions = [{"problemId": 1, "status": "DONE", "verdict": "WA"}]
+    view._choose_file()
+    assert asked == [] and len(dialogs) == 1
+
+    view.submissions.append({"problemId": 1, "status": "DONE", "verdict": "AC"})
+    view._choose_file()
+    assert asked == [1] and len(dialogs) == 1  # canceló: no se abre el selector de archivo
 
 
 def test_sample_input_shows_one_parameter_per_line():

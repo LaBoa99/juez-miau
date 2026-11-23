@@ -40,6 +40,10 @@ export interface ITeamListItem {
     room: ITeamRoomRef | null
     members: ITeamMemberListItem[]
     online: boolean
+    // Última señal de la sesión abierta; null sin sesión
+    lastHeartbeatAt: Date | null
+    // Sesión abierta que dejó de mandar señal (app cerrada de golpe o sin red)
+    signalLost: boolean
     // Suspendido por el staff: no puede entrar ni enviar y queda al final del marcador
     suspended: boolean
 }

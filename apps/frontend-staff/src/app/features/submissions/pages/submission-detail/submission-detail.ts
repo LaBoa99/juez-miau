@@ -1,6 +1,6 @@
 import { TooltipDirective } from '../../../../shared/ui/tooltip.directive';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -20,7 +20,6 @@ import { Badge } from '../../../../shared/ui/badge.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { Modal } from '../../../../shared/ui/modal.component';
-import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
 import { FormField } from '../../../../shared/ui/form-field.component';
 import { CodeBlock } from '../../../../shared/ui/code-block.component';
 import { VerdictPipe } from '../../../../shared/pipes/verdict.pipe';
@@ -44,7 +43,6 @@ import { CaseLimits, caseReason, compileReason, firstDiffLine } from '../../util
     ButtonDirective,
     Alert,
     Modal,
-    ConfirmDialog,
     FormField,
     CodeBlock,
     VerdictPipe,
@@ -54,6 +52,7 @@ import { CaseLimits, caseReason, compileReason, firstDiffLine } from '../../util
 })
 export class SubmissionDetail {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly service = inject(SubmissionsService);
   private readonly problemsService = inject(ProblemsService);
   private readonly teamsService = inject(TeamsService);
@@ -95,12 +94,16 @@ export class SubmissionDetail {
   });
 
   // Revisar manualmente: solo envíos ya juzgados que no estén ya en revisión
-  private readonly reviewDialog = viewChild.required(ConfirmDialog);
+  private readonly reviewModal = viewChild.required<Modal>('reviewModal');
   protected readonly reviewSaving = signal(false);
   protected readonly reviewDone = signal(false);
   protected readonly canSendToReview = computed(() => {
     const d = this.detail();
     return this.canRejudge() && d?.status === SubmissionStatus.DONE && d.verdict !== Verdict.PENDING_REVIEW;
+  });
+  protected readonly canGoToReview = computed(() => {
+    const d = this.detail();
+    return this.canRejudge() && d?.status === SubmissionStatus.DONE && d.verdict === Verdict.PENDING_REVIEW;
   });
 
   protected readonly letter = computed(() => this.problem()?.letter ?? '');
@@ -270,16 +273,22 @@ export class SubmissionDetail {
   askReview(): void {
     this.actionError.set(null);
     this.reviewDone.set(false);
-    this.reviewDialog().open();
+    this.reviewModal().open();
   }
 
-  sendToReview(): void {
+  closeReview(): void {
+    this.reviewModal().close();
+  }
+
+  sendToReview(goToReview: boolean): void {
+    this.reviewModal().close();
     this.reviewSaving.set(true);
     this.service.sendToReview(this.id).subscribe({
       next: (s) => {
         this.reviewSaving.set(false);
         this.applyUpdate(s);
-        this.reviewDone.set(true);
+        if (goToReview) this.router.navigate(['/ediciones', this.editionId, 'revision'], { queryParams: { envio: this.id } });
+        else this.reviewDone.set(true);
       },
       error: (err) => {
         this.reviewSaving.set(false);

@@ -1,6 +1,8 @@
 import { SubmissionStatus, Verdict, type IStandingsCategory, type IStandingsCell, type IStandingsRow } from '@concurso/shared-types'
 
 export const PENALTY_PER_REJECTION = 20
+// Misma unidad que un rechazo: nunca supera a resolver un problema más
+export const PENALTY_PER_CONFIRMED_ALERT = 20
 
 // Rechazos que suman penalización; CE no cuenta (el código ni siquiera corrió)
 const REJECTED = new Set<Verdict>([Verdict.WA, Verdict.TLE, Verdict.MLE, Verdict.RE])
@@ -22,6 +24,8 @@ export interface StandingsInput {
     teams: StandingsTeam[]
     problems: StandingsProblem[]
     submissions: StandingsSubmission[]
+    // Alertas confirmadas por un juez, por equipo
+    confirmedAlerts?: ReadonlyMap<number, number>
 }
 
 // `freezeMs`: los envíos desde ese tiempo de concurso cuentan como pendientes (vista pública
@@ -86,7 +90,8 @@ export function computeStandings(input: StandingsInput, freezeMs: number | null)
                     teamName: team.name,
                     roomId: team.room_id ?? null,
                     solved: solvedCells.length,
-                    penalty: solvedCells.reduce((total, cell) => total + cell.acMinute! + PENALTY_PER_REJECTION * cell.rejected, 0),
+                    penalty: solvedCells.reduce((total, cell) => total + cell.acMinute! + PENALTY_PER_REJECTION * cell.rejected, 0)
+                        + PENALTY_PER_CONFIRMED_ALERT * (input.confirmedAlerts?.get(team.id) ?? 0),
                     cells: teamCells,
                 } satisfies IStandingsRow,
                 lastAc: Math.max(-1, ...solvedCells.map((cell) => cell.acMinute!)),

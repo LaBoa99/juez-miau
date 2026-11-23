@@ -94,6 +94,13 @@ def verdict_text(sub, progress=None):
     return VERDICTS.get(sub["verdict"], sub["verdict"] or "")
 
 
+def verdict_state(sub):
+    """ok (aceptado), bad (rechazado) o wait (falta una decisión: en cola, en revisión o falla del sistema)."""
+    if sub["status"] == "ERROR" or not is_final(sub) or sub["verdict"] == "PENDING_REVIEW":
+        return "wait"
+    return "ok" if sub["verdict"] == "AC" else "bad"
+
+
 def problem_states(submissions):
     """{problemId: (estado, intentos)} con estado en solved | pending | rejected."""
     states = {}

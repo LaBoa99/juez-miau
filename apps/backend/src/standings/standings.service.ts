@@ -6,6 +6,7 @@ import { freezeStartMs, isFrozen } from '../contest-clock/clock.js'
 import { ContestClockService } from '../contest-clock/contest-clock.service.js'
 import { Category } from '../editions/entities/category.entity.js'
 import { Edition } from '../editions/entities/edition.entity.js'
+import { FlagsService } from '../flags/flags.service.js'
 import { Problem } from '../problems/entities/problem.entity.js'
 import { RealtimeService } from '../realtime/realtime.service.js'
 import { Submission } from '../submissions/entities/submission.entity.js'
@@ -41,10 +42,15 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
         private readonly clockService: ContestClockService,
         private readonly realtime: RealtimeService,
         private readonly teamSessionsService: TeamSessionsService,
+        private readonly flagsService: FlagsService,
     ) {}
 
     onModuleInit(): void {
         this.submissionsService.onChange((submission) => this.changed(submission.edition_id))
+        // Solo la decisión de un juez cambia el marcador; una alerta nueva no
+        this.flagsService.onChange((flag) => {
+            if(flag.outcome) this.changed(flag.edition_id)
+        })
         this.clockService.onTransition((editionId) => this.changed(editionId))
     }
 
@@ -70,7 +76,8 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
         const cached = this.cache.get(key)
         if(cached) return cached
 
-        const [categories, teams, problems, submissions] = await Promise.all([
+        const freezeMs = frozen ? freezeStartMs(edition) : null
+        const [categories, teams, problems, submissions, confirmedAlerts] = await Promise.all([
             this.categoryRepository.find({ where: { edition_id: edition.id }, order: { sort_order: 'ASC', id: 'ASC' } }),
             this.teamRepository.find({ where: { edition_id: edition.id }, select: { id: true, name: true, category_id: true, room_id: true, suspended_at: true } }),
             this.problemRepository.find({
@@ -81,9 +88,9 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
                 where: { edition_id: edition.id },
                 select: { id: true, team_id: true, problem_id: true, status: true, verdict: true, contest_ms: true },
             }),
+            this.flagsService.confirmedCounts(edition.id, freezeMs),
         ])
 
-        const freezeMs = frozen ? freezeStartMs(edition) : null
         const standings: IStandings = {
             editionId: edition.id,
             view,
@@ -91,7 +98,7 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
             freezeMinute: edition.freeze_duration_ms > 0 ? Math.floor(freezeStartMs(edition) / 60_000) : null,
             generatedAt: new Date().toISOString(),
             categories: computeStandings({
-                categories, problems, submissions,
+                categories, problems, submissions, confirmedAlerts,
                 teams: teams.map((team) => ({ ...team, suspended: team.suspended_at !== null })),
             }, freezeMs),
         }

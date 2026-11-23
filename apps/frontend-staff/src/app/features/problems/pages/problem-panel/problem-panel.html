@@ -59,7 +59,7 @@
     }
     @if (datosRestored()) {
       <oj-alert tone="info">
-        Recuperamos lo que dejaste sin guardar en este paso.
+        Se recuperaron los cambios sin guardar de este paso.
         <button ojButton variant="secondary" size="sm" type="button" (click)="discardDatosDraft()">Descartar borrador</button>
       </oj-alert>
     }
@@ -110,20 +110,30 @@
 
       @if (isFullProgram(form.get('categoryId')?.value)) {
         <p class="pp__muted">
-          Categoría especial: tú escribes la solución oficial como función (paso Solución y firma) y el concursante
-          manda un programa completo. Recibe una plantilla que ya lee los parámetros de la firma en orden, y los
-          ejemplos, que salen de los casos públicos (paso Casos), se le muestran como texto de entrada y salida.
+          Categoría especial: la solución oficial se escribe como función (paso Solución y firma) y el equipo
+          envía un programa completo. Su plantilla ya lee los parámetros de la firma en orden. Los ejemplos
+          salen de los casos públicos (paso Casos) y se muestran como texto de entrada y salida.
         </p>
       } @else {
         <p class="pp__muted">
-          Lo que recibe y regresa la función lo ve el concursante en la firma (paso Solución y firma) y en los ejemplos, que
+          El equipo ve lo que recibe y regresa la función en la firma (paso Solución y firma) y en los ejemplos, que
           salen de los casos públicos (paso Casos).
         </p>
       }
 
-      <oj-form-field label="Puntos" for="pp-points" hint="Solo se define al crear el problema." class="pp__points">
-        <input id="pp-points" class="oj-mono pp__points-input" type="number" min="0" max="100000" formControlName="points" />
-      </oj-form-field>
+      <label class="pp__check">
+        <input type="checkbox" formControlName="manualReview" />
+        <span>
+          Mandar a revisión manual
+          <span class="pp__check-hint">
+            Un juez acepta o rechaza los envíos que pasan todos los casos. Úsala solo cuando el juez automático no pueda
+            comprobar una regla del problema.
+            @if (canEdit() && form.controls.manualReview.disabled) {
+              Para cambiarla, quita el problema del concurso.
+            }
+          </span>
+        </span>
+      </label>
     </form>
     @if (isNew()) {
       <div class="oj-actions oj-actions--end">

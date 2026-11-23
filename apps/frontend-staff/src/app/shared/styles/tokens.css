@@ -17,6 +17,9 @@
   --oj-warning-bg: #FFFBEB;
   --oj-neutral: #4B5563;
   --oj-neutral-bg: #F3F4F6;
+  /* Marcador congelado */
+  --oj-ice: #075985;
+  --oj-ice-bg: #E0F2FE;
   --oj-backdrop: rgba(17, 24, 39, 0.4);
 
   /* Podio del marcador (oro como en el video del sitio) y tinta oscura encima */
@@ -77,8 +80,11 @@
   --oj-warning-bg: #45330F;
   --oj-neutral: #D2BFA3;
   --oj-neutral-bg: #2A241D;
+  --oj-ice: #A9E4FF;
+  --oj-ice-bg: #12323F;
   /* Propios del proyector */
   --oj-row: #1C1914;
+  --oj-row-frozen: #15262E;
   --oj-tape: #3463EC;
   --oj-on-tape: #FFFFFF;
   --oj-sticker: #C8261E;

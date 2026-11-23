@@ -17,6 +17,7 @@ from services.auth_service import AuthService
 from services.clarification_service import ClarificationService
 from services.contest_service import ContestService
 from services.integrity_service import IntegrityService
+from services import network_route
 from services.notification_service import NotificationService
 from services.realtime_service import RealtimeService
 from services.server_config import load_url
@@ -42,7 +43,9 @@ def main():
     if translator.load("qtbase_es", QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)):
         app.installTranslator(translator)
 
-    # Sin archivo de configuración: nombre de red por defecto o lo que guardó el staff
+    # Los equipos tienen cable y Wi-Fi, y solo el cable llega al servidor
+    network_route.install()
+    # Sin archivo de configuración: el servidor de producción o lo que guardó el staff
     url = load_url()
     api = ApiClient(url)
 

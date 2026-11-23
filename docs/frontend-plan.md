@@ -72,7 +72,8 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - Modo "nuevo" de Problemas: la ruta `problemas/nuevo` NO lleva `:problemId`; el panel detecta el modo por el último
   segmento de su propia ruta (`route.url`), no por `paramMap`, para no disparar `GET /problems/0` y mostrar un error falso.
 - La letra del problema se fuerza a mayúscula en el cliente (el backend valida `/^[A-Z]{1,2}$/`, hasta 2 letras).
-  Puntos: solo se envían al crear; en edición el campo se muestra deshabilitado (el PATCH del backend omite `points`).
+  El panel no captura puntos: el marcador ordena por problemas resueltos y tiempo, así que `Problem.points` no afecta el
+  resultado. La casilla de revisión manual de Datos se puede cambiar sin reconstruir mientras el problema no esté en el concurso.
 - "Activar una versión READY no vigente" (que el plan de §12 menciona) NO se implementa: el backend no expone endpoint
   para cambiar el testset vigente sin reconstruir. El vigente solo cambia al construir (`POST /testsets/:id/build`) una
   versión editable (DRAFT/FAILED). Por eso el panel de testsets solo ofrece "Construir", con confirmación de re-evaluación
@@ -250,7 +251,7 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - Marcador ICPC: resueltos, luego penalización (minuto del AC + 20 por rechazo previo; CE no cuenta).
   Staff siempre completo; público congelado en los últimos minutos.
 - Proyector: ruta pública `/proyector/:editionId` (por id, sin token). No hay marcador por categoría en el backend:
-  la rotación por categoría se hace en el cliente.
+  el selector de categoría se resuelve en el cliente.
 - Proyector (18/19): ruta FUERA del shell y sin guards. El `authInterceptor` no adjunta token ni renueva sesión en
   `/api/public/...` (predicado `skipAuth`). Datos del `ProjectorService` (`/public/editions/:id/clock` y
   `/public/editions/:id/standings`); socket `joinPublic` con `clock:update`/`standings:update`; respaldo por HTTP cada
@@ -261,9 +262,9 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - **Cambio de backend autorizado por la usuaria (2026-10-31):** `IContestClock` ahora incluye `editionName`
   (`clock.ts` → `toClockDto`, `ClockFields` añade `name`). Los endpoints públicos no exponían el nombre y el proyector
   solo conoce el `editionId`; así el header (44px) lo obtiene por HTTP y por `clock:update` sin endpoint nuevo.
-- Rotación de categorías cada 20 s con botón Pausar/Reanudar; con `prefers-reduced-motion` la rotación automática no
-  corre (el segmentado `lg` sigue siendo manual). No hay transiciones CSS. Botón "Pantalla completa" (Fullscreen API),
-  oculto en pantalla completa.
+- La categoría se elige a mano con el segmentado `lg`: no hay rotación automática, filtro por salón ni botón de
+  pantalla completa. Al congelarse corre una sola animación sobre la tabla (`projector.freeze.css`); el reloj queda fuera
+  del efecto. El servidor no emite evento en ese momento: lo detecta `oj-contest-countdown` con su reloj local.
 - Alertas: `GET /editions/:id/flags` filtra solo por `open` y `teamId`. El filtro por salón se arma en el cliente
   (equipo → salón). No existe lectura de heartbeats; la pérdida se ve como alerta HEARTBEAT_LOST.
 - NO existen en el backend: listado público de ediciones, resultados públicos agregados, vista por salón.
@@ -388,9 +389,8 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
   "Abrir proyector" y "Descargar CSV"; standings:update.
 
 ### 19 · Proyector
-- Fuera del shell, sin guards, sin token. Encabezado grande con reloj; banda "Marcador congelado"; segmentado grande con
-  rotación cada 20 s (pausable); tabla grande con oj-standings-cell grande; botón Pantalla completa; "Resultados
-  finales" al terminar; mensaje si la edición no está disponible. Socket público + respaldo HTTP cada 30 s.
+- Fuera del shell, sin guards, sin token. Encabezado grande con reloj; banda "Marcador congelado"; segmentado grande para
+  elegir categoría; tabla grande con oj-standings-cell grande; "Resultados finales" al terminar; mensaje si la edición no está disponible. Socket público + respaldo HTTP cada 30 s.
 
 ### 20 · Revisión manual
 - Lista de pendientes (#id · minuto, letra, equipo, motivo ámbar) + panel con datos, "Por qué está en revisión",

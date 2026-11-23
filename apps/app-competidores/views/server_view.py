@@ -24,7 +24,7 @@ class ServerDialog(QDialog):
 
         self.address = QLineEdit(current_url)
         self.address.setAccessibleName("Dirección del servidor")
-        self.address.setPlaceholderText("juez.concurso.local o 192.168.1.10:3000")
+        self.address.setPlaceholderText("10.225.32.8:3000")
         self.email = QLineEdit()
         self.email.setAccessibleName("Correo de staff")
         self.password = QLineEdit()

@@ -1,8 +1,9 @@
 /* Proyector (pantalla 17, 1920×1080) con el estilo "bodega" del sitio y del video: fondo oscuro, letra stencil,
    cinta azul con el título y calcomanía roja al congelar. Los colores salen del tema .oj-theme-bodega (tokens.css).
-   Sin transiciones; la rotación de categorías y el confeti se detienen con prefers-reduced-motion. */
+   El confeti y el congelamiento (projector.freeze.css) respetan prefers-reduced-motion. */
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
   position: relative;
   min-height: 100vh;
   background: var(--oj-bg);
@@ -99,16 +100,6 @@
   display: flex;
   align-items: center;
   gap: 16px;
-}
-.pj__room {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 18px;
-  color: var(--oj-text-muted);
-}
-.pj__room select {
-  min-width: 240px;
 }
 /* ─── Tabla grande: cada equipo es una fila-tarjeta, como en el video ─── */
 .pj__body .oj-table-wrap {

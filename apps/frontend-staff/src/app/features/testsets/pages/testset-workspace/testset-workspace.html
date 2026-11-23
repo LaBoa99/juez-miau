@@ -18,7 +18,7 @@
     <div class="tw__locked">
       <p class="tw__muted">
         Esta versión ya está construida y no se puede modificar. Para cambiar la firma, la solución o los casos, crea una
-        versión nueva: copia todo lo actual y la puedes editar.
+        versión nueva: copia todo lo actual y queda editable.
         @if (published()) { Como el problema está publicado, al construirla se re-evaluarán todos los envíos. }
       </p>
       <button ojButton variant="primary" type="button" (click)="openNewVersion()">+ Nueva versión para editar</button>
@@ -36,7 +36,7 @@
       @case ('solucion') {
         @if (draftRestored()) {
           <oj-alert tone="info">
-            Recuperamos lo que dejaste sin guardar en este paso.
+            Se recuperaron los cambios sin guardar de este paso.
             <div class="oj-actions tw__alert-actions">
               <button ojButton variant="secondary" size="sm" type="button" (click)="discardSolutionDraft()">Descartar borrador</button>
             </div>
@@ -93,7 +93,7 @@
                   </oj-alert>
                 } @else if (d.status === 'done' && d.candidates.length === 0) {
                   <oj-alert tone="warning">
-                    No encontré la función en la solución.
+                    No se encontró la función en la solución.
                     @if (['java', 'csharp'].includes(languageCode(sourceLangValue()))) {
                       En {{ languageCode(sourceLangValue()) === 'java' ? 'Java' : 'C#' }} debe ser un método <span class="oj-mono">static</span> dentro de <span class="oj-mono">class Main</span>.
                     }
@@ -102,7 +102,7 @@
                 } @else if (d.status === 'done' && d.chosen === null) {
                   <!-- Pregunta que necesita respuesta: recuadro propio y una entrada animada para que no pase desapercibida -->
                   <div class="tw__choose">
-                    <label class="tw__choose-label" for="tw-detect-fn">La solución tiene {{ d.candidates.length }} funciones. ¿Cuál implementa el concursante?</label>
+                    <label class="tw__choose-label" for="tw-detect-fn">La solución tiene {{ d.candidates.length }} funciones. ¿Cuál debe implementar el equipo?</label>
                     <select id="tw-detect-fn" (change)="detectSignature($any($event.target).value)">
                       <option value="" selected disabled>Elige una función</option>
                       @for (c of d.candidates; track c.functionName) {
@@ -111,7 +111,7 @@
                     </select>
                   </div>
                 } @else if (d.status === 'done' && untypedNames().length) {
-                  <oj-alert tone="warning">No pude leer el tipo de: {{ untypedNames().join(', ') }}. Elígelo abajo; se comprueba al construir.</oj-alert>
+                  <oj-alert tone="warning">No se pudo leer el tipo de: {{ untypedNames().join(', ') }}. Elígelo abajo; se comprueba al construir.</oj-alert>
                 } @else if (d.compiles === false) {
                   <oj-alert tone="error">
                     La solución no compila con esta firma. Revisa los tipos abajo o corrige el código.
@@ -127,7 +127,7 @@
             } @else if (sourceText() && !sourceLangValue()) {
               <p class="tw__muted">Elige el lenguaje de la solución para leer la firma.</p>
             } @else if (!sourceText() && !signature()) {
-              <p class="tw__muted">Sube o pega la solución y la firma se llena sola. También la puedes escribir a mano.</p>
+              <p class="tw__muted">Sube o pega la solución para llenar la firma automáticamente, o escríbela a mano.</p>
             }
 
             @if (sigCard(); as card) {
@@ -430,7 +430,7 @@
                   </div>
                 }
               </div>
-            <p class="tw__muted">La salida esperada se calcula sola al construir, ejecutando la solución oficial.</p>
+            <p class="tw__muted">La salida esperada se calcula al construir, con la solución oficial.</p>
             <div class="oj-actions oj-actions--end">
               @if (caseEditing()) {
                 <button ojButton variant="secondary" type="button" (click)="resetCaseForm()">Cancelar</button>
@@ -595,8 +595,8 @@
             <div class="tw__eval-card tw__eval-card--active tw__eval-card--static">
               <span class="tw__eval-card-title">Programa completo</span>
               <span class="tw__eval-card-when">
-                La categoría es especial: el equipo manda un programa que lee la entrada con input() y la acepta si lo
-                último que imprime es la respuesta. Lo que imprima antes, como "La suma es:", no cuenta.
+                Categoría especial: el equipo envía un programa que lee la entrada con input(). Se acepta si lo
+                último que imprime es la respuesta; lo que imprima antes, como "La suma es:", no cuenta.
               </span>
             </div>
           } @else {
@@ -725,8 +725,8 @@
               @case ('done') { <p class="tw__muted">La solución oficial resolvió los {{ t.cases.length }} casos.</p> }
               @default {
                 <p class="tw__muted">
-                  Corre la solución oficial en cada caso, con un límite de tiempo holgado y sin guardar nada. Comprueba que
-                  ningún caso la haga fallar y mide cuánto tarda; con eso se decide si se puede construir.
+                  Ejecuta la solución oficial en cada caso con un límite de tiempo amplio y sin guardar resultados. Mide
+                  cuánto tarda y comprueba que ningún caso falle antes de construir.
                 </p>
               }
             }
@@ -935,7 +935,7 @@
     @if (randomOfferError(); as e) {
       <oj-alert tone="error">{{ e }}</oj-alert>
     }
-    <p class="tw__offer-lead">Este problema todavía no tiene casos. Podemos crear 5 casos aleatorios a partir de la firma:</p>
+    <p class="tw__offer-lead">Este problema todavía no tiene casos. Se pueden crear 5 casos aleatorios a partir de la firma:</p>
     <ul class="tw__offer-list">
       <li><strong>2 públicos:</strong> son los ejemplos que el equipo ve en el enunciado.</li>
       <li><strong>3 ocultos:</strong> solo los usa el juez para calificar.</li>

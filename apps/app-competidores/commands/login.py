@@ -18,5 +18,5 @@ class LoginCommand(Command):
                 raise ApiError(401, "Usuario o contraseña incorrectos.")
             if error.status == 403:
                 # Equipo suspendido o edición no abierta/terminada: el servidor ya lo dice en español
-                raise ApiError(403, error.detail or "Tu equipo está suspendido. Habla con el staff.")
+                raise ApiError(403, error.detail or "Tu equipo fue suspendido por los jueces")
             raise

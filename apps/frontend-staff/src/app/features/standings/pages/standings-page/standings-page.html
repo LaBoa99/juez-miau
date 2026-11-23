@@ -27,18 +27,7 @@
 
 <div class="st__top">
   @if (clock(); as c) {
-    <oj-contest-countdown class="st__countdown" [clock]="c" />
-  }
-  @if (rooms().length) {
-    <div class="st__filter">
-      <label for="st-room">Salón</label>
-      <select id="st-room" [value]="roomId() ?? ''" (change)="onRoom($any($event.target).value)">
-        <option value="">Todos los salones</option>
-        @for (r of rooms(); track r.id) {
-          <option [value]="r.id">{{ r.name }}</option>
-        }
-      </select>
-    </div>
+    <oj-contest-countdown class="st__countdown" [clock]="c" (frozenChange)="frozen.set($event)" />
   }
 </div>
 
@@ -48,13 +37,9 @@
   <oj-alert tone="error">No se pudo cargar el marcador.</oj-alert>
 } @else if (!hasRows()) {
   <oj-empty-state message="El marcador aparecerá cuando empiece el concurso." />
-} @else if (roomId() != null && roomEmpty()) {
-  <oj-empty-state message="Ningún equipo tiene asignado este salón. Asígnalo en Equipos → Editar." />
 } @else {
-  @for (cat of shown(); track cat.categoryId) {
-    @if (shown().length > 1 || roomId() == null) {
-      <h2 class="st__cat-title">{{ cat.name }}</h2>
-    }
+  @for (cat of categories(); track cat.categoryId) {
+    <h2 class="st__cat-title">{{ cat.name }}</h2>
     <div class="oj-table-wrap">
       <table class="oj-table st__table">
         <thead>
@@ -99,7 +84,7 @@
             </tr>
           } @empty {
             <tr>
-              <td [attr.colspan]="cat.problems.length + 3" class="st__none">Ningún equipo de este salón en la categoría.</td>
+              <td [attr.colspan]="cat.problems.length + 3" class="st__none">Ningún equipo en esta categoría.</td>
             </tr>
           }
         </tbody>

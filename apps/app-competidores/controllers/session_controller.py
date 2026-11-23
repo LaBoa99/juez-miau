@@ -58,6 +58,9 @@ class SessionController(QObject):
 
     @Slot(str)
     def session_lost(self, message):
+        # Varias peticiones fallan a la vez: vale el primer motivo, no el 401 de una que salió ya sin token
+        if not self.auth.team:
+            return
         self.auth.forget()
         self.window.show_login()
         self._open()

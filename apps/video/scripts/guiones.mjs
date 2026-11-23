@@ -282,7 +282,7 @@ export const GUIONES = {
       await t.paso("Cada una dice qué pasó, en qué equipo y a qué hora.", { en: "texto=Los Ajolotes" });
       await t.paso("Ve a revisar al equipo. Si todo está bien, presiona Resolver.", { en: "texto=Resolver", clic: true });
       await t.paso("Deja una nota de lo que encontraste…", { en: "#al-note", escribir: "Revisado en el salón: era el proyector del aula." });
-      await t.paso("…y márcala como resuelta.", { en: "texto=Marcar como resuelta", clic: true });
+      await t.paso("…y márcala como resuelta.", { en: "texto=Descartar", clic: true });
       await t.paso("Queda en Resueltas, con tu nota.", { en: "texto=Resueltas" });
     },
   },

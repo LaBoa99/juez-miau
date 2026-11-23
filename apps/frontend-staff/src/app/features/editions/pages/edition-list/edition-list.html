@@ -23,7 +23,7 @@
       <oj-alert tone="error">No se pudieron cargar las ediciones.</oj-alert>
     } @else if (editions().length === 0 && !auth.isSuperadmin() && !filter()) {
       <!-- Staff sin rol en ninguna edición: no es un error, falta que un superadmin lo asigne -->
-      <oj-empty-state message="Aún no tienes un rol en ninguna edición. Un superadministrador tiene que agregarte al staff de una edición (como administrador, juez u observador); cuando lo haga, aparecerá aquí.">
+      <oj-empty-state message="Aún no tienes un rol en ninguna edición. Pide a un superadministrador que te agregue al staff de una; aparecerá aquí.">
         <button ojButton variant="secondary" type="button" (click)="recheck()">Revisar de nuevo</button>
       </oj-empty-state>
     } @else if (editions().length === 0) {
@@ -114,7 +114,7 @@
 
 <oj-confirm-dialog
   title="Edición creada"
-  [message]="'¿Quieres configurar ' + (created()?.name ?? '') + ' ahora? Ya tiene Básico, Intermedio y Avanzado y los salones CITA 1 a 3; faltan lenguajes y staff.'"
+  [message]="'¿Quieres configurar ' + (created()?.name ?? '') + ' ahora? Ya tiene Básico, Intermedio y Avanzado y los salones CITA 1 al 3; faltan lenguajes y staff.'"
   confirmLabel="Configurar"
   cancelLabel="Después"
   (confirmed)="configureCreated()"
