@@ -63,9 +63,12 @@ export interface IHeartbeat {
     networkInterfaces?: string[]
 }
 
-// Solo el intervalo: la lista de prohibidos y el bloqueo no se exponen al equipo
+// El catálogo completo de prohibidos y el bloqueo no se exponen al equipo. killProcesses es la
+// excepción puntual: solo los nombres (normalizados) que YA están corriendo y coincidieron este
+// heartbeat, para que el cliente los cierre; nunca el catálogo de lo que todavía no abrió.
 export interface IHeartbeatResponse {
     nextHeartbeatMs: number
+    killProcesses?: string[]
 }
 
 export interface IAuditEntry {
