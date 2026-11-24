@@ -5,7 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { Repository } from 'typeorm';
-import { EditionStatus, StaffRole, TestCaseOrigin, TestCaseVisibility, TestsetStatus } from '@concurso/shared-types';
+import { CompareMode, EditionStatus, StaffRole, TestCaseOrigin, TestCaseVisibility, TestsetStatus } from '@concurso/shared-types';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
 import { StaffUser } from '../src/staff/entities/staff-user.entity.js';
@@ -17,6 +17,7 @@ import { Problem } from '../src/problems/entities/problem.entity.js';
 import { Testset } from '../src/testsets/entities/testset.entity.js';
 import { TestCase } from '../src/testsets/entities/test-case.entity.js';
 import { RefSolution } from '../src/testsets/entities/ref-solution.entity.js';
+import { Blob } from '../src/blobs/entities/blob.entity.js';
 
 describe('Problemas para staff (e2e)', () => {
   let app: INestApplication<App>;
@@ -379,6 +380,52 @@ describe('Problemas para staff (e2e)', () => {
 
       expect(await problemRepo.findOneBy({ id: draft.body.id })).toBeNull();
       expect(await testsetRepo.findOneBy({ id: draft.body.testsetId })).toBeNull();
+    });
+  });
+
+  describe('PATCH /categories/:id con problemas: full_program cambia el modo de sus testsets', () => {
+    let special: Category;
+    const toggle = (full_program: boolean) =>
+      api().patch(`/api/v1/categories/${special.id}`).set(as('superadmin')).send({ full_program });
+    const modeOf = async (testsetId: number) => (await testsetRepo.findOneByOrFail({ id: testsetId })).compare_mode;
+
+    beforeAll(async () => {
+      special = await categoryRepo.save(categoryRepo.create({ edition_id: edition.id, code: 'ESP', name: 'ESP', sort_order: 3 }));
+    });
+
+    it('200: marca y desmarca, y sus testsets pasan a program y de vuelta a exact', async () => {
+      const { body: problem } = await createProblem({ categoryId: special.id }).expect(201);
+
+      expect((await toggle(true).expect(200)).body.full_program).toBe(true);
+      expect(await modeOf(problem.testsetId)).toBe(CompareMode.PROGRAM);
+
+      await toggle(false).expect(200);
+      expect(await modeOf(problem.testsetId)).toBe(CompareMode.EXACT);
+    });
+
+    it('409 si un problema usa checker o si un testset listo tiene textos con saltos de línea', async () => {
+      const { body: withChecker } = await createProblem({ categoryId: special.id, title: 'Con checker' }).expect(201);
+      await testsetRepo.update(withChecker.testsetId, { compare_mode: CompareMode.CHECKER });
+      expect((await toggle(true).expect(409)).body.message).toEqual(expect.arrayContaining([expect.stringContaining('uses a checker')]));
+      await testsetRepo.update(withChecker.testsetId, { compare_mode: CompareMode.EXACT });
+
+      const { body: multiline } = await createProblem({ categoryId: special.id, title: 'Con salto' }).expect(201);
+      const input = Buffer.from('{"s":"a\\nb"}');
+      const sha = 'f'.repeat(63) + String(stamp % 10);
+      await app.get<Repository<Blob>>(getRepositoryToken(Blob)).save({ sha, bytes: input, size: input.length });
+      await problemRepo.update(multiline.id, {
+        signature: { functionName: 'f', params: [{ name: 's', type: { type: 'string' } }], returns: { type: 'int' } },
+      });
+      await testsetRepo.update(multiline.testsetId, { status: TestsetStatus.READY });
+      await app.get<Repository<TestCase>>(getRepositoryToken(TestCase)).save({
+        testset_id: multiline.testsetId, ordinal: 1, visibility: TestCaseVisibility.PUBLIC,
+        origin: TestCaseOrigin.MANUAL, input_sha: sha, input_bytes: input.length,
+      });
+
+      const res = await toggle(true).expect(409);
+      expect(res.body.message).toEqual([expect.stringMatching(/^problem "Con salto": .*line breaks/)]);
+      expect(await modeOf(multiline.testsetId)).toBe(CompareMode.EXACT);
+      expect((await categoryRepo.findOneByOrFail({ id: special.id })).full_program).toBe(false);
     });
   });
 });

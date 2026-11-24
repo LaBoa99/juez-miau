@@ -28,13 +28,15 @@ const PATTERNS: readonly [RegExp, string][] = [
   [/new version can only be created from a ready testset/i, 'Solo se puede crear una versión nueva desde una versión lista.'],
   [/reserved word/i, 'Un nombre usa una palabra reservada de algún lenguaje.'],
   // ── Programa completo: cada texto va en su propia línea ──
+  [/^problem "(.+)": .*in a full program a string cannot contain line breaks/i, 'El problema «$1» tiene casos con textos de varias líneas, que no caben en programa completo.'],
   [/in a full program a string cannot contain line breaks/i, 'En programa completo un texto no puede tener saltos de línea: cada texto va en su propia línea.'],
   [/charset: cannot include line breaks/i, 'Los caracteres de un texto aleatorio no pueden incluir saltos de línea.'],
   [/duplicated parameter/i, 'Hay nombres de parámetro repetidos.'],
   [/at most 16 parameters/i, 'La firma admite como máximo 16 parámetros.'],
   [/must be an identifier/i, 'Un nombre no es válido: usa letras, dígitos y _ (hasta 64).'],
   // ── Categoría especial: programa completo ──
-  [/full_program can only change while it has none/i, 'La categoría ya tiene problemas: solo se puede marcar o desmarcar como especial mientras no tenga.'],
+  [/^problem "(.+)": testset v\d+ is building/i, 'Los casos del problema «$1» se están construyendo: espera a que terminen y vuelve a intentarlo.'],
+  [/^problem "(.+)" uses a checker, which a full program cannot use/i, 'El problema «$1» usa un checker, que no funciona en programa completo: cambia su comparación antes de marcar la categoría.'],
   [/is full-program: its problems can only use compareMode program/i, 'Esta categoría es especial: sus problemas se evalúan como programa completo.'],
   [/compareMode program is only for full-program categories/i, 'Programa completo solo se usa en categorías especiales.'],
   // ── Problema / edición ──
@@ -85,9 +87,11 @@ export function judgeMessage(raw: string): string | null {
   return null;
 }
 
+// $1, $2… en el texto se reemplazan por lo que capturó el patrón (p. ej. el título del problema)
 function translateOne(raw: string): string | null {
   for (const [re, es] of PATTERNS) {
-    if (re.test(raw)) return es;
+    const m = raw.match(re);
+    if (m) return es.replace(/\$(\d)/g, (_, i) => m[+i] ?? '');
   }
   return null;
 }
