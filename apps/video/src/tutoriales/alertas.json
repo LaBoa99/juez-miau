@@ -4,7 +4,7 @@
   "pasos": [
     {
       "img": "01.png",
-      "voz": "Las alertas anti-trampas llegan solas desde la app de los equipos.",
+      "voz": "Las alertas anti-trampas llegan solas desde la app de los equipos, en vivo.",
       "caja": {
         "x": 321,
         "y": 220,
@@ -12,23 +12,23 @@
         "h": 30
       },
       "accion": null,
-      "frames": 108
+      "frames": 124
     },
     {
       "img": "02.png",
-      "voz": "Cada una dice qué pasó, en qué equipo y a qué hora.",
+      "voz": "Cada una dice qué pasó, en qué equipo, en qué salón y a qué hora.",
       "caja": {
-        "x": 449,
+        "x": 335,
         "y": 276,
-        "w": 83,
-        "h": 17
+        "w": 1250,
+        "h": 19
       },
       "accion": null,
-      "frames": 100
+      "frames": 123
     },
     {
       "img": "03.png",
-      "voz": "Ve a revisar al equipo. Si todo está bien, presiona Resolver.",
+      "voz": "Ve a revisar al equipo y presiona Resolver.",
       "caja": {
         "x": 335,
         "y": 323,
@@ -36,43 +36,55 @@
         "h": 28
       },
       "accion": "clic",
-      "frames": 139
+      "frames": 82
     },
     {
       "img": "04.png",
-      "voz": "Deja una nota de lo que encontraste…",
+      "voz": "Deja una nota interna de lo que encontraste…",
       "caja": {
         "x": 762,
-        "y": 507,
+        "y": 529,
         "w": 396,
         "h": 74
       },
       "accion": "escribir",
-      "frames": 67
+      "frames": 77
     },
     {
       "img": "05.png",
-      "voz": "…y márcala como resuelta.",
+      "voz": "…y decide. Penalizar suma veinte minutos al equipo; No penalizar no afecta su lugar.",
       "caja": {
-        "x": 991,
-        "y": 610,
-        "w": 167,
+        "x": 953,
+        "y": 632,
+        "w": 109,
         "h": 34
       },
       "accion": "clic",
-      "frames": 55
+      "frames": 179
     },
     {
       "img": "06.png",
-      "voz": "Queda en Resueltas, con tu nota.",
+      "voz": "Queda en Resueltas, con tu decisión y tu nota. Ahí mismo la puedes corregir.",
       "caja": {
         "x": 414,
         "y": 220,
         "w": 82,
         "h": 30
       },
+      "accion": "clic",
+      "frames": 155
+    },
+    {
+      "img": "07.png",
+      "voz": "Si la trampa es clara, suspende al equipo. Y con Levantar alerta registras lo que veas en el salón.",
+      "caja": {
+        "x": 1476,
+        "y": 155,
+        "w": 124,
+        "h": 34
+      },
       "accion": null,
-      "frames": 69
+      "frames": 185
     }
   ],
   "tituloFrames": 57

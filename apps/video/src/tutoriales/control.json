@@ -6,9 +6,9 @@
       "img": "01.png",
       "voz": "Durante el concurso, la pestaña Concurso es tu tablero de control.",
       "caja": {
-        "x": 1713,
+        "x": 1705,
         "y": 18,
-        "w": 64,
+        "w": 73,
         "h": 13
       },
       "accion": null,
@@ -81,7 +81,7 @@
         "x": 1277,
         "y": 441,
         "w": 306,
-        "h": 38
+        "h": 28
       },
       "accion": null,
       "frames": 103

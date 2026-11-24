@@ -15,7 +15,8 @@ describe('tutorialsFor', () => {
 
   it('el juez no ve lo que solo hace el admin ni lo del superadmin', () => {
     const judge = ids(tutorialsFor(false, [StaffRole.JUDGE]));
-    expect(judge).toContain('problemas');
+    expect(judge).toContain('crear-problema');
+    expect(judge).not.toContain('aprobar-problemas');
     expect(judge).not.toContain('equipos');
     expect(judge).not.toContain('superadmin');
     expect(judge).not.toContain('control');

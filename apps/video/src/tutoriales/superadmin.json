@@ -1,6 +1,6 @@
 {
   "id": "superadmin",
-  "titulo": "Ediciones, staff y lenguajes",
+  "titulo": "Ediciones, usuarios y lenguajes",
   "pasos": [
     {
       "img": "01.png",
@@ -32,7 +32,7 @@
       "caja": {
         "x": 1255,
         "y": 357,
-        "w": 328,
+        "w": 80,
         "h": 32
       },
       "accion": "escribir",
@@ -44,7 +44,7 @@
       "caja": {
         "x": 1255,
         "y": 426,
-        "w": 328,
+        "w": 80,
         "h": 32
       },
       "accion": "escribir",
@@ -55,7 +55,7 @@
       "voz": "Crea la edición: queda como borrador mientras la configuras.",
       "caja": {
         "x": 1469,
-        "y": 556,
+        "y": 586,
         "w": 114,
         "h": 34
       },
@@ -67,8 +67,8 @@
       "voz": "Ya aparece en la lista, lista para configurarse.",
       "caja": {
         "x": 329,
-        "y": 458,
-        "w": 353,
+        "y": 251,
+        "w": 351,
         "h": 17
       },
       "accion": null,
@@ -76,42 +76,54 @@
     },
     {
       "img": "07.png",
-      "voz": "En Staff das de alta a los jueces, observadores y administradores.",
+      "voz": "En Usuarios das de alta a los jueces, observadores y administradores.",
       "caja": {
         "x": 1223,
-        "y": 265,
+        "y": 267,
         "w": 360,
         "h": 32
       },
       "accion": null,
-      "frames": 128
+      "frames": 130
     },
     {
       "img": "08.png",
-      "voz": "Solo pides nombre, correo y una contraseña inicial. El rol se asigna en cada edición.",
+      "voz": "Solo pides nombre y correo: la contraseña se genera sola y la entregas en un PDF. El rol se asigna en cada edición.",
       "caja": {
         "x": 1223,
-        "y": 403,
+        "y": 390,
         "w": 360,
-        "h": 32
+        "h": 30
       },
       "accion": null,
-      "frames": 181
+      "frames": 234
     },
     {
       "img": "09.png",
+      "voz": "Con Descargar todos obtienes las credenciales de todos, listas para imprimir.",
+      "caja": {
+        "x": 704,
+        "y": 148,
+        "w": 134,
+        "h": 34
+      },
+      "accion": null,
+      "frames": 136
+    },
+    {
+      "img": "10.png",
       "voz": "En Lenguajes administras los compiladores disponibles para los concursos.",
       "caja": {
         "x": 321,
-        "y": 149,
-        "w": 1178,
-        "h": 552
+        "y": 167,
+        "w": 1278,
+        "h": 440
       },
       "accion": null,
       "frames": 119
     },
     {
-      "img": "10.png",
+      "img": "11.png",
       "voz": "Y en Auditoría ves quién hizo qué y cuándo.",
       "caja": {
         "x": 321,
@@ -123,5 +135,5 @@
       "frames": 76
     }
   ],
-  "tituloFrames": 76
+  "tituloFrames": 83
 }

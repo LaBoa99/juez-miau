@@ -1,0 +1,271 @@
+{
+  "id": "probar-solucion",
+  "titulo": "Probar soluciones y programa completo",
+  "pasos": [
+    {
+      "img": "01.png",
+      "voz": "Con el problema construido, prueba otras soluciones antes de proponerlo. Presiona Probar una solución.",
+      "caja": {
+        "x": 646,
+        "y": 849,
+        "w": 168,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 193
+    },
+    {
+      "img": "02.png",
+      "voz": "Elige el lenguaje: no tiene que ser el de la solución oficial.",
+      "caja": {
+        "x": 612,
+        "y": 355,
+        "w": 696,
+        "h": 32
+      },
+      "accion": "clic",
+      "frames": 109
+    },
+    {
+      "img": "03.png",
+      "voz": "Pegar plantilla del concurso pone el código con el que empiezan los equipos.",
+      "caja": {
+        "x": 612,
+        "y": 399,
+        "w": 196,
+        "h": 28
+      },
+      "accion": "clic",
+      "frames": 125
+    },
+    {
+      "img": "04.png",
+      "voz": "En una categoría normal, el equipo solo escribe la función.",
+      "caja": {
+        "x": 647,
+        "y": 539,
+        "w": 660,
+        "h": 200
+      },
+      "accion": null,
+      "frames": 110
+    },
+    {
+      "img": "05.png",
+      "voz": "Completa la solución…",
+      "caja": {
+        "x": 647,
+        "y": 539,
+        "w": 660,
+        "h": 200
+      },
+      "accion": "escribir",
+      "frames": 49
+    },
+    {
+      "img": "06.png",
+      "voz": "…y pruébala.",
+      "caja": {
+        "x": 1236,
+        "y": 790,
+        "w": 72,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 33
+    },
+    {
+      "img": "07.png",
+      "voz": "Se juzga igual que un envío, pero no cuenta para el marcador: cada caso con su veredicto, su tiempo y su memoria.",
+      "caja": {
+        "x": 613,
+        "y": 471,
+        "w": 694,
+        "h": 154
+      },
+      "accion": null,
+      "frames": 204
+    },
+    {
+      "img": "08.png",
+      "voz": "Cierra.",
+      "caja": {
+        "x": 1073,
+        "y": 655,
+        "w": 70,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 29
+    },
+    {
+      "img": "09.png",
+      "voz": "Escribir una función puede costarles a los principiantes. Para ellos, el admin marca su categoría como especial: edítala.",
+      "caja": {
+        "x": 1063,
+        "y": 435,
+        "w": 28,
+        "h": 28
+      },
+      "accion": "clic",
+      "frames": 232
+    },
+    {
+      "img": "10.png",
+      "voz": "Marca Categoría especial: programa completo. El equipo envía un programa que lee la entrada e imprime la respuesta.",
+      "caja": {
+        "x": 766,
+        "y": 587,
+        "w": 13,
+        "h": 14
+      },
+      "accion": "clic",
+      "frames": 215
+    },
+    {
+      "img": "11.png",
+      "voz": "Guarda. Se hace una vez por categoría y vale para todos sus problemas.",
+      "caja": {
+        "x": 1077,
+        "y": 684,
+        "w": 81,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 146
+    },
+    {
+      "img": "12.png",
+      "voz": "La categoría queda marcada como programa completo.",
+      "caja": {
+        "x": 321,
+        "y": 429,
+        "w": 812,
+        "h": 123
+      },
+      "accion": null,
+      "frames": 93
+    },
+    {
+      "img": "13.png",
+      "voz": "De vuelta en el problema, prueba otra vez.",
+      "caja": {
+        "x": 646,
+        "y": 849,
+        "w": 168,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 87
+    },
+    {
+      "img": "14.png",
+      "voz": "Elige el lenguaje: no tiene que ser el de la solución oficial.",
+      "caja": {
+        "x": 612,
+        "y": 355,
+        "w": 696,
+        "h": 32
+      },
+      "accion": "clic",
+      "frames": 109
+    },
+    {
+      "img": "15.png",
+      "voz": "Pegar plantilla del concurso pone el código con el que empiezan los equipos.",
+      "caja": {
+        "x": 612,
+        "y": 399,
+        "w": 196,
+        "h": 28
+      },
+      "accion": "clic",
+      "frames": 125
+    },
+    {
+      "img": "16.png",
+      "voz": "Ahora la plantilla ya lee los datos en orden. El equipo solo escribe la lógica e imprime la respuesta.",
+      "caja": {
+        "x": 628,
+        "y": 539,
+        "w": 679,
+        "h": 200
+      },
+      "accion": null,
+      "frames": 190
+    },
+    {
+      "img": "17.png",
+      "voz": "Completa la solución…",
+      "caja": {
+        "x": 628,
+        "y": 539,
+        "w": 679,
+        "h": 200
+      },
+      "accion": "escribir",
+      "frames": 49
+    },
+    {
+      "img": "18.png",
+      "voz": "…y pruébala.",
+      "caja": {
+        "x": 1236,
+        "y": 790,
+        "w": 72,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 33
+    },
+    {
+      "img": "19.png",
+      "voz": "Pasa todos los casos. La solución oficial sigue siendo una función: el juez adapta los casos solo.",
+      "caja": {
+        "x": 613,
+        "y": 471,
+        "w": 694,
+        "h": 154
+      },
+      "accion": null,
+      "frames": 196
+    },
+    {
+      "img": "20.png",
+      "voz": "Cierra.",
+      "caja": {
+        "x": 1073,
+        "y": 655,
+        "w": 70,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 29
+    },
+    {
+      "img": "21.png",
+      "voz": "En Vista previa ves lo que verán los equipos…",
+      "caja": {
+        "x": 1427,
+        "y": 156,
+        "w": 94,
+        "h": 30
+      },
+      "accion": "clic",
+      "frames": 79
+    },
+    {
+      "img": "22.png",
+      "voz": "…incluido el orden en que su programa lee los datos.",
+      "caja": {
+        "x": 663,
+        "y": 319,
+        "w": 920,
+        "h": 19
+      },
+      "accion": null,
+      "frames": 94
+    }
+  ],
+  "tituloFrames": 75
+}

@@ -9,7 +9,7 @@
         "x": 321,
         "y": 418,
         "w": 1278,
-        "h": 102
+        "h": 90
       },
       "accion": null,
       "frames": 103
@@ -30,10 +30,10 @@
       "img": "03.png",
       "voz": "Presiona Ver para revisar uno.",
       "caja": {
-        "x": 1547,
-        "y": 424,
-        "w": 44,
-        "h": 38
+        "x": 1563,
+        "y": 426,
+        "w": 28,
+        "h": 28
       },
       "accion": "clic",
       "frames": 59

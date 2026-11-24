@@ -19,7 +19,7 @@
       "voz": "Escribe el nombre del equipo…",
       "caja": {
         "x": 692,
-        "y": 426,
+        "y": 392,
         "w": 536,
         "h": 32
       },
@@ -31,7 +31,7 @@
       "voz": "…elige su categoría…",
       "caja": {
         "x": 692,
-        "y": 495,
+        "y": 461,
         "w": 536,
         "h": 32
       },
@@ -43,7 +43,7 @@
       "voz": "…y anota a cada integrante…",
       "caja": {
         "x": 692,
-        "y": 564,
+        "y": 599,
         "w": 265,
         "h": 32
       },
@@ -55,7 +55,7 @@
       "voz": "…con su carrera. Pueden ser hasta tres.",
       "caja": {
         "x": 963,
-        "y": 564,
+        "y": 599,
         "w": 265,
         "h": 32
       },
@@ -67,7 +67,7 @@
       "voz": "Guarda: el usuario y la contraseña se generan solos.",
       "caja": {
         "x": 1147,
-        "y": 690,
+        "y": 725,
         "w": 81,
         "h": 34
       },
@@ -127,7 +127,7 @@
       "voz": "Los que ya existen se actualizan: cambian sus integrantes y su categoría, pero conservan usuario y contraseña.",
       "caja": {
         "x": 1344,
-        "y": 394,
+        "y": 468,
         "w": 238,
         "h": 31
       },
@@ -139,7 +139,7 @@
       "voz": "Cada error dice en qué fila está. Esos equipos no se importan: corrige el archivo y vuelve a subirlo.",
       "caja": {
         "x": 687,
-        "y": 527,
+        "y": 601,
         "w": 896,
         "h": 31
       },
@@ -151,7 +151,7 @@
       "voz": "Importa los equipos válidos.",
       "caja": {
         "x": 1434,
-        "y": 571,
+        "y": 645,
         "w": 149,
         "h": 34
       },

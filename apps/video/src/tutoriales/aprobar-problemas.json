@@ -1,0 +1,223 @@
+{
+  "id": "aprobar-problemas",
+  "titulo": "Aprobar y administrar problemas",
+  "pasos": [
+    {
+      "img": "01.png",
+      "voz": "Como admin de la edición, en Problemas decides qué entra al concurso. Los jueces proponen los suyos.",
+      "caja": {
+        "x": 647,
+        "y": 228,
+        "w": 952,
+        "h": 149
+      },
+      "accion": null,
+      "frames": 188
+    },
+    {
+      "img": "02.png",
+      "voz": "Cada problema muestra su estado: borrador, propuesto o en el concurso.",
+      "caja": {
+        "x": 964,
+        "y": 254,
+        "w": 149,
+        "h": 41
+      },
+      "accion": null,
+      "frames": 140
+    },
+    {
+      "img": "03.png",
+      "voz": "Ábrelo para revisarlo antes de decidir.",
+      "caja": {
+        "x": 1298,
+        "y": 260,
+        "w": 28,
+        "h": 28
+      },
+      "accion": "clic",
+      "frames": 77
+    },
+    {
+      "img": "04.png",
+      "voz": "En Vista previa lo ves como lo verán los equipos.",
+      "caja": {
+        "x": 1427,
+        "y": 156,
+        "w": 94,
+        "h": 30
+      },
+      "accion": "clic",
+      "frames": 87
+    },
+    {
+      "img": "05.png",
+      "voz": "Enunciado, función y ejemplos.",
+      "caja": {
+        "x": 646,
+        "y": 203,
+        "w": 954,
+        "h": 284
+      },
+      "accion": null,
+      "frames": 75
+    },
+    {
+      "img": "06.png",
+      "voz": "Si te convence, acéptalo.",
+      "caja": {
+        "x": 1332,
+        "y": 260,
+        "w": 72,
+        "h": 28
+      },
+      "accion": "clic",
+      "frames": 65
+    },
+    {
+      "img": "07.png",
+      "voz": "Ya está en el concurso. La letra se asigna al iniciar.",
+      "caja": {
+        "x": 954,
+        "y": 266,
+        "w": 115,
+        "h": 18
+      },
+      "accion": null,
+      "frames": 125
+    },
+    {
+      "img": "08.png",
+      "voz": "Si necesita cambios, regrésalo a borrador.",
+      "caja": {
+        "x": 1410,
+        "y": 301,
+        "w": 148,
+        "h": 28
+      },
+      "accion": "clic",
+      "frames": 89
+    },
+    {
+      "img": "09.png",
+      "voz": "Escribe el motivo: el juez lo verá al abrir su problema.",
+      "caja": {
+        "x": 762,
+        "y": 527,
+        "w": 396,
+        "h": 94
+      },
+      "accion": "escribir",
+      "frames": 104
+    },
+    {
+      "img": "10.png",
+      "voz": "Confirma. Para que vuelva, el juez tiene que proponerlo otra vez.",
+      "caja": {
+        "x": 1003,
+        "y": 650,
+        "w": 156,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 139
+    },
+    {
+      "img": "11.png",
+      "voz": "Lo que no va, elimínalo.",
+      "caja": {
+        "x": 1563,
+        "y": 342,
+        "w": 28,
+        "h": 28
+      },
+      "accion": "clic",
+      "frames": 61
+    },
+    {
+      "img": "12.png",
+      "voz": "Confirma: se borra con su solución y sus casos.",
+      "caja": {
+        "x": 1078,
+        "y": 578,
+        "w": 80,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 99
+    },
+    {
+      "img": "13.png",
+      "voz": "Con Mostrar filtras por estado.",
+      "caja": {
+        "x": 1448,
+        "y": 155,
+        "w": 152,
+        "h": 32
+      },
+      "accion": null,
+      "frames": 61
+    },
+    {
+      "img": "14.png",
+      "voz": "Quitar saca un problema del concurso; si ya tiene envíos, ya no se puede eliminar, solo quitar.",
+      "caja": {
+        "x": 1343,
+        "y": 260,
+        "w": 61,
+        "h": 28
+      },
+      "accion": null,
+      "frames": 179
+    },
+    {
+      "img": "15.png",
+      "voz": "Una versión construida ya no se edita. Para cambiar la solución o los casos, crea una versión nueva.",
+      "caja": {
+        "x": 1384,
+        "y": 352,
+        "w": 203,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 192
+    },
+    {
+      "img": "16.png",
+      "voz": "Anota qué cambia…",
+      "caja": {
+        "x": 762,
+        "y": 517,
+        "w": 396,
+        "h": 32
+      },
+      "accion": "escribir",
+      "frames": 44
+    },
+    {
+      "img": "17.png",
+      "voz": "…y créala: copia todo lo actual y queda editable.",
+      "caja": {
+        "x": 1043,
+        "y": 599,
+        "w": 115,
+        "h": 34
+      },
+      "accion": "clic",
+      "frames": 99
+    },
+    {
+      "img": "18.png",
+      "voz": "Al construirla, si el problema está en el concurso, se vuelven a evaluar todos sus envíos.",
+      "caja": {
+        "x": 646,
+        "y": 302,
+        "w": 954,
+        "h": 18
+      },
+      "accion": null,
+      "frames": 164
+    }
+  ],
+  "tituloFrames": 68
+}

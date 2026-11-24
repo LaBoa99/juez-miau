@@ -54,9 +54,17 @@ export async function abrir(base) {
   // Busca por CSS o por texto visible ("texto=Guardar": el más chico que lo contenga, mejor si es exacto).
   const FIND = `(q) => {
     const visible = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
-    if (!q.startsWith('texto=')) return [...document.querySelectorAll(q)].find(visible) ?? null;
+    // "css >> texto=..." busca solo dentro de los elementos visibles de css (p. ej. una fila o una opción)
+    let roots = [document];
+    if (q.includes(' >> ')) {
+      const [scope, rest] = q.split(' >> ');
+      roots = [...document.querySelectorAll(scope)].filter(visible);
+      q = rest;
+    }
+    const dentro = (sel) => roots.flatMap((r) => [...(r === document ? [] : [r]).filter((e) => e.matches(sel)), ...r.querySelectorAll(sel)]);
+    if (!q.startsWith('texto=')) return dentro(q).find(visible) ?? null;
     const t = q.slice(6).trim().toLowerCase();
-    const all = [...document.querySelectorAll('button, a, label, th, td, li, h1, h2, h3, span, p, option, summary, div')]
+    const all = dentro('button, a, label, th, td, li, h1, h2, h3, span, p, option, summary, div')
       .filter((e) => visible(e) && e.textContent.trim().toLowerCase().includes(t));
     const leaves = all.filter((e) => !all.some((o) => o !== e && e.contains(o)));
     // Primero el que dice exactamente eso ("Responder" antes que "Sin responder (1)")
@@ -80,6 +88,8 @@ export async function abrir(base) {
     async ir(path) {
       await send("Page.navigate", { url: base + path });
       await sleep(1800);
+      // Sin los avisos de "Guardado": se apilan abajo a la derecha y tapan botones en las capturas
+      await evaluar(`document.head.insertAdjacentHTML('beforeend', '<style>oj-toast-stack{display:none!important}</style>')`);
     },
     async clic(q) {
       const r = await esperar(q);
@@ -92,7 +102,8 @@ export async function abrir(base) {
     },
     async escribir(q, texto) {
       await b.clic(q);
-      await evaluar(`document.activeElement.select?.()`);
+      // input/textarea: select(); editor de código (contenteditable): seleccionar todo para reemplazarlo
+      await evaluar(`(() => { const e = document.activeElement; e.select ? e.select() : e.isContentEditable && document.execCommand('selectAll'); })()`);
       await send("Input.insertText", { text: texto });
       await sleep(200);
     },

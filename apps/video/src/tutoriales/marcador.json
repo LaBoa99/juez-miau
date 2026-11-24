@@ -6,10 +6,10 @@
       "img": "01.png",
       "voz": "En Ediciones, busca tu concurso y presiona Configurar.",
       "caja": {
-        "x": 1426,
-        "y": 251,
-        "w": 90,
-        "h": 38
+        "x": 329,
+        "y": 701,
+        "w": 351,
+        "h": 17
       },
       "accion": "clic",
       "frames": 108
@@ -112,15 +112,10 @@
     },
     {
       "img": "10.png",
-      "voz": "Ponlo en pantalla completa y listo.",
-      "caja": {
-        "x": 872,
-        "y": 131,
-        "w": 142,
-        "h": 34
-      },
+      "voz": "Ponlo en pantalla completa con F11 y listo.",
+      "caja": null,
       "accion": null,
-      "frames": 66
+      "frames": 88
     }
   ],
   "tituloFrames": 50

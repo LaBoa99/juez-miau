@@ -4,7 +4,7 @@
   "pasos": [
     {
       "img": "01.png",
-      "voz": "Al abrir una edición llegas a Configuración. Empieza por las categorías.",
+      "voz": "Al abrir una edición llegas a Configuración. Ya trae las categorías Básico, Intermedio y Avanzado; agrega las que necesites.",
       "caja": {
         "x": 320,
         "y": 262,
@@ -12,14 +12,14 @@
         "h": 30
       },
       "accion": null,
-      "frames": 146
+      "frames": 245
     },
     {
       "img": "02.png",
       "voz": "Escribe un código corto…",
       "caja": {
         "x": 1175,
-        "y": 381,
+        "y": 475,
         "w": 360,
         "h": 32
       },
@@ -31,7 +31,7 @@
       "voz": "…y el nombre de la categoría.",
       "caja": {
         "x": 1175,
-        "y": 450,
+        "y": 580,
         "w": 360,
         "h": 32
       },
@@ -43,7 +43,7 @@
       "voz": "Agrégala.",
       "caja": {
         "x": 1454,
-        "y": 498,
+        "y": 714,
         "w": 81,
         "h": 34
       },
@@ -54,8 +54,8 @@
       "img": "05.png",
       "voz": "En Salones da de alta cada salón…",
       "caja": {
-        "x": 1127,
-        "y": 381,
+        "x": 1151,
+        "y": 456,
         "w": 360,
         "h": 32
       },
@@ -66,10 +66,10 @@
       "img": "06.png",
       "voz": "…con la categoría que compite ahí.",
       "caja": {
-        "x": 1127,
-        "y": 450,
-        "w": 360,
-        "h": 32
+        "x": 1164,
+        "y": 618,
+        "w": 334,
+        "h": 20
       },
       "accion": "clic",
       "frames": 65
@@ -78,8 +78,8 @@
       "img": "07.png",
       "voz": "Agrégalo.",
       "caja": {
-        "x": 1406,
-        "y": 569,
+        "x": 1430,
+        "y": 738,
         "w": 81,
         "h": 34
       },
@@ -91,7 +91,7 @@
       "voz": "En Lenguajes marca los que podrán usar los equipos…",
       "caja": {
         "x": 360,
-        "y": 590,
+        "y": 645,
         "w": 47,
         "h": 17
       },
@@ -103,7 +103,7 @@
       "voz": "…y guarda la selección.",
       "caja": {
         "x": 736,
-        "y": 631,
+        "y": 686,
         "w": 144,
         "h": 34
       },
@@ -115,7 +115,7 @@
       "voz": "En Staff asigna a tu equipo de trabajo: elige a la persona…",
       "caja": {
         "x": 1223,
-        "y": 381,
+        "y": 456,
         "w": 360,
         "h": 32
       },
@@ -127,7 +127,7 @@
       "voz": "…y su rol en esta edición.",
       "caja": {
         "x": 1223,
-        "y": 450,
+        "y": 525,
         "w": 360,
         "h": 32
       },
@@ -139,7 +139,7 @@
       "voz": "Agrégala. Cada rol solo ve lo que le toca: el observador, por ejemplo, solo ve envíos, marcador y alertas.",
       "caja": {
         "x": 1504,
-        "y": 498,
+        "y": 573,
         "w": 79,
         "h": 34
       },

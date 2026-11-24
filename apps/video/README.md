@@ -13,9 +13,12 @@ Son capturas reales del panel, con zoom, cursor, subtítulos y voz. Necesitan co
    y el elemento que señala. Entra con el superadmin de `apps/backend/.env`.
    - El orden importa: `superadmin` crea el "Concurso de práctica", los siguientes lo configuran, lo programan e
      inician, y simulan a un equipo por la API. `marcador` usa la "Edición Demo".
-   - `superadmin` borra el "Concurso de práctica" anterior solo si sigue en borrador; si ya se inició, bórralo o
-     renómbralo a mano para regrabar desde cero. `equipos` usa su propia edición en borrador ("Concurso de prueba")
-     y la vuelve a crear en cada grabación.
+   - `superadmin` borra el "Concurso de práctica" anterior solo si sigue en borrador; si ya se inició, renómbralo
+     a mano para regrabar desde cero (la API no deja cambiar una edición iniciada; en la base local:
+     `UPDATE edition SET name = '...' WHERE id = ...`). `programar` le pone por la API un problema y un equipo.
+   - Los de problemas (`crear-problema`, `probar-solucion`, `casos-evaluacion`, `aprobar-problemas`) no dependen del
+     orden: cada uno crea de cero la edición en borrador "Taller de problemas" y prepara lo que necesita por la API.
+     `equipos` hace lo mismo con "Concurso de prueba".
 2. Voz: `<python con edge-tts> scripts/voz_tutoriales.py [id ...]` (voz `es-MX-DaliaNeural`, como el demo).
 3. Si agregas un guion, impórtalo en `src/tutoriales/index.ts` y en
    `apps/frontend-staff/src/app/features/tutorials/tutorials.data.ts` (con los roles que lo pueden hacer).
