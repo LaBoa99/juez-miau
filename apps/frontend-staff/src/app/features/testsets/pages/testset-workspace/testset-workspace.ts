@@ -1,3 +1,4 @@
+import { CodeTextareaDirective } from '../../../../shared/ui/code-textarea.directive';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -140,6 +141,7 @@ const STEP_TEXT: Record<TestsetStep, { title: string; hint: string }> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgTemplateOutlet,
+    CodeTextareaDirective,
     ReactiveFormsModule,
     TestRunModal,
     RouterLink,

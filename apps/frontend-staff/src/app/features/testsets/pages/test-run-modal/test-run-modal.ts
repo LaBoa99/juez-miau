@@ -1,3 +1,4 @@
+import { CodeTextareaDirective } from '../../../../shared/ui/code-textarea.directive';
 import { TooltipDirective } from '../../../../shared/ui/tooltip.directive';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -20,7 +21,7 @@ const POLL_MS = 1000;
 @Component({
   selector: 'oj-test-run-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TooltipDirective, ReactiveFormsModule, Modal, Alert, Badge, ButtonDirective, FileDrop, FormField, VerdictPipe],
+  imports: [CodeTextareaDirective, TooltipDirective, ReactiveFormsModule, Modal, Alert, Badge, ButtonDirective, FileDrop, FormField, VerdictPipe],
   templateUrl: './test-run-modal.html',
   styleUrl: './test-run-modal.css',
 })

@@ -642,7 +642,7 @@
                 }
                 @if (hasParams()) {
                   <oj-file-drop accept="" (fileSelected)="onCheckerFile($event)" />
-                  <textarea class="tw__code" rows="8" spellcheck="false" aria-label="Código del checker" placeholder="o pega el código del checker aquí"
+                  <textarea ojCode class="tw__code" rows="8" aria-label="Código del checker" placeholder="o pega el código del checker aquí"
                             [value]="checkerText()" (input)="checkerText.set($any($event.target).value)"></textarea>
                 }
               </div>
@@ -870,7 +870,7 @@
   }
   <oj-file-drop accept="" (fileSelected)="onSourceFile($event)" />
   <oj-form-field label="Código" for="tw-src-code" hint="Arrastra un archivo arriba o pega el código aquí.">
-    <textarea id="tw-src-code" class="tw__code" rows="10" spellcheck="false" [value]="sourceText()"
+    <textarea ojCode id="tw-src-code" class="tw__code" rows="10" [value]="sourceText()"
               (input)="sourceText.set($any($event.target).value)"></textarea>
   </oj-form-field>
   @if (sourceKind() === 'generator') {
