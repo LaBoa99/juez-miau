@@ -146,7 +146,7 @@ Hallazgos que cambian el orden:
     - Se cerró el TODO de `auth.service.ts`: iniciar sesión en otra máquina levanta una alerta.
   - **Heartbeat** (`src/integrity/`): `POST /contest/heartbeat` con `{ processes }`, cada 30 s.
     - Compara los procesos con `Edition.forbidden_processes` sin distinguir mayúsculas, sin ruta y sin `.exe`. La lista ya se puede capturar al crear o editar la edición.
-    - Un job de BullMQ cada 30 s levanta `HEARTBEAT_LOST` cuando una sesión abierta de una edición RUNNING lleva 90 s sin heartbeat.
+    - `HEARTBEAT_LOST` en una sesión abierta de una edición RUNNING: a los 12 s de caerse el socket si la app no volvió ni reportó, y como respaldo un job de BullMQ cada 10 s con 35 s sin heartbeat.
   - **`block_submissions_on_alert`**: con una alerta abierta, `POST /submissions` da 403 hasta que el staff la resuelva. El heartbeat avisa al cliente con `submissionsBlocked`.
   - Rutas de alertas:
     - `GET /editions/:id/flags?open=true&teamId=`

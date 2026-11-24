@@ -75,10 +75,11 @@ const MAP: Record<string, Phrase> = {
   'POST /submissions/#/review': (ids) => `Revisó el envío #${ids[0]}`,
   'POST /problems/#/rejudge': 'Re-evaluó los envíos de un problema',
 
-  // Staff y lenguajes
-  'POST /staff': 'Creó un usuario de staff',
-  'PATCH /staff/#': 'Editó un usuario de staff',
-  'POST /staff/#/deactivate': 'Desactivó un usuario de staff',
+  // Usuarios y lenguajes
+  'POST /staff': 'Creó un usuario',
+  'PATCH /staff/#': 'Editó un usuario',
+  'POST /staff/#/reset-password': 'Generó una contraseña nueva para un usuario',
+  'POST /staff/#/deactivate': 'Desactivó un usuario',
   'POST /languages': 'Creó un lenguaje',
   'PATCH /languages/#': 'Editó un lenguaje',
 };

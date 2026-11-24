@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common'
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { IsNull, Repository, SelectQueryBuilder } from 'typeorm'
 import { StaffUser } from '../entities/staff-user.entity.js'
@@ -61,6 +61,7 @@ export class StaffService {
             user.name = dto.name
         }
         if (dto.password !== undefined) {
+            assertNotSuperadmin(user)
             Object.assign(user, await this.passwordFields(dto.password))
         }
 
@@ -76,6 +77,7 @@ export class StaffService {
 
     async resetPassword(id: number) {
         const user = await this.getById(id)
+        assertNotSuperadmin(user)
         Object.assign(user, await this.passwordFields(this.passwordService.generatePassword()))
         await this.staffRepo.save(user)
         await this.revokeRefreshTokens(id)
@@ -90,6 +92,7 @@ export class StaffService {
             .addSelect('user.password_hash')
             .where('user.id = :id', { id })
             .getOne()
+        if (user) assertNotSuperadmin(user)
         if (!user || !(await this.passwordService.comparePassword(current, user.password_hash))) {
             throw new BadRequestException('La contraseña actual no es correcta')
         }
@@ -103,6 +106,8 @@ export class StaffService {
         if (id !== undefined) {
             qb.where('user.id = :id', { id })
         } else {
+            // El superadmin no sale en el PDF: su contraseña vive en el .env del servidor
+            qb.where('user.is_superadmin = false')
             this.applyFilters(qb, query)
         }
 
@@ -182,4 +187,12 @@ export class StaffService {
 // Escapa los comodines de LIKE para que el texto buscado se tome literal
 function escapeLike(text: string): string {
     return text.replace(/[\\%_]/g, (c) => '\\' + c)
+}
+
+// La contraseña del superadmin es la de SEED_ADMIN_PASSWORD (.env); desde la app no se cambia,
+// así nadie se queda fuera por regenerarla sin querer.
+function assertNotSuperadmin(user: StaffUser): void {
+    if (user.is_superadmin) {
+        throw new ForbiddenException('La contraseña del superadministrador no se puede cambiar desde la app')
+    }
 }

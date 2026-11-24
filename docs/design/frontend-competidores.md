@@ -124,7 +124,7 @@ Esta lista sale de revisar el HTML de Stitch.
 
 - **Heartbeat actual:** `POST /contest/heartbeat {processes}` cada 30 s.
   - El servidor normaliza los nombres, así que se mandan tal como los da `psutil.process_iter(['name'])`.
-  - Si pasan 90 s sin heartbeat, se levanta `HEARTBEAT_LOST`.
+  - Si la app se cierra o la matan, el socket se cae y el servidor levanta `HEARTBEAT_LOST` a los 12 s si no volvió ni reportó. Si se corta la red sin cerrar el socket, el respaldo es a los 35 s sin heartbeat.
 - **Monitores, USB y red:** se recolectan con Qt (`QGuiApplication.screens()`, `QStorageInfo.mountedVolumes()` removibles, `QNetworkInterface.allInterfaces()`).
   - El backend aún no los acepta. Mientras tanto no se envían.
 - **Política: el competidor no se entera.** Los procesos prohibidos solo se reportan al juez, que decide cómo actuar. Así se puede observar si el equipo sigue haciendo trampa.

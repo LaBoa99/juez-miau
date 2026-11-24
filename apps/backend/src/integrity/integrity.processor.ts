@@ -4,9 +4,9 @@ import type { Queue } from 'bullmq'
 import { IntegrityService } from './integrity.service.js'
 
 export const INTEGRITY_QUEUE = 'integrity'
-const CHECK_EVERY_MS = 30_000
+const CHECK_EVERY_MS = 10_000
 
-// Corre en la API, como el reloj: revisa heartbeats perdidos cada 30 s
+// Corre en la API, como el reloj: revisa heartbeats perdidos cada 10 s
 @Processor(INTEGRITY_QUEUE)
 export class IntegrityProcessor extends WorkerHost implements OnApplicationBootstrap {
 

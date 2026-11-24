@@ -274,6 +274,19 @@ describe('Auth staff con cookie httpOnly (e2e)', () => {
       const saved = await staffRepo.createQueryBuilder('u').addSelect('u.password').where('u.email = :own', { own }).getOne();
       expect(saved!.password).toBeNull();
     });
+
+    it('403: la contraseña del superadmin no se cambia desde la app (vive en el .env)', async () => {
+      const { body } = await login({ email: superadmin.email, password }).expect(200);
+      const auth = { Authorization: `Bearer ${body.accessToken}` };
+
+      await change(body.accessToken, { currentPassword: password, newPassword: 'NuevaClave1' }).expect(403);
+      await api().post(`/api/v1/staff/${superadmin.id}/reset-password`).set(auth).expect(403);
+      await api().patch(`/api/v1/staff/${superadmin.id}`).set(auth).send({ password: 'NuevaClave1' }).expect(403);
+      const creds = await api().get('/api/v1/staff/credentials').set(auth).expect(200);
+      expect(creds.body.map((c: { email: string }) => c.email)).not.toContain(superadmin.email);
+
+      await login({ email: superadmin.email, password }).expect(200);
+    });
   });
 
   describe('CORS', () => {

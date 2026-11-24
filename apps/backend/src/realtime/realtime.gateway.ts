@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
-import { ConnectedSocket, MessageBody, SubscribeMessage, WebSocketGateway, WebSocketServer, type OnGatewayConnection } from '@nestjs/websockets'
+import { ConnectedSocket, MessageBody, SubscribeMessage, WebSocketGateway, WebSocketServer, type OnGatewayConnection, type OnGatewayDisconnect } from '@nestjs/websockets'
+import { Subject } from 'rxjs'
 import { DataSource } from 'typeorm'
 import type { Namespace, Socket } from 'socket.io'
 import { ANY_EDITION_ROLE } from '../auth/decorators/access.decorators.js'
@@ -20,13 +21,20 @@ type ClientSocket = Socket<Record<string, never>, Record<string, never>, Record<
 
 type Ack = { ok: true } | { ok: false, error: string }
 
+export interface TeamDisconnect {
+    teamId: number
+    sessionId: string
+}
+
 // Namespace /ws. El token va en el handshake: io(url + '/ws', { auth: { token } }).
 // - Equipo: entra solo a su sala y a la pública de su edición
 // - Staff: pide `edition:join` por cada edición que quiera seguir (se revisa su rol)
 // - Sin token (proyector): pide `public:join`
 @WebSocketGateway({ namespace: '/ws' })
-export class RealtimeGateway implements OnGatewayConnection {
+export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly logger = new Logger(RealtimeGateway.name)
+    // El sistema corta el socket en cuanto la app se cierra, aunque la maten sin avisar
+    readonly teamDisconnected = new Subject<TeamDisconnect>()
 
     @WebSocketServer()
     declare server: Namespace
@@ -70,6 +78,19 @@ export class RealtimeGateway implements OnGatewayConnection {
             this.logger.debug('rejected socket: ' + String(error))
             socket.disconnect(true)
         }
+    }
+
+    handleDisconnect(socket: ClientSocket): void {
+        const user = socket.data.user
+        if(user?.type === AccessTokenType.TEAM && user.sid){
+            this.teamDisconnected.next({ teamId: user.sub, sessionId: user.sid })
+        }
+    }
+
+    async isTeamConnected(teamId: number, sessionId: string): Promise<boolean> {
+        if(!this.server) return false
+        const sockets = await this.server.in(teamRoom(teamId)).fetchSockets()
+        return sockets.some((socket) => (socket.data as SocketData).user?.sid === sessionId)
     }
 
     @SubscribeMessage(SOCKET_EVENTS.JOIN_EDITION)

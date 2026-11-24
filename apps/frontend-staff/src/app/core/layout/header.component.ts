@@ -20,7 +20,7 @@ import { ChangePassword } from './change-password.component';
           <a class="oj-hd__link" routerLink="/ediciones" routerLinkActive="oj-hd__link--active">Ediciones</a>
           <a class="oj-hd__link" routerLink="/lenguajes" routerLinkActive="oj-hd__link--active">Lenguajes</a>
           @if (auth.isSuperadmin()) {
-            <a class="oj-hd__link" routerLink="/staff" routerLinkActive="oj-hd__link--active">Staff</a>
+            <a class="oj-hd__link" routerLink="/staff" routerLinkActive="oj-hd__link--active">Usuarios</a>
             <a class="oj-hd__link" routerLink="/auditoria" routerLinkActive="oj-hd__link--active">Auditoría</a>
           }
           <a class="oj-hd__link" routerLink="/tutoriales" routerLinkActive="oj-hd__link--active">Tutoriales</a>
@@ -38,7 +38,9 @@ import { ChangePassword } from './change-password.component';
         @if (runningClock(); as c) {
           <oj-contest-countdown variant="compact" [clock]="c" />
         }
-        <button ojButton variant="secondary" size="sm" type="button" (click)="pwd.open()">Cambiar contraseña</button>
+        @if (!auth.isSuperadmin()) {
+          <button ojButton variant="secondary" size="sm" type="button" (click)="pwd.open()">Cambiar contraseña</button>
+        }
         <button ojButton variant="secondary" size="sm" (click)="logout.emit()">Cerrar sesión</button>
       </div>
     </header>

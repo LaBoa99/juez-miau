@@ -77,7 +77,7 @@ export function flagMessage(flag: IFlag): string {
     case FlagType.SESSION_REPLACED:
       return 'El equipo inició sesión desde otra máquina mientras el concurso estaba en curso.';
     case FlagType.HEARTBEAT_LOST:
-      return 'El equipo dejó de reportar actividad: se perdió la conexión con su app.';
+      return 'La app del equipo se cerró o perdió la conexión.';
     case FlagType.MANUAL:
       return stripStaffTag(flag.details) || 'Alerta levantada por el staff.';
     case FlagType.EXTRA_MONITOR:

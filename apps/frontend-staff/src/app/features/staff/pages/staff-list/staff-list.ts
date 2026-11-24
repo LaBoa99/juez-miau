@@ -69,6 +69,7 @@ export class StaffList {
   // Edición (modal). La contraseña es opcional: vacía = no cambiarla.
   private readonly editModal = viewChild.required(Modal);
   private editingId: number | null = null;
+  protected readonly editingSuperadmin = signal(false);
   protected readonly editSaving = signal(false);
   protected readonly editError = signal<string | null>(null);
   protected readonly editForm = this.fb.nonNullable.group({
@@ -127,6 +128,7 @@ export class StaffList {
 
   openEdit(user: IStaffListItem): void {
     this.editingId = user.id;
+    this.editingSuperadmin.set(user.isSuperadmin);
     this.editError.set(null);
     this.editForm.reset({ name: user.name, email: user.email, password: '' });
     this.editModal().open();

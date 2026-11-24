@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, type OnModuleInit } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { EditionStatus, FlagType, SOCKET_EVENTS, type IHeartbeatResponse } from '@concurso/shared-types'
@@ -8,7 +8,7 @@ import { TeamSession } from '../teams/entities/team-session.entity.js'
 import { Team } from '../teams/entities/team.entity.js'
 import type { Edition } from '../editions/entities/edition.entity.js'
 import { HeartbeatDto } from './dto/heartbeat.dto.js'
-import { HEARTBEAT_EVERY_MS, HEARTBEAT_LOST_AFTER_MS } from './heartbeat.constants.js'
+import { DISCONNECT_GRACE_MS, HEARTBEAT_EVERY_MS, HEARTBEAT_LOST_AFTER_MS } from './heartbeat.constants.js'
 
 // "C:\\Tools\\Chrome.EXE" → "chrome"
 export function normalizeProcessName(name: string): string {
@@ -16,7 +16,10 @@ export function normalizeProcessName(name: string): string {
 }
 
 @Injectable()
-export class IntegrityService implements OnModuleInit {
+export class IntegrityService implements OnModuleInit, OnModuleDestroy {
+    private readonly logger = new Logger(IntegrityService.name)
+    private readonly disconnectTimers = new Map<number, NodeJS.Timeout>()
+    private readonly bootAt = Date.now()
 
     constructor(
         @InjectRepository(Team)
@@ -29,6 +32,40 @@ export class IntegrityService implements OnModuleInit {
 
     onModuleInit(): void {
         this.flagsService.onChange((flag) => this.realtime.toStaff(flag.edition_id, SOCKET_EVENTS.FLAG_UPDATE, toFlagDto(flag)))
+        this.realtime.teamDisconnected.subscribe(({ teamId, sessionId }) => {
+            const disconnectedAt = new Date()
+            clearTimeout(this.disconnectTimers.get(teamId))
+            const timer = setTimeout(() => {
+                this.disconnectTimers.delete(teamId)
+                this.confirmDisconnected(teamId, sessionId, disconnectedAt)
+                    .catch((error) => this.logger.error('could not check disconnect of team #' + teamId + ': ' + String(error)))
+            }, DISCONNECT_GRACE_MS)
+            timer.unref()
+            this.disconnectTimers.set(teamId, timer)
+        })
+    }
+
+    onModuleDestroy(): void {
+        this.disconnectTimers.forEach((timer) => clearTimeout(timer))
+    }
+
+    // Terminó la espera tras caerse el socket: alerta si la app no volvió por ningún canal.
+    // Cerrar sesión, reemplazarla o una suspensión ya la terminaron y no son "sin señal"
+    async confirmDisconnected(teamId: number, sessionId: string, disconnectedAt: Date): Promise<void> {
+        if(await this.realtime.isTeamConnected(teamId, sessionId)) return
+        const session = await this.sessionRepository.findOne({ where: { team_id: teamId }, relations: { team: { edition: true } } })
+        if(!session || session.ended_at || session.session_id !== sessionId) return
+        if(session.team.edition.status !== EditionStatus.RUNNING) return
+        if(session.last_heartbeat_at > disconnectedAt) return
+
+        await this.flagsService.raise(
+            teamId,
+            FlagType.HEARTBEAT_LOST,
+            'La app se cerró o perdió la conexión: ' + disconnectedAt.toISOString(),
+            '',
+            undefined,
+            session.last_heartbeat_at,
+        )
     }
 
     // El cliente del concursante lo manda cada HEARTBEAT_EVERY_MS con los procesos abiertos
@@ -81,6 +118,9 @@ export class IntegrityService implements OnModuleInit {
 
     // Sesiones abiertas de ediciones corriendo que dejaron de mandar heartbeat
     async checkHeartbeats(now = new Date()): Promise<number> {
+        // Mientras la API reiniciaba nadie pudo reportar: se les da una ventana completa
+        if(now.getTime() - this.bootAt < HEARTBEAT_LOST_AFTER_MS) return 0
+
         const stale = await this.sessionRepository.createQueryBuilder('session')
             .innerJoin('session.team', 'team')
             .innerJoin('team.edition', 'edition')
@@ -96,6 +136,9 @@ export class IntegrityService implements OnModuleInit {
                 session.teamId,
                 FlagType.HEARTBEAT_LOST,
                 'Sin heartbeat desde ' + new Date(session.lastHeartbeat).toISOString(),
+                '',
+                undefined,
+                new Date(session.lastHeartbeat),
             )
         }
         return stale.length

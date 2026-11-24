@@ -1,5 +1,5 @@
 <oj-page-header
-  title="Usuarios de staff"
+  title="Usuarios"
   subtitle=""
 />
 
@@ -65,12 +65,15 @@
                 </td>
                 <td>
                   <div class="oj-actions oj-actions--end">
-                    <button ojButton variant="secondary" size="sm" class="oj-btn--icon" type="button"
-                            [attr.aria-label]="'Descargar PDF de credenciales de ' + u.name" ojTooltip="Descargar PDF de credenciales"
-                            [attr.aria-busy]="pdfBusy() === u.id" [disabled]="pdfBusy() !== null" (click)="downloadOne(u)">
-                      @if (pdfBusy() === u.id) { <span class="oj-btn__spinner" aria-hidden="true"></span> } @else { <oj-icon name="download" /> }
-                    </button>
-                    <button ojButton variant="secondary" size="sm" type="button" (click)="askReset(u)">Nueva contraseña</button>
+                    <!-- La contraseña del superadmin vive en el .env del servidor: sin PDF ni regenerarla -->
+                    @if (!u.isSuperadmin) {
+                      <button ojButton variant="secondary" size="sm" class="oj-btn--icon" type="button"
+                              [attr.aria-label]="'Descargar PDF de credenciales de ' + u.name" ojTooltip="Descargar PDF de credenciales"
+                              [attr.aria-busy]="pdfBusy() === u.id" [disabled]="pdfBusy() !== null" (click)="downloadOne(u)">
+                        @if (pdfBusy() === u.id) { <span class="oj-btn__spinner" aria-hidden="true"></span> } @else { <oj-icon name="download" /> }
+                      </button>
+                      <button ojButton variant="secondary" size="sm" type="button" (click)="askReset(u)">Nueva contraseña</button>
+                    }
                     <button ojButton variant="secondary" size="sm" class="oj-btn--icon" type="button" [attr.aria-label]="'Editar a ' + u.name" ojTooltip="Editar" (click)="openEdit(u)"><oj-icon name="edit" /></button>
                     @if (u.active) {
                       <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDeactivate(u)">
@@ -122,9 +125,13 @@
     <oj-form-field label="Correo" for="staff-edit-email">
       <input id="staff-edit-email" class="oj-mono" type="email" formControlName="email" />
     </oj-form-field>
-    <oj-form-field label="Contraseña" for="staff-edit-password" hint="Mínimo 8 caracteres. Déjala vacía para no cambiarla.">
-      <input id="staff-edit-password" type="password" formControlName="password" autocomplete="new-password" />
-    </oj-form-field>
+    @if (editingSuperadmin()) {
+      <p class="staff__note">La contraseña del superadministrador se define en el servidor y no se cambia desde aquí.</p>
+    } @else {
+      <oj-form-field label="Contraseña" for="staff-edit-password" hint="Mínimo 8 caracteres. Déjala vacía para no cambiarla.">
+        <input id="staff-edit-password" type="password" formControlName="password" autocomplete="new-password" />
+      </oj-form-field>
+    }
   </form>
   <div footer>
     <button ojButton variant="secondary" type="button" (click)="closeEdit()">Cancelar</button>

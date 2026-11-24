@@ -8,6 +8,14 @@ export class RealtimeService {
 
     constructor(private readonly gateway: RealtimeGateway) {}
 
+    get teamDisconnected() {
+        return this.gateway.teamDisconnected
+    }
+
+    isTeamConnected(teamId: number, sessionId: string): Promise<boolean> {
+        return this.gateway.isTeamConnected(teamId, sessionId)
+    }
+
     toTeam(teamId: number, event: string, payload: unknown): void {
         this.gateway.server?.to(teamRoom(teamId)).emit(event, payload)
     }

@@ -9,6 +9,7 @@
 // Patrones conocidos, de más específico a más general. Cubren tanto los mensajes en inglés
 // (publicar/construir/conflictos) como los que el backend ya manda en español (schedule).
 const PATTERNS: readonly [RegExp, string][] = [
+  [/contraseña del superadministrador/i, 'La contraseña del superadministrador se define en el servidor y no se cambia desde la app.'],
   // ── Publicar / construir testset ──
   [/without expected output/i, 'Hay casos sin salida esperada. Construye los casos de prueba para generarlas.'],
   [/is not built|not ready|is not (yet )?ready|status:\s*(draft|failed|building)/i, 'Los casos de prueba aún no se han construido.'],

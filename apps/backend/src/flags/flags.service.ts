@@ -8,7 +8,7 @@ import { Team } from '../teams/entities/team.entity.js'
 import { Flag } from './entities/flag.entity.js'
 
 // Sin detectarse por más de este tiempo, la condición ya terminó y volver a verla es otro incidente.
-// Cubre el heartbeat (10 s) y la revisión de señal perdida (30 s), aunque se pierda alguno
+// Cubre el heartbeat y la revisión de señal perdida (10 s cada uno), aunque se pierdan algunos
 const SAME_INCIDENT_MS = 45_000
 // Tras confirmar una falta, tiempo para corregirla; si después se sigue detectando es reincidencia
 const REPEAT_GRACE_MS = 120_000
@@ -16,8 +16,10 @@ const LOGOUT_KEY = 'logout'
 const LOGOUT_PENDING = 'Cerró sesión durante el concurso y aún no vuelve.'
 
 // Si la detección nueva pertenece a la última alerta de ese tipo y llave
-function isSameIncident(last: Pick<Flag, 'resolved_at' | 'last_seen_at' | 'outcome'>, type: FlagType, now: Date): boolean {
+function isSameIncident(last: Pick<Flag, 'resolved_at' | 'last_seen_at' | 'outcome'>, type: FlagType, now: Date, endedAt?: Date): boolean {
     if(!last.resolved_at) return true
+    // La condición terminó después de la última detección (la app volvió a reportar): esto es otro cierre
+    if(endedAt && last.last_seen_at < endedAt) return false
     // Cambiar de máquina o cerrar sesión son hechos puntuales: si se repiten, es otro incidente
     if(type === FlagType.SESSION_REPLACED || type === FlagType.SESSION_CLOSED) return false
     if(last.outcome === FlagOutcome.CONFIRMED) return now.getTime() - last.resolved_at.getTime() < REPEAT_GRACE_MS
@@ -61,7 +63,8 @@ export class FlagsService {
     // Una alerta por incidente: un proceso prohibido que sigue abierto no genera una por heartbeat,
     // ni otra después de que el juez la resolvió (penalizaría dos veces lo mismo). Regresa null si ya existía
     // `editionId`: si se da, el equipo debe ser de esa edición (alertas manuales del staff)
-    async raise(teamId: number, type: FlagType, details: string, dedupeKey = '', editionId?: number): Promise<Flag | null> {
+    // `endedAt`: última vez que se supo que la condición no estaba (último heartbeat, para "sin señal")
+    async raise(teamId: number, type: FlagType, details: string, dedupeKey = '', editionId?: number, endedAt?: Date): Promise<Flag | null> {
         const team = await this.teamRepository.findOne({ where: { id: teamId }, select: { id: true, edition_id: true } })
         if(!team || (editionId !== undefined && team.edition_id !== editionId)){
             throw new NotFoundException('team not found #' + teamId + (editionId !== undefined ? ' in edition #' + editionId : ''))
@@ -76,7 +79,7 @@ export class FlagsService {
                 select: { id: true, resolved_at: true, last_seen_at: true, outcome: true },
             })
             const now = new Date()
-            if(last && isSameIncident(last, type, now)){
+            if(last && isSameIncident(last, type, now, endedAt)){
                 await this.flagRepository.update(last.id, { last_seen_at: now })
                 return null
             }
@@ -90,6 +93,7 @@ export class FlagsService {
             details,
             dedupe_key: dedupeKey,
             offense,
+            last_seen_at: new Date(),
         }))
         this.logger.warn('flag #' + flag.id + ' ' + type + ' for team #' + teamId + ': ' + details)
         this.notify(flag)

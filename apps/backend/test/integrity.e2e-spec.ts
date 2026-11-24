@@ -201,8 +201,9 @@ describe('Integridad: alertas, heartbeat, auditoría y exportaciones (e2e)', () 
 
   it('una sesión sin heartbeat con el concurso corriendo levanta una alerta', async () => {
     await repo(TeamSession).update({ team_id: team.id }, { last_heartbeat_at: new Date(Date.now() - 5 * 60_000) });
-    await app.get(IntegrityService).checkHeartbeats();
-    await app.get(IntegrityService).checkHeartbeats();
+    const afterBoot = new Date(Date.now() + 60_000); // recién arrancada la API se espera una ventana completa
+    await app.get(IntegrityService).checkHeartbeats(afterBoot);
+    await app.get(IntegrityService).checkHeartbeats(afterBoot);
     expect((await flags('?open=true')).map((flag) => flag.type)).toEqual([FlagType.HEARTBEAT_LOST]);
   });
 
