@@ -1,4 +1,4 @@
-import { CodeTextareaDirective } from '../../../../shared/ui/code-textarea.directive';
+import { CodeEditor } from '../../../../shared/ui/code-editor.component';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -141,7 +141,7 @@ const STEP_TEXT: Record<TestsetStep, { title: string; hint: string }> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgTemplateOutlet,
-    CodeTextareaDirective,
+    CodeEditor,
     ReactiveFormsModule,
     TestRunModal,
     RouterLink,
@@ -782,6 +782,7 @@ export class TestsetWorkspace {
   });
   // Checker: se sube dentro del formulario de evaluación (solo con la tarjeta "Checker").
   protected readonly checkerLang = this.fb.control<string | null>(null);
+  protected readonly checkerLangValue = toSignal(this.checkerLang.valueChanges, { initialValue: this.checkerLang.value });
   protected readonly checkerText = signal('');
   protected readonly checkerFileName = signal('');
 

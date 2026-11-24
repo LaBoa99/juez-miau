@@ -86,6 +86,13 @@
     <oj-form-field label="Área de texto" for="sc-ctl-textarea">
       <textarea id="sc-ctl-textarea" rows="3" placeholder="varias líneas"></textarea>
     </oj-form-field>
+    <oj-form-field label="Editor de código (Python)" for="sc-ctl-code">
+      <oj-code-editor inputId="sc-ctl-code" language="python" [rows]="6"
+                      value="def suma(a, b):&#10;    # comentario&#10;    return a + b * 2  # &quot;texto&quot;&#10;" />
+    </oj-form-field>
+    <oj-form-field label="Editor de código (Java)" for="sc-ctl-code-java">
+      <oj-code-editor inputId="sc-ctl-code-java" language="java" [rows]="4" placeholder="o pega el código aquí" />
+    </oj-form-field>
   </div>
 </section>
 

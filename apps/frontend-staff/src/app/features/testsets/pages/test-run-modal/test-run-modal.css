@@ -9,4 +9,3 @@
 }
 .tr__io { margin: 0; max-width: 280px; max-height: 120px; overflow: auto; white-space: pre-wrap; word-break: break-all; font-size: 12px; }
 .tr__ok { font-size: 12px; color: var(--oj-success); }
-.tr__code { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--oj-font-mono); }

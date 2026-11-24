@@ -30,7 +30,7 @@
       }
       <oj-file-drop accept="" (fileSelected)="onFile($event)" />
       <oj-form-field label="Código" for="tr-code" hint="Arrastra un archivo arriba o pega el código aquí.">
-        <textarea ojCode id="tr-code" class="tr__code" rows="10" [value]="source()" (input)="source.set($any($event.target).value)"></textarea>
+        <oj-code-editor inputId="tr-code" [(value)]="source" [language]="langCode()" />
       </oj-form-field>
     } @else if (starting() || running()) {
       <p class="tr__muted" role="status">

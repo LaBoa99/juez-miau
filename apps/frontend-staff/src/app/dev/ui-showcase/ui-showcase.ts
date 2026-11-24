@@ -1,3 +1,4 @@
+import { CodeEditor } from '../../shared/ui/code-editor.component';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ButtonDirective } from '../../shared/ui/button.directive';
 import { Badge } from '../../shared/ui/badge.component';
@@ -21,7 +22,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ButtonDirective, Badge, Alert, FormField, Segmented, PageHeader, Breadcrumb, EmptyState,
-    SidePanel, TabNav, ConfirmDialog, FileDrop, Modal, CodeBlock, MarkdownEditor, ReactiveFormsModule,
+    SidePanel, TabNav, ConfirmDialog, FileDrop, Modal, CodeBlock, CodeEditor, MarkdownEditor, ReactiveFormsModule,
   ],
   templateUrl: './ui-showcase.html',
   styleUrl: './ui-showcase.css',
