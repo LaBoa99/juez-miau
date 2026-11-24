@@ -66,6 +66,10 @@ export const FORBIDDEN_PROCESS_CATALOG: ForbiddenProcessGroup[] = [
       { id: 'wps', etiqueta: 'WPS Office', procesos: ['wps', 'et', 'wpp'] },
     ],
   },
+  {
+    grupo: 'Utilidades',
+    opciones: [{ id: 'notepad', etiqueta: 'Bloc de notas', procesos: ['notepad'] }],
+  },
 ];
 
 // Mismo criterio que el backend (integrity.service.normalizeProcessName).

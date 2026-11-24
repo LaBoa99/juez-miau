@@ -6,6 +6,10 @@
   --oj-text: #111827;
   --oj-text-muted: #6B7280;
   --oj-border: #E5E7EB;
+  /* Borde de campos (input/select/textarea): más oscuro que --oj-border para que se vea en
+     pantallas de alto contraste (4.8:1 sobre blanco, cumple WCAG 1.4.11 de 3:1). */
+  --oj-border-input: #6B7280;
+  --oj-border-danger: #B91C1C;
   --oj-primary: #111827;
   --oj-primary-hover: #1F2937;
   --oj-primary-active: #030712;
@@ -69,6 +73,8 @@
   --oj-text: #EDE8DF;
   --oj-text-muted: #D2BFA3;
   --oj-border: rgb(242 232 216 / 0.22);
+  --oj-border-input: #D2BFA3;
+  --oj-border-danger: #FF6B5E;
   --oj-primary: #EDE8DF;
   --oj-primary-hover: #D2BFA3;
   --oj-primary-active: #FFFFFF;

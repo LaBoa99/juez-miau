@@ -15,7 +15,7 @@ input,
 select,
 textarea {
   box-sizing: border-box;
-  border: 1px solid var(--oj-border);
+  border: 1px solid var(--oj-border-input);
   border-radius: var(--oj-radius);
   padding: 0 10px;
   font: inherit;
@@ -40,6 +40,14 @@ select:focus,
 textarea:focus {
   outline: 1px solid var(--oj-text);
   box-shadow: none;
+}
+
+/* Angular pone estas clases solas en el control nativo (formControlName/ngModel) cuando ya se
+   tocó y es inválido: el borde se distingue del borde normal, sin tocar el mensaje de oj-form-field. */
+input.ng-touched.ng-invalid,
+select.ng-touched.ng-invalid,
+textarea.ng-touched.ng-invalid {
+  border-color: var(--oj-border-danger);
 }
 
 input:disabled,

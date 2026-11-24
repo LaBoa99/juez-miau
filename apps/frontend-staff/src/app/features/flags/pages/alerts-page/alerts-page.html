@@ -119,7 +119,7 @@
     @if (actionError()) {
       <oj-alert tone="error">{{ actionError() }}</oj-alert>
     }
-    <p class="al__muted">Confirmar suma 20 minutos a la penalización del equipo. Descartar no afecta su lugar.</p>
+    <p class="al__muted">Penalizar suma 20 minutos a la penalización del equipo. No penalizar no afecta su lugar.</p>
     @if ((resolveTarget()?.offense ?? 1) > 1 && !resolveTarget()?.resolvedAt) {
       <oj-alert tone="warning">
         Es su falta número {{ resolveTarget()?.offense }} de este tipo y no puede enviar hasta que decidas.
@@ -137,11 +137,11 @@
   </div>
   <div footer class="oj-actions">
     @if (resolveTarget()?.outcome !== FlagOutcome.DISMISSED) {
-      <button ojButton variant="secondary" type="button" [disabled]="resolving()" (click)="confirmResolve(FlagOutcome.DISMISSED)">Descartar</button>
+      <button ojButton variant="secondary" type="button" [disabled]="resolving()" (click)="confirmResolve(FlagOutcome.DISMISSED)">No penalizar</button>
     }
     @if (resolveTarget()?.outcome !== FlagOutcome.CONFIRMED) {
       <button ojButton variant="danger" type="button" [disabled]="resolving()" (click)="confirmResolve(FlagOutcome.CONFIRMED)">
-        {{ resolving() ? 'Guardando…' : 'Confirmar · +20 min' }}
+        {{ resolving() ? 'Guardando…' : 'Penalizar' }}
       </button>
     }
   </div>

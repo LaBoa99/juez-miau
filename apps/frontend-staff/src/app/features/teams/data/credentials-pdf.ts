@@ -1,5 +1,6 @@
 import { TEAM_LOGIN_INSTRUCTIONS } from '@concurso/shared-types';
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
+import { JETBRAINS_MONO_BOLD_WOFF, JETBRAINS_MONO_REGULAR_WOFF } from './jetbrains-mono.vfs';
 
 // Logos servidos desde public/assets/logos. Si falta alguno, el PDF sale igual (sin esa imagen) y se avisa.
 const CUVALLES_LOGO = '/assets/logos/logo-cuvalles.png';
@@ -66,10 +67,17 @@ async function loadPdfMake() {
     fonts: unknown;
     createPdf: (doc: TDocumentDefinitions) => { download: (name: string) => void };
   };
-  pdfMake.vfs = (vfsMod as unknown as { default?: unknown }).default ?? vfsMod;
-  // Roboto: pdfmake en el navegador solo trae esa fuente en su vfs (Courier truena al generar)
+  const robotoVfs = ((vfsMod as unknown as { default?: unknown }).default ?? vfsMod) as Record<string, string>;
+  pdfMake.vfs = {
+    ...robotoVfs,
+    'JetBrainsMono-Regular.woff': JETBRAINS_MONO_REGULAR_WOFF,
+    'JetBrainsMono-Bold.woff': JETBRAINS_MONO_BOLD_WOFF,
+  };
+  // Roboto: pdfmake en el navegador solo trae esa fuente en su vfs (Courier truena al generar).
+  // JetBrains Mono: para usuario/contraseña, distingue I/l/1/O/0 a simple vista (ver credentials()).
   pdfMake.fonts = {
     Roboto: { normal: 'Roboto-Regular.ttf', bold: 'Roboto-Medium.ttf', italics: 'Roboto-Italic.ttf', bolditalics: 'Roboto-MediumItalic.ttf' },
+    JetBrainsMono: { normal: 'JetBrainsMono-Regular.woff', bold: 'JetBrainsMono-Bold.woff' },
   };
   return pdfMake;
 }
@@ -118,7 +126,7 @@ function bigBox(label: string, value: string, note: string | null): Content {
 
 // Usuario y contraseña grandes y espaciados, para copiarlos sin confundir letras
 function credentials(userLabel: string, user: string, password: string): Content {
-  const value = (text: string): Content => ({ text, fontSize: 16, bold: true, characterSpacing: 1.5 });
+  const value = (text: string): Content => ({ text, font: 'JetBrainsMono', fontSize: 16, bold: true, characterSpacing: 1.5 });
   return {
     table: {
       widths: ['auto', '*'],

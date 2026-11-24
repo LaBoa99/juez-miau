@@ -41,16 +41,20 @@ export class IntegrityService implements OnModuleInit {
             .filter((name) => name.trim())
             .map((name) => [normalizeProcessName(name), name]))
         const running = new Set((dto.processes ?? []).map(normalizeProcessName))
+        // Nombres normalizados que coincidieron: el cliente los cierra. No es el catálogo completo
+        // (lo que nunca abrió no se manda), solo lo que ya está corriendo y es prohibido.
+        const killProcesses: string[] = []
         for(const [normalized, name] of forbidden){
             if(running.has(normalized)){
                 await this.flagsService.raise(teamId, FlagType.FORBIDDEN_PROCESS, 'Proceso prohibido en ejecución: ' + name, normalized)
+                killProcesses.push(normalized)
             }
         }
 
         await this.checkHardware(teamId, team.edition, dto)
 
-        // Sin la lista de prohibidos ni el estado de bloqueo: el equipo no debe saber qué se vigila
-        return { nextHeartbeatMs: HEARTBEAT_EVERY_MS }
+        // Sin el catálogo completo ni el estado de bloqueo: el equipo no debe saber qué se vigila
+        return { nextHeartbeatMs: HEARTBEAT_EVERY_MS, ...(killProcesses.length ? { killProcesses } : {}) }
     }
 
     // Reglas de hardware de la edición; cada una se levanta una vez mientras su alerta siga abierta

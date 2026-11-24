@@ -21,7 +21,8 @@ export class PasswordService {
     }
 
     generatePassword(length: number = 12): string {
-        const charset: string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        // Sin I, l, 1, O, 0: se confunden entre sí en el PDF de credenciales.
+        const charset: string = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         let password: string = "";
 
         for(let i = 0; i < length; i++){

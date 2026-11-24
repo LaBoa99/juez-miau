@@ -385,6 +385,8 @@ export class EditionTeamsService {
         }
 
         // último recurso: sufijo aleatorio largo
+        // shortcut: toString(36) puede incluir 0/1/l ambiguos; solo se llega aquí si las 6 variantes
+        // de CoolNames ya colisionaron (USERNAME_ATTEMPTS agotados). Si llegara a pasar seguido, filtrar aquí también.
         const fallback = `team_${Date.now().toString(36)}${used.size}`
         used.add(fallback)
         return fallback

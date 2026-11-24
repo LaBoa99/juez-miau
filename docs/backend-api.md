@@ -374,7 +374,7 @@ Heartbeat del cliente del concursante. Tipos: `IHeartbeat`, `IHeartbeatResponse`
 |---|---|---|---|---|
 | POST | `/contest/heartbeat` | `@AllowTeam` (solo equipo) | `{ processes?: string[] }` | `IHeartbeatResponse` |
 
-**`IHeartbeatResponse`** = `{ forbiddenProcesses: string[], nextHeartbeatMs, submissionsBlocked }`. El cliente lo manda cada **30 s** (`HEARTBEAT_EVERY_MS`); si no llega en **90 s** (`HEARTBEAT_LOST_AFTER_MS`) con el concurso corriendo, se levanta `HEARTBEAT_LOST`. Un proceso de `forbidden_processes` en `processes` → alerta `FORBIDDEN_PROCESS`. `submissionsBlocked` = hay alerta abierta y la edición bloquea envíos. No hay endpoint para leer heartbeats.
+**`IHeartbeatResponse`** = `{ nextHeartbeatMs, killProcesses? }`. El cliente lo manda cada **30 s** (`HEARTBEAT_EVERY_MS`); si no llega en **90 s** (`HEARTBEAT_LOST_AFTER_MS`) con el concurso corriendo, se levanta `HEARTBEAT_LOST`. Un proceso de `forbidden_processes` en `processes` → alerta `FORBIDDEN_PROCESS` y su nombre normalizado se agrega a `killProcesses` (el cliente lo cierra). **No** se manda el catálogo completo de prohibidos ni el estado de bloqueo de envíos: solo lo que ya está corriendo y coincidió ese heartbeat. No hay endpoint para leer heartbeats.
 
 ---
 

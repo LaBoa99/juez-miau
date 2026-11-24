@@ -112,8 +112,8 @@ export class Modal {
 
   readonly title = input<string>();
   readonly size = input<'sm' | 'md' | 'lg'>('md');
-  // oj-confirm-dialog lo pone en false: una confirmación no se descarta clicando el fondo.
-  readonly closeOnBackdrop = input(true);
+  // Ninguna modal se cierra clicando el fondo (pedido del staff).
+  readonly closeOnBackdrop = input(false);
   readonly closed = output<void>();
 
   protected readonly titleId = `oj-modal-title-${nextId++}`;

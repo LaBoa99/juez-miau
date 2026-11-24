@@ -30,7 +30,7 @@ import { ChangeDetectionStrategy, Component, input, output, signal } from '@angu
       align-items: center;
       justify-content: center;
       padding: 24px;
-      border: 1px dashed var(--oj-border);
+      border: 1px dashed var(--oj-border-input);
       border-radius: var(--oj-radius);
       cursor: pointer;
       text-align: center;

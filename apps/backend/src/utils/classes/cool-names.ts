@@ -1,5 +1,14 @@
 import { randomInt } from "crypto"
 
+// Sin 0/1: se confunden con O/l/I en el PDF de credenciales.
+const SAFE_DIGITS = "23456789"
+
+function safeDigits(length: number): string {
+    let out = ""
+    for(let i = 0; i < length; i++) out += SAFE_DIGITS.charAt(randomInt(0, SAFE_DIGITS.length))
+    return out
+}
+
 export class CoolNames {
 
     static coolUsername(text: string){
@@ -13,8 +22,8 @@ export class CoolNames {
         const formats = [
             () => joinedCamel,
             () => joinedSnake,
-            () => `${joinedSnake}_${randomInt(10, 99)}`,
-            () => `${joinedFlat}${randomInt(1, 9)}`,
+            () => `${joinedSnake}_${safeDigits(2)}`,
+            () => `${joinedFlat}${safeDigits(1)}`,
             () => `the_${joinedSnake}`,
             () => `team_${joinedCamel}`,
         ]

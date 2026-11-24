@@ -1,10 +1,12 @@
 import threading
 
+import psutil
 from services.api_client import ApiError
 from collections import namedtuple
 
 from services.integrity_service import (
-    MAX_NAME, MAX_PROCESSES, IntegrityService, active_interfaces, heartbeat_payload, removable_drives, running_processes,
+    MAX_NAME, MAX_PROCESSES, IntegrityService, active_interfaces, heartbeat_payload, kill_processes,
+    normalize_process_name, removable_drives, running_processes,
 )
 
 Part = namedtuple("Part", "device mountpoint opts")
@@ -85,3 +87,53 @@ def test_windows_counts_usb_disks_reported_as_fixed_but_never_the_system_drive()
     parts = [Part("C:\\", "C:\\", "rw,fixed"), Part("D:\\", "D:\\", "rw,fixed"), Part("F:\\", "F:\\", "rw,fixed")]
     usb = {"F:\\", "C:\\"}  # aunque el sistema estuviera en USB, no se reporta
     assert removable_drives(parts, "win32", is_external=lambda d: d in usb, system_drive="C:") == ["F:\\"]
+
+
+def test_normalize_process_name_strips_path_case_and_exe():
+    assert normalize_process_name("C:\\Program Files\\Google\\Chrome.EXE") == "chrome"
+    assert normalize_process_name("discord") == "discord"
+    assert normalize_process_name("/usr/bin/code") == "code"
+
+
+class FakeProcess:
+    def __init__(self, pid, name, raises=None):
+        self.info = {"pid": pid, "name": name}
+        self._raises = raises
+        self.killed = False
+
+    def kill(self):
+        if self._raises:
+            raise self._raises
+        self.killed = True
+
+
+def test_kill_processes_only_kills_matches_and_survives_denied_access(monkeypatch):
+    procs = [
+        FakeProcess(1, "chrome.exe"),
+        FakeProcess(2, "steam.exe", raises=psutil.AccessDenied(2)),
+        FakeProcess(3, "code.exe"),
+    ]
+    monkeypatch.setattr(psutil, "process_iter", lambda attrs: procs)
+
+    kill_processes(["chrome", "steam"])  # nombres ya normalizados, como los manda el servidor
+
+    assert procs[0].killed is True
+    assert procs[1].killed is False  # sin permisos: no truena, se ignora
+    assert procs[2].killed is False  # no estaba en la lista
+
+
+def test_kill_processes_does_nothing_without_names(monkeypatch):
+    called = []
+    monkeypatch.setattr(psutil, "process_iter", lambda attrs: called.append(1) or [])
+    kill_processes([])
+    assert called == []
+
+
+def test_run_kills_the_processes_the_server_flags(monkeypatch):
+    stop = threading.Event()
+    killed = []
+    monkeypatch.setattr("services.integrity_service.kill_processes", killed.append)
+    api = FakeApi([{"nextHeartbeatMs": 0, "killProcesses": ["chrome"]}], stop)
+    IntegrityService(api, collect=lambda: {"processes": ["chrome.exe"]}, retry_ms=0).run(stop)
+    # FakeApi hace una llamada extra al agotar las respuestas (sin killProcesses) antes de frenar el hilo.
+    assert killed == [["chrome"], []]

@@ -57,6 +57,30 @@ def running_processes(platform=sys.platform, window_pids=None):
     return sorted(names)[:MAX_PROCESSES]
 
 
+def normalize_process_name(name):
+    """Igual que integrity.service.ts normalizeProcessName: sin ruta, en minúsculas, sin .exe."""
+    base = name.rsplit("\\", 1)[-1].rsplit("/", 1)[-1]
+    if base.lower().endswith(".exe"):
+        base = base[:-4]
+    return base.lower()
+
+
+def kill_processes(names):
+    """Cierra los procesos cuyo nombre normalizado está en `names` (ya vienen normalizados: eso
+    es lo único que el servidor expone, nunca el catálogo completo de prohibidos). Silencioso,
+    como el resto del heartbeat: sin UI ni mensaje al equipo."""
+    wanted = set(names)
+    if not wanted:
+        return
+    for process in psutil.process_iter(["pid", "name"]):
+        name = process.info.get("name")
+        if name and normalize_process_name(name) in wanted:
+            try:
+                process.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass  # shortcut: sin permisos para cerrarlo (p. ej. corre elevado); la alerta ya llegó al juez
+
+
 def monitor_count():
     """Monitores conectados. Se usa la API de Windows porque Qt no permite consultar pantallas
     fuera del hilo de la UI; en otros sistemas se omite (None) y el servidor no evalúa la regla."""
@@ -139,7 +163,9 @@ def heartbeat_payload():
 
 class IntegrityService(QObject):
     """Heartbeat en su propio hilo mientras haya sesión. Silencioso: el equipo no ve nada de esto;
-    lo que el servidor detecta solo le llega al juez."""
+    lo que el servidor detecta solo le llega al juez. Única excepción: si un proceso que mandamos
+    coincide con la lista de prohibidos de la edición, el servidor nos dice ese nombre puntual
+    (kill_processes) y lo cerramos sin avisar — nunca el catálogo completo de qué se vigila."""
 
     session_lost = Signal(str)
 
@@ -164,7 +190,9 @@ class IntegrityService(QObject):
         while not stop.is_set():
             interval = self.retry_ms
             try:
-                interval = self.api.post("/contest/heartbeat", self.collect())["nextHeartbeatMs"]
+                response = self.api.post("/contest/heartbeat", self.collect())
+                interval = response["nextHeartbeatMs"]
+                kill_processes(response.get("killProcesses", []))
             except ApiError as error:
                 if error.status == 401:
                     self.session_lost.emit(error.message)
