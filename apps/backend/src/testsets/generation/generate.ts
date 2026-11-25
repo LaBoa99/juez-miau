@@ -3,6 +3,7 @@ import { serializeInput, serializeValue } from './canonical-json.js'
 import { MAX_CASE_BYTES } from './limits.js'
 import { Prng } from './prng.js'
 import { expandCharset, integerBounds, resolveGroupNodes } from './schema.js'
+import { sizeParams } from './signature.js'
 
 export class GenerationError extends Error {}
 
@@ -16,6 +17,7 @@ export interface GeneratedCase {
 // Una entrada por semilla de cada grupo, en orden. Asume firma y esquema ya validados.
 // Es un iterador para no tener todos los casos en memoria a la vez
 export function* generateCases(signature: IProblemSignature, schema: ITestsetSchema): Generator<GeneratedCase> {
+    const sizes = sizeParams(signature)
     for(const group of schema.groups){
         const nodes = resolveGroupNodes(schema, group)
 
@@ -23,8 +25,10 @@ export function* generateCases(signature: IProblemSignature, schema: ITestsetSch
             const prng = Prng.fromKey(group.name + ':' + seed)
             const input: Record<string, unknown> = {}
             for(const param of signature.params){
+                if(sizes.has(param.name)) continue
                 input[param.name] = generateValue(prng, param.type, nodes[param.name], group.name + '/' + seed + ' ' + param.name)
             }
+            for(const [size, array] of sizes) input[size] = (input[array] as unknown[]).length
 
             const text = serializeInput(signature, input)
             if(Buffer.byteLength(text) > MAX_CASE_BYTES){

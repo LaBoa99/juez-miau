@@ -46,7 +46,10 @@ const PATTERNS: readonly [RegExp, string][] = [
   [/can only be deleted while it is a draft/i, 'Solo se puede eliminar mientras es borrador.'],
   [/would have more than \d+ cases|already has \d+ cases/i, 'Se pasaría del máximo de casos de prueba de la versión.'],
   [/only cases generated from the schema can be pinned/i, 'Solo los casos aleatorios se pueden fijar como manuales.'],
-  [/^case \d+: /i, 'Algún caso no coincide con la firma: revisa los nombres y los tipos de los parámetros.'],
+  [/^case #?\d+/i, 'Algún caso no coincide con la firma: revisa los nombres y los tipos de los parámetros.'],
+  [/must equal the length of/i, 'Un tamaño no coincide con el largo de su lista: déjalo vacío y se calcula solo.'],
+  [/\.size: |is already the size of another array|only arrays have a size/i, 'El tamaño de una lista debe ser un parámetro int declarado antes de ella, y solo de esa lista.'],
+  [/is the size of .* and is calculated from it/i, 'El tamaño de una lista no va en los casos aleatorios: se calcula del largo de la lista.'],
   [/can only be modified before it starts/i, 'Solo se puede modificar antes de que inicie el concurso.'],
   [/has submissions; it can no longer go back to draft/i, 'El problema ya tiene envíos: ya no puede regresar a borrador ni cambiar su firma.'],
   // ── Equipos / salones ──

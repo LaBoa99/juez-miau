@@ -70,14 +70,15 @@ function inputLines(type: TypeRef, value: unknown): string[] {
 export function programInput(signature: IProblemSignature, inputJson: string): string {
     const { value, errors } = normalizeInput(signature, parseJsonPreservingIntegers(inputJson))
     if(errors.length > 0) throw new Error('invalid case input: ' + errors.join('; '))
-    return signature.params.flatMap((param) => inputLines(param.type, value[param.name])).join('\n') + '\n'
+    // Una lista con `size` no repite su cantidad: ese int ya se escribió antes ("6" y luego "3 5 2 7 7 9")
+    return signature.params.flatMap((param) => inputLines(param.type, value[param.name]).slice(param.size ? 1 : 0)).join('\n') + '\n'
 }
 
-// Respuesta como texto para el enunciado: un array en una línea; un array de arrays, una fila por línea
+// Respuesta como texto para el enunciado: un array de números en una línea; de string o de arrays, uno por línea
 function outputLines(type: TypeRef, value: unknown): string[] {
     if(type.type !== 'array') return [scalarText(type.type, value)]
     const items = value as unknown[]
-    if(type.items.type === 'array') return items.flatMap((item) => outputLines(type.items, item))
+    if(type.items.type === 'array' || type.items.type === 'string') return items.flatMap((item) => outputLines(type.items, item))
     const scalar = type.items.type
     return [items.map((item) => scalarText(scalar, item)).join(' ')]
 }

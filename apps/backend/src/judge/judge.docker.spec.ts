@@ -355,6 +355,34 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('programa completo en Docker', () => 
         expect(result.cases.map((testCase) => [testCase.verdict, testCase.message])).toEqual([[Verdict.AC, null], [Verdict.AC, null], [Verdict.AC, null]])
     }, 120_000)
 
+    // n es el tamaño de a: la entrada es "n" y luego los elementos, sin repetir la cantidad. Después un string, que en C
+    // y C++ debe empezar en su propia línea aunque a venga vacía
+    const SIZED: IProblemSignature = {
+        functionName: 'sumar',
+        params: [{ name: 'n', type: int }, { name: 'a', type: { type: 'array', items: int }, size: 'n' }, { name: 'nombre', type: string }],
+        returns: int,
+    }
+    const SIZED_CASES: JudgeCase[] = [
+        { ordinal: 1, input: '{"n":3,"a":[4,5,6],"nombre":"ana maria"}', expected: '24' },
+        { ordinal: 2, input: '{"n":0,"a":[],"nombre":"x"}', expected: '1' },
+    ]
+    const SIZED_LOGIC: Record<string, string> = {
+        python: 'total = len(nombre)\nfor i in range(n):\n    total += a[i]\nprint(total)',
+        javascript: 'let total = nombre.length\nfor (let i = 0; i < n; i++) total += a[i]\nconsole.log(total)',
+        typescript: 'let total = nombre.length\nfor (let i = 0; i < n; i++) total += a[i]\nconsole.log(total)',
+        java: 'int total = nombre.length();\nfor (int i = 0; i < n; i++) total += a[i];\nSystem.out.println(total);',
+        csharp: 'int total = nombre.Length;\nfor (int i = 0; i < n; i++) total += a[i];\nConsole.WriteLine(total);',
+        cpp: 'int total = nombre.size();\nfor (int i = 0; i < n; i++) total += a[i];\ncout << total << endl;',
+        c: 'int total = strlen(nombre);\nfor (int i = 0; i < n; i++) total += a[i];\nprintf("%d\\n", total);',
+    }
+
+    it.concurrent.each(Object.keys(SIZED_LOGIC))('la plantilla de %s usa el tamaño marcado y da AC', async (code) => {
+        const source = fillTemplate(programStarterCode(code, SIZED)!, SIZED_LOGIC[code])
+        const result = await run(code, SIZED, source, SIZED_CASES)
+        if(result.verdict === Verdict.CE) throw new Error('CE:\n' + result.compileLog + '\n' + source)
+        expect(result.cases.map((testCase) => [testCase.verdict, testCase.message])).toEqual([[Verdict.AC, null], [Verdict.AC, null]])
+    }, 120_000)
+
     const SUMA: IProblemSignature = { functionName: 'suma', params: [{ name: 'num1', type: int }, { name: 'num2', type: int }], returns: int }
     const SUMA_CASES: JudgeCase[] = [
         { ordinal: 1, input: '{"num1":5,"num2":3}', expected: '8' },

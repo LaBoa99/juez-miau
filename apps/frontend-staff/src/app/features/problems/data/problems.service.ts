@@ -40,8 +40,9 @@ export class ProblemsService {
     return this.http.patch<IProblem>(`${API}/problems/${id}`, dto);
   }
 
-  updateSignature(problemId: number, sig: IProblemSignature): Observable<IProblem> {
-    return this.http.patch<IProblem>(`${API}/problems/${problemId}/signature`, sig);
+  // adaptCases: si la firma nueva solo quita parámetros, también los quita de los casos guardados
+  updateSignature(problemId: number, sig: IProblemSignature, adaptCases = false): Observable<IProblem> {
+    return this.http.patch<IProblem>(`${API}/problems/${problemId}/signature`, adaptCases ? { ...sig, adaptCases } : sig);
   }
 
   // El autor lo propone; el admin de la edición (o superadmin) lo acepta o lo saca del concurso

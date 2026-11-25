@@ -44,7 +44,7 @@ import { parseJsonPreservingIntegers, serializeInput } from '../generation/canon
 import { GenerationError, generateCases } from '../generation/generate.js';
 import { MAX_CASE_BYTES, MAX_GENERATED_TOTAL_BYTES, MAX_INPUT_PREVIEW_BYTES, MAX_TESTSET_CASES, MAX_VALIDATION_ERRORS } from '../generation/limits.js';
 import { validateSchema } from '../generation/schema.js';
-import { findLineBreaks, normalizeInput, validateSignature } from '../generation/signature.js';
+import { findLineBreaks, normalizeInput, sizeParams, validateSignature } from '../generation/signature.js';
 import { toSourceDto, toTestCaseDto, toTestsetDto, toTestsetSummary } from '../mappers/testset.mapper.js';
 import { SIGNATURE_QUEUE, TEST_RUN_KEEP_SECONDS, TEST_RUN_QUEUE, TESTSET_BUILD_QUEUE, type SignatureJob, type TestRunJob, type TestRunResult, type TestsetBuildJob } from '../testsets.constants.js';
 import type { SignatureResult } from '../processors/signature.processor.js';
@@ -117,13 +117,34 @@ export class TestsetsService {
 
         const signature: IProblemSignature = { functionName: dto.functionName, params: dto.params, returns: dto.returns }
 
+        // Los casos se reescriben al quitar parámetros (pide confirmación: adaptCases) y al marcar el tamaño de una lista
+        // (el int se calcula y sale del esquema; no se pierde nada). Agregar parámetros o cambiar tipos no se ajusta solo
+        let adapted: AdaptedCases | null = null
         if(testset){
+            const removed = (problem.signature?.params ?? []).map((param) => param.name)
+                .filter((name) => !signature.params.some((param) => param.name === name))
             const errors = await this.findIncompatibilities(testset, signature)
-            if(errors.length > 0) throw unprocessable(errors)
+            adapted = await this.adaptCases(testset, signature, removed)
+            if(errors.length > 0 && !adapted) throw unprocessable(errors)
+            if(adapted && removed.length > 0 && adapted.cases.length > 0 && !dto.adaptCases){
+                throw unprocessable(['signature removes parameter(s) ' + removed.join(', ') + ' from ' + adapted.cases.length
+                    + ' case(s); send adaptCases to update them'])
+            }
         }
 
         await this.dataSource.transaction(async (manager) => {
             await manager.update(Problem, problem.id, { signature })
+            if(testset && adapted){
+                for(const { id, text } of adapted.cases){
+                    const blob = await this.blobsService.put(text, manager)
+                    // La salida esperada era de la entrada anterior: se recalcula al construir
+                    await manager.update(TestCase, id, { input_sha: blob.sha, input_bytes: blob.size, output_sha: null, output_bytes: null, ref_time_ms: null })
+                }
+                if(adapted.schema){
+                    testset.schema = adapted.schema
+                    await manager.save(testset)
+                }
+            }
             if(testset) await this.markEdited(testset, manager)
         })
         problem.signature = signature
@@ -190,10 +211,12 @@ export class TestsetsService {
         const previews = await this.blobsService.getManyText(
             cases.filter((testCase) => testCase.input_bytes <= MAX_INPUT_PREVIEW_BYTES).map((testCase) => testCase.input_sha),
         )
+        const refSolution = testset.ref_solution_id === null ? null : await this.refSolutionRepository.findOneBy({ id: testset.ref_solution_id })
 
         return {
             ...toTestsetDto(testset),
             problemId: testset.problem_id,
+            refSolution: toSourceDto(refSolution),
             cases: cases.map((testCase) => toTestCaseDto(
                 testCase,
                 testCase.input_bytes <= MAX_INPUT_PREVIEW_BYTES ? previews.get(testCase.input_sha) ?? null : null,
@@ -876,6 +899,32 @@ export class TestsetsService {
     // Renumera 1..n los casos que quedan y regresa n. Se pasa por negativos para no chocar
     // con el índice único (testset_id, ordinal) a mitad de la actualización
     // Casos y esquema que dejarían de ser válidos con otra firma
+    // Casos y esquema con la firma nueva: sin los parámetros quitados, con el tamaño de cada lista calculado y fuera del
+    // esquema. Solo regresa lo que cambia; null si aun así no cuadran (agregó parámetros o cambió tipos)
+    private async adaptCases(testset: Testset, signature: IProblemSignature, removed: string[]): Promise<AdaptedCases | null> {
+        let schema: ITestsetSchema | null = null
+        if(testset.schema){
+            const drop = [...removed, ...sizeParams(signature).keys()]
+            const groups = testset.schema.groups.map((group) => group.overrides ? { ...group, overrides: omit(group.overrides, drop) } : group)
+            const next = { ...testset.schema, params: omit(testset.schema.params, drop), groups }
+            if(validateSchema(signature, next).length > 0) return null
+            if(JSON.stringify(next) !== JSON.stringify(testset.schema)) schema = next
+        }
+
+        const cases = await this.testCaseRepository.find({ where: { testset_id: testset.id }, order: { ordinal: 'ASC' }})
+        const inputs = await this.blobsService.getManyText(cases.map((testCase) => testCase.input_sha))
+        const changed: AdaptedCases['cases'] = []
+        for(const testCase of cases){
+            const text = inputs.get(testCase.input_sha)
+            if(text === undefined) return null
+            const { value, errors } = normalizeInput(signature, omit(parseJsonPreservingIntegers(text) as Record<string, unknown>, removed))
+            if(errors.length > 0) return null
+            const next = serializeInput(signature, value)
+            if(next !== text) changed.push({ id: testCase.id, text: next })
+        }
+        return { cases: changed, schema }
+    }
+
     private async findIncompatibilities(testset: Testset, signature: IProblemSignature): Promise<string[]> {
         const errors: string[] = []
 
@@ -897,4 +946,13 @@ export class TestsetsService {
 
         return errors
     }
+}
+
+interface AdaptedCases {
+    cases: { id: number, text: string }[]
+    schema: ITestsetSchema | null
+}
+
+function omit<T>(record: Record<string, T>, keys: string[]): Record<string, T> {
+    return Object.fromEntries(Object.entries(record).filter(([key]) => !keys.includes(key)))
 }

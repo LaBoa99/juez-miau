@@ -9,7 +9,7 @@ export function typeToString(type: TypeRef): string {
 }
 
 export function signatureToString(sig: IProblemSignature): string {
-  const params = sig.params.map((p) => `${p.name}: ${typeToString(p.type)}`).join(', ');
+  const params = sig.params.map((p) => `${p.name}: ${typeToString(p.type)}${p.size ? ` (tamaño ${p.size})` : ''}`).join(', ');
   return `${sig.functionName}(${params}) -> ${typeToString(sig.returns)}`;
 }
 

@@ -114,3 +114,28 @@ describe('Prng', () => {
         }
     })
 })
+
+describe('tamaño de una lista en los casos aleatorios', () => {
+    const sized: IProblemSignature = {
+        functionName: 'f',
+        params: [{ name: 'n', type: { type: 'int' } }, { name: 'a', type: { type: 'array', items: { type: 'int' } }, size: 'n' }],
+        returns: { type: 'int' },
+    }
+    const schema: ITestsetSchema = {
+        params: { a: { type: 'array', length: [0, 6], items: { type: 'int', min: 1, max: 9 } } },
+        groups: [{ name: 'g', seeds: [1, 2, 3, 4] }],
+    }
+
+    it('el esquema no lleva el tamaño y lo rechaza si viene', () => {
+        expect(validateSchema(sized, schema)).toEqual([])
+        expect(validateSchema(sized, { ...schema, params: { ...schema.params, n: { type: 'int' } } }))
+            .toEqual(['schema.params.n: is the size of a and is calculated from it'])
+    })
+
+    it('generateCases pone en n el largo de a', () => {
+        for(const generated of generateCases(sized, schema)){
+            const input = parseJsonPreservingIntegers(generated.text) as { n: number, a: number[] }
+            expect(input.n).toBe(input.a.length)
+        }
+    })
+})

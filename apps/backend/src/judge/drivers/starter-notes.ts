@@ -29,5 +29,6 @@ export function outputHint(type: TypeRef, languageCode: string): string {
     if(type.type === 'bool' && (languageCode === 'c' || languageCode === 'cpp')) return 'Al final imprime el texto true o false (no 1 ni 0).'
     if(type.type !== 'array') return 'Al final imprime ' + describeType(type, languageCode) + '.'
     if(type.items.type === 'array') return 'Al final imprime una fila por línea, con sus elementos separados por espacios.'
-    return 'Al final imprime los elementos en una sola línea, separados por espacios.'
+    if(type.items.type === 'string') return 'Al final imprime cada texto en su propia línea, en orden.'
+    return 'Al final imprime los elementos en orden, separados por espacios (en una línea o en varias).'
 }

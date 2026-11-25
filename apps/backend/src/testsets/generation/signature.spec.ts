@@ -88,3 +88,32 @@ describe('findLineBreaks', () => {
         ])
     })
 })
+
+describe('tamaño de una lista (size)', () => {
+    const intT = { type: 'int' } as const
+    const list = { type: 'array', items: intT } as const
+    const sized: IProblemSignature = {
+        functionName: 'dias',
+        params: [{ name: 'n', type: intT }, { name: 'a', type: list, size: 'n' }],
+        returns: intT,
+    }
+
+    it('acepta un int declarado antes como tamaño de una lista', () => {
+        expect(validateSignature(sized)).toEqual([])
+    })
+
+    it('rechaza un tamaño que no es un int anterior, en algo que no es lista o repetido', () => {
+        const errors = (params: unknown[]) => validateSignature({ functionName: 'f', params, returns: intT })
+        expect(errors([{ name: 'a', type: list, size: 'n' }, { name: 'n', type: intT }])).toEqual([expect.stringMatching(/params\[0\]\.size: must name an int parameter declared before a/)])
+        expect(errors([{ name: 'n', type: { type: 'long' } }, { name: 'a', type: list, size: 'n' }])).toEqual([expect.stringMatching(/"n" must be an int/)])
+        expect(errors([{ name: 'n', type: intT }, { name: 'x', type: intT, size: 'n' }])).toEqual([expect.stringMatching(/only arrays have a size/)])
+        expect(errors([{ name: 'n', type: intT }, { name: 'a', type: list, size: 'n' }, { name: 'b', type: list, size: 'n' }]))
+            .toEqual([expect.stringMatching(/"n" is already the size of another array/)])
+    })
+
+    it('normalizeInput calcula el tamaño si falta y rechaza uno distinto', () => {
+        expect(normalizeInput(sized, { a: [3, 5, 2] })).toEqual({ value: { a: [3, 5, 2], n: 3 }, errors: [] })
+        expect(normalizeInput(sized, { n: 3, a: [3, 5, 2] }).errors).toEqual([])
+        expect(normalizeInput(sized, { n: 4, a: [3, 5, 2] }).errors).toEqual(['input.n: must equal the length of a (3)'])
+    })
+})

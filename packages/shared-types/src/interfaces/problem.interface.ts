@@ -90,6 +90,8 @@ export interface IProblemTestset {
 export interface ITestsetDetail extends IProblemTestset {
     problemId: number
     cases: ITestCase[]
+    // La de esta versión (no siempre la vigente): el panel la muestra y la edita en el paso Solución
+    refSolution: IProblemSource | null
 }
 
 // Solución de referencia o generador: mismo formato

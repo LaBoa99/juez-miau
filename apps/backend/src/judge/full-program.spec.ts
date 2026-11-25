@@ -99,6 +99,18 @@ describe('programOutput', () => {
         expect(programOutput({ type: 'string' }, '"hola mundo"')).toBe('hola mundo')
         expect(programOutput({ type: 'array', items: int }, '[1,2,3]')).toBe('1 2 3')
         expect(programOutput({ type: 'array', items: { type: 'array', items: int } }, '[[1,2],[3,4]]')).toBe('1 2\n3 4')
-        expect(programOutput({ type: 'array', items: { type: 'string' } }, '["ana","luis"]')).toBe('ana luis')
+        expect(programOutput({ type: 'array', items: { type: 'string' } }, '["ana","luis"]')).toBe('ana\nluis')
+    })
+})
+
+describe('programInput con tamaño marcado', () => {
+    it('la lista con size no repite su cantidad', () => {
+        const signature: IProblemSignature = {
+            functionName: 'dias',
+            params: [{ name: 'n', type: int }, { name: 'a', type: { type: 'array', items: int }, size: 'n' }],
+            returns: int,
+        }
+        expect(programInput(signature, '{"n":6,"a":[3,5,2,7,7,9]}')).toBe('6\n3 5 2 7 7 9\n')
+        expect(programInput(signature, '{"n":0,"a":[]}')).toBe('0\n\n')
     })
 })

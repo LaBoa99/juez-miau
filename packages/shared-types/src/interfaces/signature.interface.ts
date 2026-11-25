@@ -10,6 +10,9 @@ export type TypeRef =
 export interface ISignatureParam {
     name: string
     type: TypeRef
+    // Solo en listas: el parámetro int, declarado antes, que dice cuántos elementos trae. En programa completo la lista
+    // ya no repite su cantidad; ese int siempre vale el tamaño de la lista (programa-completo.md §3)
+    size?: string
 }
 
 export interface IProblemSignature {

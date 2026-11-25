@@ -19,8 +19,10 @@ function solveHere(comment: string, indent: string, out: string, returns: TypeRe
     ]
 }
 
-// Lee un valor de `type` en la variable `name`
-type Reader = (type: TypeRef, name: string, indent: string, depth: number) => string[]
+// Lee un valor de `type` en la variable `name`. En una lista, `count` es la variable que ya tiene su cantidad (el int
+// marcado como su tamaño); sin él, la lista empieza con su propia línea de cantidad, que se guarda en <name>Cantidad.
+// La cantidad manda: un for con índice toma exactamente esos elementos y lo que sobre en la línea se ignora
+type Reader = (type: TypeRef, name: string, indent: string, depth: number, count?: string) => string[]
 
 type NumberOrBool = Exclude<ScalarType, 'string'>
 
@@ -39,20 +41,32 @@ const PY_SCALAR: Record<ScalarType, string> = {
     bool: 'input() == "true"',
     string: 'input()',
 }
-const PY_LIST: Record<NumberOrBool, string> = {
-    int: 'list(map(int, input().split()))',
-    long: 'list(map(int, input().split()))',
-    float: 'list(map(float, input().split()))',
-    bool: '[x == "true" for x in input().split()]',
+const PY_ITEM: Record<NumberOrBool, (text: string) => string> = {
+    int: (text) => 'int(' + text + ')',
+    long: (text) => 'int(' + text + ')',
+    float: (text) => 'float(' + text + ')',
+    bool: (text) => text + ' == "true"',
 }
 
-const python: Reader = (type, name, indent, depth) => {
+const python: Reader = (type, name, indent, depth, count) => {
     if(type.type !== 'array') return [indent + name + ' = ' + PY_SCALAR[type.type]]
-    if(isFlat(type)) return [indent + 'input()', indent + name + ' = ' + PY_LIST[type.items.type as NumberOrBool]]
+    const total = count ?? name + 'Cantidad'
+    const v = loopVar(depth)
+    const lines = count ? [] : [indent + total + ' = int(input())']
+    if(isFlat(type)){
+        return [
+            ...lines,
+            indent + name + 'Partes = input().split()',
+            indent + name + ' = []',
+            indent + 'for ' + v + ' in range(' + total + '):',
+            indent + IN + name + '.append(' + PY_ITEM[type.items.type as NumberOrBool](name + 'Partes[' + v + ']') + ')',
+        ]
+    }
     const item = itemName(depth)
     return [
+        ...lines,
         indent + name + ' = []',
-        indent + 'for _ in range(int(input())):',
+        indent + 'for ' + v + ' in range(' + total + '):',
         ...python(type.items, item, indent + IN, depth + 1),
         indent + IN + name + '.append(' + item + ')',
     ]
@@ -71,26 +85,29 @@ const JS_SCALAR: Record<ScalarType, string> = {
 const TS_SCALARS: Record<ScalarType, string> = { int: 'number', long: 'bigint', float: 'number', bool: 'boolean', string: 'string' }
 const tsType = (type: TypeRef): string => type.type === 'array' ? tsType(type.items) + '[]' : TS_SCALARS[type.type]
 
+const JS_ITEM: Record<NumberOrBool, (text: string) => string> = {
+    int: (text) => 'Number(' + text + ')',
+    long: (text) => 'BigInt(' + text + ')',
+    float: (text) => 'Number(' + text + ')',
+    bool: (text) => text + " === 'true'",
+}
+
 function javascript(typed: boolean): Reader {
-    const x = typed ? '(x: string)' : '(x)'
-    const JS_ITEM: Record<NumberOrBool, string> = { int: 'Number', long: x + ' => BigInt(x)', float: 'Number', bool: x + " => x === 'true'" }
-    const reader: Reader = (type, name, indent, depth) => {
+    const reader: Reader = (type, name, indent, depth, count) => {
         if(type.type !== 'array') return [indent + 'const ' + name + ' = ' + JS_SCALAR[type.type]]
+        const total = count ?? name + 'Cantidad'
+        const v = loopVar(depth)
+        const lines = [
+            ...(count ? [] : [indent + 'const ' + total + ' = Number(leer())']),
+            ...(isFlat(type) ? [indent + 'const ' + name + 'Partes = leer().trim().split(/\\s+/)'] : []),
+            indent + 'const ' + name + (typed ? ': ' + tsType(type) : '') + ' = []',
+            indent + 'for (let ' + v + ' = 0; ' + v + ' < ' + total + '; ' + v + '++) {',
+        ]
         if(isFlat(type)){
-            return [
-                indent + 'leer()',
-                indent + 'const ' + name + " = leer().split(' ').filter(Boolean).map(" + JS_ITEM[type.items.type as NumberOrBool] + ')',
-            ]
+            return [...lines, indent + IN + name + '.push(' + JS_ITEM[type.items.type as NumberOrBool](name + 'Partes[' + v + ']') + ')', indent + '}']
         }
         const item = itemName(depth)
-        const v = loopVar(depth)
-        return [
-            indent + 'const ' + name + (typed ? ': ' + tsType(type) : '') + ' = []',
-            indent + 'for (let ' + v + ' = Number(leer()); ' + v + ' > 0; ' + v + '--) {',
-            ...reader(type.items, item, indent + IN, depth + 1),
-            indent + IN + name + '.push(' + item + ')',
-            indent + '}',
-        ]
+        return [...lines, ...reader(type.items, item, indent + IN, depth + 1), indent + IN + name + '.push(' + item + ')', indent + '}']
     }
     return reader
 }
@@ -103,7 +120,6 @@ interface LineLanguage {
     parse: (scalar: ScalarType, text: string) => string
     trim: string
     split: string
-    length: string
 }
 
 const JAVA: LineLanguage = {
@@ -118,7 +134,6 @@ const JAVA: LineLanguage = {
     })[scalar],
     trim: '.trim()',
     split: '.trim().split(" +")',
-    length: 'length',
 }
 
 const CSHARP: LineLanguage = {
@@ -133,30 +148,32 @@ const CSHARP: LineLanguage = {
     })[scalar],
     trim: '.Trim()',
     split: ".Split(' ', StringSplitOptions.RemoveEmptyEntries)",
-    length: 'Length',
 }
 
 function lineReader(lang: LineLanguage): Reader {
-    const reader: Reader = (type, name, indent, depth) => {
+    const reader: Reader = (type, name, indent, depth, count) => {
         if(type.type !== 'array'){
             const text = type.type === 'string' ? lang.line : lang.line + lang.trim
             return [indent + lang.type(type) + ' ' + name + ' = ' + lang.parse(type.type, text) + ';']
         }
-        const count = lang.parse('int', lang.line + lang.trim)
-        // int[][] → new int[cantidad][]
-        const declare = indent + lang.type(type) + ' ' + name + ' = new ' + lang.type(type).replace('[]', '[' + count + ']') + ';'
+        const total = count ?? name + 'Cantidad'
         const v = loopVar(depth)
-        const loop = indent + 'for (int ' + v + ' = 0; ' + v + ' < ' + name + '.' + lang.length + '; ' + v + '++)'
+        const loop = indent + 'for (int ' + v + ' = 0; ' + v + ' < ' + total + '; ' + v + '++)'
+        const lines = [
+            ...(count ? [] : [indent + 'int ' + total + ' = ' + lang.parse('int', lang.line + lang.trim) + ';']),
+            // int[][] → new int[cantidad][]
+            indent + lang.type(type) + ' ' + name + ' = new ' + lang.type(type).replace('[]', '[' + total + ']') + ';',
+        ]
         if(isFlat(type)){
             return [
-                declare,
+                ...lines,
                 indent + lang.type({ type: 'array', items: { type: 'string' } }) + ' ' + name + 'Partes = ' + lang.line + lang.split + ';',
                 loop + ' ' + name + '[' + v + '] = ' + lang.parse(type.items.type as ScalarType, name + 'Partes[' + v + ']') + ';',
             ]
         }
         const item = itemName(depth)
         return [
-            declare,
+            ...lines,
             loop + ' {',
             ...reader(type.items, item, indent + IN, depth + 1),
             indent + IN + name + '[' + v + '] = ' + item + ';',
@@ -168,17 +185,18 @@ function lineReader(lang: LineLanguage): Reader {
 
 // ─── C++ y C (por palabras) ─────────────────────────────────
 
-// getline (C++) y leerLinea (C) consumen el fin de su línea; cin >> y scanf lo dejan pendiente. Por eso, si hay
-// string, se salta ese fin antes de un string y tras la cantidad de un array (la línea de un array vacío viene vacía)
+// getline (C++) y leerLinea (C) consumen el fin de su línea; cin >> y scanf lo dejan pendiente. Un string y un array
+// siempre terminan su línea: el array salta el resto tras su cantidad y tras sus elementos (lo que sobre se ignora, y
+// la línea de un array vacío viene vacía). Antes de un string, o de un array sin línea de cantidad, se salta el fin
+// de la línea del escalar anterior
 const hasString = (type: TypeRef): boolean => type.type === 'string' || (type.type === 'array' && hasString(type.items))
-const endsLine = (type: TypeRef): boolean => type.type === 'string' || (type.type === 'array' && endsLine(type.items))
-const skipsLine = (type: TypeRef, strings: boolean) => type.type === 'array' && (endsLine(type.items) || (strings && isFlat(type)))
+const endsLine = (type: TypeRef): boolean => type.type === 'string' || type.type === 'array'
 // Saltan lo que quede de la línea (también un \r o espacios al final), no solo un carácter
 const CPP_SKIP = "cin.ignore(numeric_limits<streamsize>::max(), '\\n');"
 const C_SKIP = 'scanf("%*[^\\n]"); getchar();'
 
-function cpp(strings: boolean): Reader {
-    const reader: Reader = (type, name, indent, depth) => {
+function cpp(): Reader {
+    const reader: Reader = (type, name, indent, depth, count) => {
         switch(type.type){
             case 'bool':
                 return [indent + 'string ' + name + 'Texto;', indent + 'cin >> ' + name + 'Texto;', indent + 'bool ' + name + ' = ' + name + 'Texto == "true";']
@@ -187,15 +205,15 @@ function cpp(strings: boolean): Reader {
             case 'array': {
                 const item = itemName(depth)
                 const v = loopVar(depth)
+                const total = count ?? name + 'Cantidad'
                 return [
-                    indent + 'int ' + name + 'Cantidad;',
-                    indent + 'cin >> ' + name + 'Cantidad;',
-                    ...(skipsLine(type, strings) ? [indent + CPP_SKIP] : []),
-                    indent + cppType(type).replaceAll('std::', '') + ' ' + name + '(' + name + 'Cantidad);',
-                    indent + 'for (int ' + v + ' = 0; ' + v + ' < ' + name + 'Cantidad; ' + v + '++) {',
+                    ...(count ? [] : [indent + 'int ' + total + ';', indent + 'cin >> ' + total + ';', indent + CPP_SKIP]),
+                    indent + cppType(type).replaceAll('std::', '') + ' ' + name + '(' + total + ');',
+                    indent + 'for (int ' + v + ' = 0; ' + v + ' < ' + total + '; ' + v + '++) {',
                     ...reader(type.items, item, indent + IN, depth + 1),
                     indent + IN + name + '[' + v + '] = ' + item + ';',
                     indent + '}',
+                    ...(isFlat(type) ? [indent + CPP_SKIP] : []),
                 ]
             }
             default:
@@ -230,8 +248,8 @@ const C_READ_LINE = [
 
 // shortcut: en arrays de arrays solo se guarda la cantidad de cada fila (nameCantidades); con 3 niveles o más se
 // pierden las del nivel más interno. Suficiente para matrices; si hace falta, guardar un arreglo de cantidades por nivel
-function c(strings: boolean): Reader {
-    const reader: Reader = (type, name, indent, depth) => {
+function c(): Reader {
+    const reader: Reader = (type, name, indent, depth, count) => {
         switch(type.type){
             case 'bool':
                 return [indent + 'char ' + name + 'Texto[6];', indent + 'scanf("%5s", ' + name + 'Texto);', indent + 'int ' + name + ' = strcmp(' + name + 'Texto, "true") == 0;']
@@ -241,17 +259,17 @@ function c(strings: boolean): Reader {
                 const item = itemName(depth)
                 const v = loopVar(depth)
                 const rows = type.items.type === 'array'
+                const total = count ?? name + 'Cantidad'
                 return [
-                    indent + 'int ' + name + 'Cantidad;',
-                    indent + 'scanf("%d", &' + name + 'Cantidad);',
-                    ...(skipsLine(type, strings) ? [indent + C_SKIP] : []),
-                    indent + cDeclare(type, name) + ' = malloc(' + name + 'Cantidad * sizeof(' + cType(type.items).trimEnd() + '));',
-                    ...(rows ? [indent + 'int *' + name + 'Cantidades = malloc(' + name + 'Cantidad * sizeof(int));'] : []),
-                    indent + 'for (int ' + v + ' = 0; ' + v + ' < ' + name + 'Cantidad; ' + v + '++) {',
+                    ...(count ? [] : [indent + 'int ' + total + ';', indent + 'scanf("%d", &' + total + ');', indent + C_SKIP]),
+                    indent + cDeclare(type, name) + ' = malloc(' + total + ' * sizeof(' + cType(type.items).trimEnd() + '));',
+                    ...(rows ? [indent + 'int *' + name + 'Cantidades = malloc(' + total + ' * sizeof(int));'] : []),
+                    indent + 'for (int ' + v + ' = 0; ' + v + ' < ' + total + '; ' + v + '++) {',
                     ...reader(type.items, item, indent + IN, depth + 1),
                     indent + IN + name + '[' + v + '] = ' + item + ';',
                     ...(rows ? [indent + IN + name + 'Cantidades[' + v + '] = ' + item + 'Cantidad;'] : []),
                     indent + '}',
+                    ...(isFlat(type) ? [indent + C_SKIP] : []),
                 ]
             }
             default:
@@ -261,20 +279,21 @@ function c(strings: boolean): Reader {
     return reader
 }
 
-// C y C++: un string que sigue a un parámetro leído por palabras salta antes el fin de esa línea
-function wordReads(reader: (strings: boolean) => Reader, skip: string, signature: IProblemSignature, indent: string): string[] {
-    const read = reader(signature.params.some((param) => hasString(param.type)))
+// C y C++: un string, o un array cuya cantidad ya se leyó (su tamaño), que sigue a un parámetro leído por palabras
+// salta antes el fin de esa línea
+function wordReads(read: Reader, skip: string, signature: IProblemSignature, indent: string): string[] {
     return signature.params.flatMap((param, index) => {
-        const lines = read(param.type, param.name, indent, 0)
+        const lines = read(param.type, param.name, indent, 0, param.size)
         const before = signature.params[index - 1]
-        return param.type.type === 'string' && before && !endsLine(before.type) ? [indent + skip, ...lines] : lines
+        const startsLine = param.type.type === 'string' || param.size !== undefined
+        return startsLine && before && !endsLine(before.type) ? [indent + skip, ...lines] : lines
     })
 }
 
 // ─── Plantillas ─────────────────────────────────────────────
 
 function reads(reader: Reader, signature: IProblemSignature, indent: string): string[] {
-    return signature.params.flatMap((param) => reader(param.type, param.name, indent, 0))
+    return signature.params.flatMap((param) => reader(param.type, param.name, indent, 0, param.size))
 }
 
 export function programStarterCode(languageCode: string, signature: IProblemSignature): string | null {
@@ -341,7 +360,7 @@ export function programStarterCode(languageCode: string, signature: IProblemSign
                 '',
                 'int main() {',
                 IN + '// ' + KEEP,
-                ...wordReads(cpp, CPP_SKIP, signature, IN),
+                ...wordReads(cpp(), CPP_SKIP, signature, IN),
                 '',
                 ...solveHere('//', IN, 'cout', signature.returns, languageCode),
                 '',
@@ -358,7 +377,7 @@ export function programStarterCode(languageCode: string, signature: IProblemSign
                 ...(signature.params.some((param) => hasString(param.type)) ? C_READ_LINE : []),
                 'int main(void) {',
                 IN + '// ' + KEEP,
-                ...wordReads(c, C_SKIP, signature, IN),
+                ...wordReads(c(), C_SKIP, signature, IN),
                 '',
                 ...solveHere('//', IN, 'printf', signature.returns, languageCode),
                 '',

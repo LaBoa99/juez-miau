@@ -309,6 +309,10 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
     const res = await api().put(`/api/v1/testsets/${testsetId}/ref-solution`).set(as('judge'))
       .send({ languageId: enabledLanguage.id, source: 'def sumar(nums, k): return sum(nums) + k' }).expect(200);
     expect(res.body).toMatchObject({ languageId: enabledLanguage.id, createdBy: judge.id, sourceSha: expect.stringMatching(/^[0-9a-f]{64}$/) });
+
+    // El detalle trae el código de su versión, para mostrarlo en el paso Solución aunque no sea la vigente
+    const detail = await api().get(`/api/v1/testsets/${testsetId}`).set(as('judge')).expect(200);
+    expect(detail.body.refSolution).toMatchObject({ id: res.body.id, languageId: enabledLanguage.id, source: 'def sumar(nums, k): return sum(nums) + k' });
   });
 
   it('POST /testsets/:id/build lo deja en building, lo encola y bloquea la edición', async () => {
@@ -369,5 +373,42 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
     await api().post(`/api/v1/problems/${problemId}/propose`).set(as('judge')).expect(200);
     // Con el problema propuesto la firma ya no cambia
     await api().patch(`/api/v1/problems/${problemId}/signature`).set(as('judge')).send(signature).expect(409);
+  });
+
+  it('cambiar la firma con casos: quitar un parámetro pide confirmación y lo quita; marcar un tamaño lo calcula', async () => {
+    const { body: base } = await api().get(`/api/v1/problems/${problemId}`).set(as('judge')).expect(200);
+    const { body: created } = await api().post(`/api/v1/editions/${edition.id}/problems`).set(as('judge'))
+      .send({ categoryId: base.categoryId, title: 'Firma con casos ' + stamp, statement: 'x' }).expect(201);
+    const int = { type: 'int' };
+    const list = { type: 'array', items: int };
+    const withN = { functionName: 'f', params: [{ name: 'n', type: int }, { name: 'a', type: list }, { name: 'k', type: int }], returns: int };
+    await api().patch(`/api/v1/problems/${created.id}/signature`).set(as('judge')).send(withN).expect(200);
+    await api().patch(`/api/v1/testsets/${created.testsetId}`).set(as('judge')).send({ schema: {
+      params: { n: { type: 'int', min: 0, max: 3 }, a: { type: 'array', length: [0, 3], items: { type: 'int', min: 1, max: 9 } }, k: { type: 'int', min: 0, max: 9 } },
+      groups: [{ name: 'g', seeds: [1], overrides: { n: { min: 1 } } }],
+    } }).expect(200);
+    await api().post(`/api/v1/testsets/${created.testsetId}/cases/bulk`).set(as('judge'))
+      .send({ cases: [{ input: { n: 2, a: [1, 2], k: 5 } }, { input: { n: 1, a: [7], k: 0 } }] }).expect(201);
+
+    // Marcar n como tamaño de a: los casos ya cuadran y n sale del esquema, sin confirmar
+    const sized = { ...withN, params: [withN.params[0], { ...withN.params[1], size: 'n' }, withN.params[2]] };
+    await api().patch(`/api/v1/problems/${created.id}/signature`).set(as('judge')).send(sized).expect(200);
+    let detail = await api().get(`/api/v1/testsets/${created.testsetId}`).set(as('judge')).expect(200);
+    expect(Object.keys(detail.body.schema.params)).toEqual(['a', 'k']);
+    expect(detail.body.schema.groups[0].overrides).toEqual({});
+
+    // Quitar n: 422 que pide confirmación; con adaptCases se quita de los casos y su salida se recalcula al construir
+    const withoutN = { functionName: 'f', params: [{ name: 'a', type: list }, { name: 'k', type: int }], returns: int };
+    const asked = await api().patch(`/api/v1/problems/${created.id}/signature`).set(as('judge')).send(withoutN).expect(422);
+    expect(asked.body.errors).toEqual(['signature removes parameter(s) n from 2 case(s); send adaptCases to update them']);
+    await api().patch(`/api/v1/problems/${created.id}/signature`).set(as('judge')).send({ ...withoutN, adaptCases: true }).expect(200);
+    detail = await api().get(`/api/v1/testsets/${created.testsetId}`).set(as('judge')).expect(200);
+    expect(detail.body.cases.map((c: { inputPreview: string, outputSha: string | null }) => [c.inputPreview, c.outputSha]))
+      .toEqual([['{"a":[1,2],"k":5}', null], ['{"a":[7],"k":0}', null]]);
+
+    // Agregar un parámetro no se ajusta solo, aunque se pida
+    const added = await api().patch(`/api/v1/problems/${created.id}/signature`).set(as('judge'))
+      .send({ ...withoutN, params: [...withoutN.params, { name: 'm', type: int }], adaptCases: true }).expect(422);
+    expect(added.body.errors).toEqual(expect.arrayContaining(['case #1 input.m: missing']));
   });
 });

@@ -48,15 +48,16 @@
           @if (t.refSolutionId !== null) {
             <p class="tw__muted oj-mono">
               Guardada:
-              @if (isCurrent() && p.refSolution) {
-                {{ languageCode(p.refSolution.languageId) }} · {{ p.refSolution.sourceSha.slice(0, 8) }}
+              @if (t.refSolution) {
+                {{ languageCode(t.refSolution.languageId) }} · {{ t.refSolution.sourceSha.slice(0, 8) }}
               } @else {
                 definida
               }
-              @if (editable()) { <span class="tw__muted"> · sube otra para reemplazarla</span> }
+              @if (editable()) { <span class="tw__muted"> · edítala abajo o sube otra para reemplazarla</span> }
             </p>
-            @if (isCurrent() && p.refSolution && !sourceText()) {
-              <oj-code-block [code]="p.refSolution.source" />
+            <!-- Sin edición (construida o en el concurso) se ve la de esta versión; editable, ya está en el editor -->
+            @if (!editable() && t.refSolution) {
+              <oj-code-block [code]="t.refSolution.source" />
             }
           }
           @if (editable()) {
@@ -160,6 +161,17 @@
                     <option [ngValue]="d">{{ d === 0 ? 'escalar' : '[]'.repeat(d) }}</option>
                   }
                 </select>
+                <!-- Tamaño de la lista: un int declarado antes. En programa completo ya no se repite su cantidad -->
+                @if (sizeCandidates($index); as candidates) {
+                  @if (candidates.length) {
+                    <select formControlName="size" aria-label="Tamaño de la lista">
+                      <option value="">sin tamaño</option>
+                      @for (c of candidates; track c) {
+                        <option [value]="c">tamaño: {{ c }}</option>
+                      }
+                    </select>
+                  }
+                }
                 <button ojButton variant="danger-outline" size="sm" type="button" (click)="removeParam($index)">Quitar</button>
               </div>
             }
@@ -987,6 +999,13 @@
   (confirmed)="removeCase()"
 />
 
+<oj-confirm-dialog
+  #adaptDlg
+  title="Quitar parámetros de los casos"
+  [message]="adaptMessage()"
+  confirmLabel="Quitar y guardar"
+  (confirmed)="saveSolution(true)"
+/>
 <oj-confirm-dialog
   #deleteGroupDlg
   title="Eliminar grupo"

@@ -1,6 +1,6 @@
 import type { IProblemSignature, ISchemaGroup, ITestsetSchema, SchemaNode, TypeRef } from '@concurso/shared-types'
 import { MAX_ELEMENTS_PER_CASE, MAX_TESTSET_CASES } from './limits.js'
-import { LONG_MAX, LONG_MIN, typeToString } from './signature.js'
+import { LONG_MAX, LONG_MIN, sizeParams, typeToString } from './signature.js'
 
 const INT_MIN = BigInt(-(2 ** 31))
 const INT_MAX = BigInt(2 ** 31 - 1)
@@ -178,9 +178,12 @@ export function validateSchema(signature: IProblemSignature, schema: unknown): s
     if(!isPlainObject(params)) return ['schema.params must be an object with one node per parameter']
     if(!Array.isArray(groups) || groups.length === 0) return ['schema.groups must be a non-empty array']
 
-    const names = signature.params.map((param) => param.name)
+    // El tamaño de una lista no se genera: sale del largo de la lista
+    const sizes = sizeParams(signature)
+    const names = signature.params.map((param) => param.name).filter((name) => !sizes.has(name))
     for(const key of Object.keys(params)){
-        if(!names.includes(key)) errors.push('schema.params.' + key + ': not a parameter of ' + signature.functionName)
+        if(sizes.has(key)) errors.push('schema.params.' + key + ': is the size of ' + sizes.get(key) + ' and is calculated from it')
+        else if(!names.includes(key)) errors.push('schema.params.' + key + ': not a parameter of ' + signature.functionName)
     }
     for(const name of names){
         if(!Object.hasOwn(params, name)) errors.push('schema.params.' + name + ': missing')
@@ -224,7 +227,7 @@ export function validateSchema(signature: IProblemSignature, schema: unknown): s
         }
 
         let elements = 0
-        for(const param of signature.params){
+        for(const param of signature.params.filter((param) => !sizes.has(param.name))){
             const node = mergeNode(params[param.name], (group.overrides as Record<string, unknown> | undefined)?.[param.name])
             elements += validateNode(param.type, node, path + ' ' + param.name, errors)
         }

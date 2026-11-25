@@ -93,11 +93,38 @@ export function validateSignature(signature: unknown): string[] {
             }
             validateTypeRef(param.type, path + '.type', errors)
         })
+        validateSizes(signature.params, errors)
     }
 
     validateTypeRef(signature.returns, 'returns', errors)
 
     return errors
+}
+
+// `size` de una lista: un int declarado antes, que solo cuenta a esa lista
+function validateSizes(params: unknown[], errors: string[]): void {
+    const used = new Set<string>()
+    params.forEach((param, index) => {
+        if(!isPlainObject(param) || param.size === undefined) return
+        const path = 'params[' + index + '].size'
+        const size = params.slice(0, index).find((other) => isPlainObject(other) && other.name === param.size) as Record<string, unknown> | undefined
+        if(!isPlainObject(param.type) || param.type.type !== 'array'){
+            errors.push(path + ': only arrays have a size parameter')
+        } else if(typeof param.size !== 'string' || !size){
+            errors.push(path + ': must name an int parameter declared before ' + String(param.name))
+        } else if(!isPlainObject(size.type) || size.type.type !== 'int'){
+            errors.push(path + ': "' + param.size + '" must be an int')
+        } else if(used.has(param.size)){
+            errors.push(path + ': "' + param.size + '" is already the size of another array')
+        } else {
+            used.add(param.size)
+        }
+    })
+}
+
+// int que es tamaño de una lista → nombre de la lista
+export function sizeParams(signature: IProblemSignature): Map<string, string> {
+    return new Map(signature.params.filter((param) => param.size).map((param) => [param.size!, param.name]))
 }
 
 export function typeToString(type: TypeRef): string {
@@ -183,12 +210,20 @@ export function normalizeInput(signature: IProblemSignature, input: unknown): { 
     for(const key of Object.keys(input)){
         if(!names.has(key)) errors.push('input.' + key + ': not a parameter of ' + signature.functionName)
     }
+    const sizes = sizeParams(signature)
     for(const param of signature.params){
         if(!Object.hasOwn(input, param.name)){
-            errors.push('input.' + param.name + ': missing')
+            // El tamaño de una lista se puede omitir: se calcula de la lista
+            if(!sizes.has(param.name)) errors.push('input.' + param.name + ': missing')
             continue
         }
         value[param.name] = normalizeValue(param.type, input[param.name], 'input.' + param.name, errors)
+    }
+    for(const [size, array] of sizes){
+        const items = value[array]
+        if(!Array.isArray(items)) continue
+        if(!Object.hasOwn(value, size)) value[size] = items.length
+        else if(value[size] !== items.length) errors.push('input.' + size + ': must equal the length of ' + array + ' (' + items.length + ')')
     }
 
     return { value, errors }

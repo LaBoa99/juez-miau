@@ -72,7 +72,7 @@ type PipeStage = 'todo' | 'active' | 'done' | 'warn' | 'error';
 interface SolutionDraft {
   source: string;
   lang: string | null;
-  sig: { functionName: string; params: { name: string; base: ScalarType; depth: number }[]; returnBase: ScalarType; returnDepth: number } | null;
+  sig: { functionName: string; params: { name: string; base: ScalarType; depth: number; size?: string }[]; returnBase: ScalarType; returnDepth: number } | null;
   // Resultado de la lectura (función elegida, si compila): al volver al paso se ve igual que antes
   detection?: ISignatureDetection | null;
 }
@@ -359,12 +359,13 @@ export class TestsetWorkspace {
   protected readonly pasteErrors = signal<string[]>([]);
   protected readonly pasteSaving = signal(false);
   protected readonly pasteExample = computed(() =>
-    JSON.stringify(Object.fromEntries((this.signature()?.params ?? []).map((p) => [p.name, p.type.type === 'array' ? [] : p.type.type === 'string' ? '' : 0]))),
+    JSON.stringify(Object.fromEntries(this.inputParams().map((p) => [p.name, p.type.type === 'array' ? [] : p.type.type === 'string' ? '' : 0]))),
   );
 
   savePaste(): void {
     const t = this.testset();
-    const names = (this.signature()?.params ?? []).map((p) => p.name);
+    const names = this.inputParams().map((p) => p.name);
+    const all = (this.signature()?.params ?? []).map((p) => p.name);
     if (!t) return;
     const errors: string[] = [];
     const inputs: Record<string, unknown>[] = [];
@@ -385,7 +386,7 @@ export class TestsetWorkspace {
         }
         const keys = Object.keys(value);
         const missing = names.filter((n) => !keys.includes(n));
-        const extra = keys.filter((k) => !names.includes(k));
+        const extra = keys.filter((k) => !all.includes(k));
         if (missing.length) errors.push(`Línea ${i + 1}: falta ${missing.join(', ')}.`);
         if (extra.length) errors.push(`Línea ${i + 1}: sobra ${extra.join(', ')}.`);
         inputs.push(value as Record<string, unknown>);
@@ -436,6 +437,7 @@ export class TestsetWorkspace {
     if (step === 'solucion') {
       this.initSignature();
       this.initSource('ref');
+      this.fillSavedRefSolution();
       this.restoreSolutionDraft();
       this.draftReady = true;
     } else if (step === 'construir') {
@@ -460,7 +462,7 @@ export class TestsetWorkspace {
     this.sourceLang.setValue(draft.lang);
     if (draft.sig && this.signatureEditable()) {
       this.sigParams.clear();
-      for (const p of draft.sig.params) this.sigParams.push(this.paramGroup(p.name, p.base, p.depth));
+      for (const p of draft.sig.params) this.sigParams.push(this.paramGroup(p.name, p.base, p.depth, p.size ?? ''));
       this.signatureForm.patchValue({ functionName: draft.sig.functionName, returnBase: draft.sig.returnBase, returnDepth: draft.sig.returnDepth });
       this.signatureForm.markAsDirty();
       // La firma recuperada manda: no se vuelve a leer del mismo código
@@ -476,7 +478,7 @@ export class TestsetWorkspace {
   private saveSolutionDraft(): void {
     if (!this.draftReady || this.step() !== 'solucion' || !this.editable()) return;
     const sig = this.signatureForm.dirty ? (this.signatureForm.getRawValue() as SolutionDraft['sig']) : null;
-    if (!this.sourceText().trim() && !sig) clearDraft(this.draftKey());
+    if ((!this.sourceText().trim() || this.sourceUnchanged()) && !sig) clearDraft(this.draftKey());
     else {
       const detection = this.detection()?.status === 'done' ? this.detection() : null;
       saveDraft(this.draftKey(), { source: this.sourceText(), lang: this.sourceLang.value, sig, detection } satisfies SolutionDraft);
@@ -506,9 +508,24 @@ export class TestsetWorkspace {
     return this.signatureForm.get('params') as FormArray<FormGroup>;
   }
 
-  private paramGroup(name = '', base: ScalarType = 'int', depth = 0): FormGroup {
-    return this.fb.group({ name: [name, [Validators.required, Validators.pattern(IDENTIFIER)]], base: [base], depth: [depth] });
+  private paramGroup(name = '', base: ScalarType = 'int', depth = 0, size = ''): FormGroup {
+    return this.fb.group({ name: [name, [Validators.required, Validators.pattern(IDENTIFIER)]], base: [base], depth: [depth], size: [size] });
   }
+
+  // Enteros declarados antes del parámetro `i` que pueden ser su tamaño (solo si `i` es una lista)
+  protected sizeCandidates(i: number): string[] {
+    const rows = this.sigParams.getRawValue() as { name: string; base: ScalarType; depth: number; size: string }[];
+    if (!rows[i] || rows[i].depth === 0) return [];
+    const taken = rows.filter((r, j) => j !== i && r.depth > 0).map((r) => r.size);
+    return rows.slice(0, i).filter((r) => r.base === 'int' && r.depth === 0 && r.name && !taken.includes(r.name)).map((r) => r.name);
+  }
+
+  // Parámetros que captura el autor: el tamaño de una lista se calcula de ella
+  protected readonly inputParams = computed(() => {
+    const params = this.signature()?.params ?? [];
+    const sizes = new Set(params.map((p) => p.size).filter(Boolean));
+    return params.filter((p) => !sizes.has(p.name));
+  });
 
   private initSignature(): void {
     this.signatureError.set(null);
@@ -519,7 +536,7 @@ export class TestsetWorkspace {
       this.signatureForm.patchValue({ functionName: sig.functionName, returnBase: ret.base, returnDepth: ret.depth });
       for (const p of sig.params) {
         const ui = typeToUi(p.type);
-        this.sigParams.push(this.paramGroup(p.name, ui.base, ui.depth));
+        this.sigParams.push(this.paramGroup(p.name, ui.base, ui.depth, p.size ?? ''));
       }
     } else {
       this.signatureForm.patchValue({ functionName: '', returnBase: 'int', returnDepth: 0 });
@@ -545,7 +562,7 @@ export class TestsetWorkspace {
       return null;
     }
     const raw = this.signatureForm.getRawValue();
-    const paramRows = raw.params as { name: string; base: ScalarType; depth: number }[];
+    const paramRows = raw.params as { name: string; base: ScalarType; depth: number; size: string }[];
 
     // Sin parámetros no se pueden armar casos de prueba: no guardamos.
     if (paramRows.length === 0) {
@@ -561,16 +578,24 @@ export class TestsetWorkspace {
       return null;
     }
 
+    // Un tamaño que ya no aplica (cambió el tipo o el nombre del entero) se descarta en vez de mandarlo
+    const sizeOf = (p: { depth: number; size: string }, i: number) => (p.depth > 0 && p.size && this.sizeCandidates(i).includes(p.size) ? { size: p.size } : {});
+
     this.signatureError.set(null);
     return {
       functionName: raw.functionName!,
-      params: paramRows.map((p) => ({ name: p.name, type: uiToType(p.base, p.depth) })),
+      params: paramRows.map((p, i) => ({ name: p.name, type: uiToType(p.base, p.depth), ...sizeOf(p, i) })),
       returns: uiToType(raw.returnBase as ScalarType, raw.returnDepth as number),
     };
   }
 
+  // Firma nueva que quita parámetros con casos guardados: se confirma antes de quitarlos de los casos
+  private readonly adaptDialog = viewChild.required<ConfirmDialog>('adaptDlg');
+  protected readonly adaptMessage = signal('');
+  private adaptAsked = false;
+
   // Paso "Solución y firma": guarda la firma (si cambió) y luego la solución (si hay código nuevo)
-  saveSolution(): void {
+  saveSolution(adaptCases = false): void {
     const t = this.testset();
     if (!t) return;
     const signatureChanged = this.signatureEditable() && (!this.signature() || this.signatureForm.dirty);
@@ -585,14 +610,17 @@ export class TestsetWorkspace {
       return;
     }
     this.sourceError.set(null);
+    this.adaptAsked = false;
     this.signatureSaving.set(true);
     const saveSource = (): Observable<unknown> =>
-      this.sourceText() ? this.service.setRefSolution(t.id, { languageId: this.sourceLang.value!, source: this.sourceText() }) : of(null);
-    const saveSignature: Observable<unknown> = sig ? this.problemsService.updateSignature(this.problemId(), sig) : of(null);
+      this.sourceText() && !this.sourceUnchanged()
+        ? this.service.setRefSolution(t.id, { languageId: this.sourceLang.value!, source: this.sourceText() })
+        : of(null);
+    const saveSignature: Observable<unknown> = sig ? this.problemsService.updateSignature(this.problemId(), sig, adaptCases) : of(null);
     saveSignature
       .pipe(
         catchError((err: unknown) => {
-          this.signatureError.set(message(err, 'No se pudo guardar la firma.'));
+          this.signatureError.set(signatureMessage(err, (text) => this.askAdaptCases(text)));
           throw err;
         }),
         switchMap(() => saveSource()),
@@ -611,9 +639,15 @@ export class TestsetWorkspace {
         },
         error: (err) => {
           this.signatureSaving.set(false);
-          if (!this.signatureError()) this.sourceError.set(message(err, 'No se pudo guardar la solución oficial.'));
+          if (!this.signatureError() && !this.adaptAsked) this.sourceError.set(message(err, 'No se pudo guardar la solución oficial.'));
         },
       });
+  }
+
+  private askAdaptCases(text: string): void {
+    this.adaptAsked = true;
+    this.adaptMessage.set(text);
+    this.adaptDialog().open();
   }
 
   // ─── Firma detectada desde la solución (la lee y la compila el worker) ───
@@ -1274,6 +1308,24 @@ export class TestsetWorkspace {
   protected readonly sourceSaving = signal(false);
   protected readonly sourceError = signal<string | null>(null);
 
+  // Solución oficial guardada en esta versión (no siempre la vigente)
+  private readonly savedRef = computed(() => this.testset()?.refSolution ?? null);
+
+  // El editor tiene la solución guardada sin cambios: no hay nada que subir ni que guardar como borrador
+  private sourceUnchanged(): boolean {
+    const ref = this.savedRef();
+    return !!ref && this.sourceKind() === 'ref' && this.sourceText() === ref.source && this.sourceLang.value === ref.languageId;
+  }
+
+  private fillSavedRefSolution(): void {
+    const ref = this.savedRef();
+    if (!ref || !this.editable()) return;
+    this.sourceLang.setValue(ref.languageId);
+    this.sourceText.set(ref.source);
+    // Es el código que ya se guardó: no se vuelve a leer su firma
+    this.lastDetected = ref.languageId + '\u0000' + ref.source;
+  }
+
   private initSource(kind: 'ref' | 'generator'): void {
     this.sourceKind.set(kind);
     this.detectSub?.unsubscribe();
@@ -1312,7 +1364,7 @@ export class TestsetWorkspace {
   saveSource(): void {
     const t = this.testset();
     // Solución oficial ya guardada y sin código nuevo: "Guardar y seguir" solo avanza
-    if (t && this.sourceKind() === 'ref' && !this.sourceText() && t.refSolutionId !== null) {
+    if (t && this.sourceKind() === 'ref' && (!this.sourceText() || this.sourceUnchanged()) && t.refSolutionId !== null) {
       this.next.emit();
       return;
     }
@@ -1376,7 +1428,7 @@ export class TestsetWorkspace {
 
   private initRandom(): void {
     this.randErrors.set([]);
-    this.randGroups.set(schemaToGroups(this.testset()?.schema ?? null, this.signature()?.params ?? []));
+    this.randGroups.set(schemaToGroups(this.testset()?.schema ?? null, this.inputParams()));
   }
 
   // El grupo nuevo copia los rangos del último: casi siempre solo cambia el tamaño.
@@ -1394,7 +1446,7 @@ export class TestsetWorkspace {
   saveRandom(): void {
     const t = this.testset();
     if (!t) return;
-    const { schema, errors, total } = groupsToSchema(this.randGroups(), (this.signature()?.params ?? []).map((p) => p.name), t.schema);
+    const { schema, errors, total } = groupsToSchema(this.randGroups(), this.inputParams().map((p) => p.name), t.schema);
     const manual = t.cases.filter((c) => c.origin === TestCaseOrigin.MANUAL).length;
     if (manual + total > 500) errors.push(`Serían ${manual + total} casos en total; el máximo es 500.`);
     if (errors.length > 0) {
@@ -1447,7 +1499,7 @@ export class TestsetWorkspace {
 
   createRandomOffer(then: 'stay' | 'next'): void {
     const t = this.testset();
-    const params = this.signature()?.params ?? [];
+    const params = this.inputParams();
     if (!t) return;
     const { schema } = groupsToSchema(schemaToGroups(null, params), params.map((p) => p.name));
     this.randomOfferSaving.set(true);
@@ -1512,7 +1564,7 @@ export class TestsetWorkspace {
 
   private buildCaseControls(): void {
     const sig = this.signature();
-    const params = (sig?.params ?? []).map((param) => ({ param, isArray: param.type.type === 'array' }));
+    const params = sig ? this.inputParams().map((param) => ({ param, isArray: param.type.type === 'array' })) : [];
     this.caseParams.set(params);
     const group = this.fb.group({});
     for (const { param } of params) {
@@ -1816,4 +1868,23 @@ export class TestsetWorkspace {
 
 function message(err: unknown, fallback: string): string {
   return backendMessage(err, fallback);
+}
+
+// Error al guardar la firma. Si solo quita parámetros que traen los casos, pide confirmar (ask); si hay casos que no
+// cuadran, dice cuáles (solo se toman los números de caso del mensaje, nunca su texto)
+function signatureMessage(err: unknown, ask: (text: string) => void): string | null {
+  const errors = (err as { error?: { errors?: unknown } } | undefined)?.error?.errors;
+  const raw = Array.isArray(errors) ? errors.map(String) : [];
+  const removes = raw.map((e) => /^signature removes parameter\(s\) ([\w, ]+) from (\d+) case/.exec(e)).find(Boolean);
+  if (removes) {
+    const [, names, count] = removes;
+    const list = names.split(', ').map((n) => `«${n}»`).join(', ');
+    ask(`La firma nueva ya no tiene ${list}. Se ${names.includes(',') ? 'quitarán' : 'quitará'} de ${count} ${count === '1' ? 'caso' : 'casos'} y sus salidas se volverán a calcular al construir.`);
+    return null;
+  }
+  const cases = [...new Set(raw.map((e) => /^case #(\d+)/.exec(e)?.[1]).filter(Boolean))];
+  if (cases.length) {
+    return `${cases.length === 1 ? 'El caso' : 'Los casos'} ${cases.map((c) => '#' + c).join(', ')} no ${cases.length === 1 ? 'coincide' : 'coinciden'} con la firma nueva: edítalos o bórralos en el paso Casos y vuelve a guardar la firma.`;
+  }
+  return message(err, 'No se pudo guardar la firma.');
 }
