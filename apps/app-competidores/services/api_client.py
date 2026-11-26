@@ -1,13 +1,13 @@
 import requests
 
 # Mensajes para el equipo por código HTTP. 403 es neutro a propósito: no debe delatar al anticheat.
+# 422 no está aquí a propósito: el backend ya manda el motivo puntual (lenguaje, tamaño, plantilla sin tocar).
 MESSAGES = {
     0: "Sin conexión con el servidor. Revisa la red o avisa al staff.",
     401: "Tu sesión terminó. Inicia sesión de nuevo.",
     403: "Tu envío no se pudo registrar. Avisa al staff.",
     404: "Ese problema no está disponible para tu categoría.",
     409: "El concurso no está en curso.",
-    422: "El lenguaje no está habilitado o el archivo pesa más de 64 KB.",
     429: "Espera unos segundos antes de volver a enviar.",
 }
 

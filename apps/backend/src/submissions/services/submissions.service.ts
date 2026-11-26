@@ -24,7 +24,8 @@ import { acceptsSubmissions, elapsedMs } from '../../contest-clock/clock.js'
 import { Edition } from '../../editions/entities/edition.entity.js'
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js'
 import { FlagsService } from '../../flags/flags.service.js'
-import { hasDriver } from '../../judge/drivers/index.js'
+import { FUNCTION_MARKER, hasDriver } from '../../judge/drivers/index.js'
+import { FULL_PROGRAM_MARKER } from '../../judge/drivers/program-starter.js'
 import { Language } from '../../languages/entities/language.entity.js'
 import { Problem } from '../../problems/entities/problem.entity.js'
 import { RealtimeService } from '../../realtime/realtime.service.js'
@@ -122,12 +123,17 @@ export class SubmissionsService implements OnApplicationBootstrap {
             where: { id: edition.id, languages: { id: language.id } },
         })
         if(!language || !enabled || !hasDriver(language.code)){
-            throw new UnprocessableEntityException('language ' + dto.languageId + ' is not enabled in this contest')
+            throw new UnprocessableEntityException('El lenguaje elegido no está habilitado para este concurso.')
         }
 
         const source = Buffer.from(dto.source, 'utf8')
         if(source.length > MAX_SOURCE_BYTES){
-            throw new UnprocessableEntityException('source is larger than ' + MAX_SOURCE_BYTES / 1024 + ' KB')
+            throw new UnprocessableEntityException('El archivo pesa más de ' + MAX_SOURCE_BYTES / 1024 + ' KB.')
+        }
+        // La plantilla sin tocar compila (o ni eso) y el juez la resuelve casi al instante: se rechaza
+        // antes de encolar para no mandar dos avisos pegados ("recibido" y el veredicto) a la app
+        if(dto.source.includes(FULL_PROGRAM_MARKER) || dto.source.includes(FUNCTION_MARKER)){
+            throw new UnprocessableEntityException('No se detectó una solución: el archivo todavía tiene el comentario de la plantilla sin reemplazar.')
         }
 
         const recent = await this.submissionRepository.exists({
