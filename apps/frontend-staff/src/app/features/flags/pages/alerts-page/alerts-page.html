@@ -17,6 +17,15 @@
     }
   </select>
 
+  @if (categories().length > 1) {
+    <select class="al__category" [formControl]="categoryCtrl" aria-label="Filtrar por categoría">
+      <option [ngValue]="null">Todas las categorías</option>
+      @for (c of categories(); track c.id) {
+        <option [ngValue]="c.id">{{ c.name }}</option>
+      }
+    </select>
+  }
+
   <input class="al__search" type="search" [formControl]="teamSearchCtrl" placeholder="Buscar por equipo…" aria-label="Buscar por equipo" />
 </div>
 
@@ -89,8 +98,12 @@
   >
     <select id="al-team" #teamField [formControl]="teamCtrl">
       <option [ngValue]="null">Selecciona un equipo</option>
-      @for (t of teamOptions(); track t.id) {
-        <option [ngValue]="t.id">{{ t.name }}</option>
+      @for (g of teamGroups(); track g.label) {
+        <optgroup [label]="g.label">
+          @for (t of g.teams; track t.id) {
+            <option [ngValue]="t.id">{{ t.name }}</option>
+          }
+        </optgroup>
       }
     </select>
   </oj-form-field>

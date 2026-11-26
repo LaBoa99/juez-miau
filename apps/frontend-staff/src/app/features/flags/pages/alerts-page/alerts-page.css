@@ -38,6 +38,9 @@ oj-modal oj-form-field + oj-form-field {
 .al__room {
   flex: 0 0 220px;
 }
+.al__category {
+  flex: 0 0 180px;
+}
 .al__search {
   flex: 1 1 200px;
 }

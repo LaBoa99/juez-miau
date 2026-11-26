@@ -72,7 +72,7 @@ export class AlertsPage {
   protected readonly actionError = signal<string | null>(null);
 
   // Búsquedas auxiliares que la alerta no trae.
-  private readonly teamMap = signal<Map<number, { name: string; roomId: number | null; suspended: boolean }>>(new Map());
+  private readonly teamMap = signal<Map<number, { name: string; roomId: number | null; categoryId: number | null; suspended: boolean }>>(new Map());
   private readonly staffMap = signal<Map<number, string>>(new Map());
   protected readonly rooms = signal<{ id: number; name: string }[]>([]);
   protected readonly myRoomId = signal<number | null>(null);
@@ -80,6 +80,9 @@ export class AlertsPage {
   // Filtros.
   protected readonly tab = signal<Tab>('open');
   protected readonly roomCtrl = this.fb.control<number | null>(null);
+  protected readonly categoryCtrl = this.fb.control<number | null>(null);
+  private readonly categoryFilter = toSignal(this.categoryCtrl.valueChanges, { initialValue: this.categoryCtrl.value });
+  protected readonly categories = computed(() => [...(this.ctx.edition()?.categories ?? [])].sort((a, b) => a.sort_order - b.sort_order));
   protected readonly teamSearchCtrl = this.fb.nonNullable.control('');
   private readonly teamSearch = signal('');
   // El select es un FormControl: su valor se lee como signal para que el filtro se recalcule
@@ -102,9 +105,14 @@ export class AlertsPage {
   protected readonly resolving = signal(false);
   protected readonly noteCtrl = this.fb.nonNullable.control('', [Validators.maxLength(1000)]);
 
-  protected readonly teamOptions = computed(() =>
-    [...this.teamMap()].map(([id, t]) => ({ id, name: t.name })).sort((a, b) => a.name.localeCompare(b.name)),
-  );
+  // Equipos del select "Levantar alerta", agrupados por categoría (en el orden de la edición)
+  protected readonly teamGroups = computed(() => {
+    const teams = [...this.teamMap()].map(([id, t]) => ({ id, name: t.name, categoryId: t.categoryId })).sort((a, b) => a.name.localeCompare(b.name));
+    const groups = this.categories().map((c) => ({ label: c.name, teams: teams.filter((t) => t.categoryId === c.id) }));
+    const known = new Set(this.categories().map((c) => c.id));
+    groups.push({ label: 'Sin categoría', teams: teams.filter((t) => t.categoryId == null || !known.has(t.categoryId)) });
+    return groups.filter((g) => g.teams.length > 0);
+  });
   protected readonly openCount = computed(() => this.all().filter((f) => f.resolvedAt == null).length);
   protected readonly tabOptions = computed(() => [
     { value: 'open', label: `Abiertas (${this.openCount()})` },
@@ -114,11 +122,13 @@ export class AlertsPage {
   protected readonly filtered = computed(() => {
     const tab = this.tab();
     const room = this.roomFilter();
+    const category = this.categoryFilter();
     const search = this.teamSearch().trim().toLowerCase();
     const tm = this.teamMap();
     return this.all().filter((f) => {
       if (tab === 'open' ? f.resolvedAt != null : f.resolvedAt == null) return false;
       if (room != null && (tm.get(f.teamId)?.roomId ?? null) !== room) return false;
+      if (category != null && (tm.get(f.teamId)?.categoryId ?? null) !== category) return false;
       if (search && !(tm.get(f.teamId)?.name ?? '').toLowerCase().includes(search)) return false;
       return true;
     });
@@ -158,7 +168,7 @@ export class AlertsPage {
   private loadLookups(): void {
     this.teamsService.listAll(this.editionId).subscribe({
       next: (teams) =>
-        this.teamMap.set(new Map(teams.map((t) => [t.id, { name: t.name, roomId: t.room?.id ?? null, suspended: t.suspended }]))),
+        this.teamMap.set(new Map(teams.map((t) => [t.id, { name: t.name, roomId: t.room?.id ?? null, categoryId: t.category?.id ?? null, suspended: t.suspended }]))),
       error: () => {},
     });
     const me = this.auth.user()?.id ?? null;
