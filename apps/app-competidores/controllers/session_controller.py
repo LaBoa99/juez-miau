@@ -63,6 +63,8 @@ class SessionController(QObject):
             return
         self.auth.forget()
         self.window.show_login()
+        # Igual que al cerrar sesión desde la app: el usuario se queda, la contraseña no
+        self.login_view.password.clear()
         self._open()
         self.login_view.show_error(message)
         self.notifier.notify("Sesión terminada", message)

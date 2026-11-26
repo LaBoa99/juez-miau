@@ -43,6 +43,8 @@ def test_first_session_lost_reason_is_not_overwritten():
     SessionController.session_lost(controller, "Tu equipo fue suspendido por los jueces")
     SessionController.session_lost(controller, "Tu sesión terminó. Inicia sesión de nuevo.")
     controller.login_view.show_error.assert_called_once_with("Tu equipo fue suspendido por los jueces")
+    # Cerrada por el staff: como al salir desde la app, se borra la contraseña
+    controller.login_view.password.clear.assert_called_once()
 
 
 def test_server_shortcut_only_on_login_page():
