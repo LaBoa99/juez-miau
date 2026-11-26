@@ -58,9 +58,7 @@
               @for (p of cat.problems; track p.id) {
                 <th class="pj__prob" [title]="p.title">{{ p.letter }}</th>
               }
-              <th class="pj__num">Resueltos</th>
               <th class="pj__num">Penalizaciones</th>
-              <th class="pj__num">Último AC (min)</th>
             </tr>
           </thead>
           <tbody>
@@ -72,9 +70,7 @@
                 @for (p of cat.problems; track p.id; let i = $index) {
                   <td class="pj__prob"><oj-standings-cell size="grande" [cell]="row.cells[i]" [letter]="p.letter" /></td>
                 }
-                <td class="pj__num oj-mono">{{ row.solved }}</td>
                 <td class="pj__num oj-mono" [class.pj__penalty]="row.penalty > 0">{{ row.penalty }}</td>
-                <td class="pj__num oj-mono">{{ row.lastAcMinute ?? '—' }}</td>
               </tr>
             }
           </tbody>
