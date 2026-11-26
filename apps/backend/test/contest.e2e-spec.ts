@@ -306,7 +306,7 @@ describe.skipIf(!process.env.JUDGE_DOCKER)('Concurso en vivo: reloj, envíos, ju
     const standings = (await api().get(`/api/v1/editions/${edition.id}/standings`).set(bearer(adminToken)).expect(200)).body as IStandings;
     const principiantes = standings.categories.find((category) => category.code === 'PRIN')!;
     expect(principiantes.problems).toEqual([{ id: problemId, letter: 'A', title: 'Suma' }]);
-    // AC al primer intento en el minuto 0; el CE y el WA posteriores no penalizan
+    // AC al primer intento en el minuto 0; sin alertas confirmadas no hay penalizaciones
     expect(principiantes.rows).toEqual([
       expect.objectContaining({ rank: 1, teamId: team.id, solved: 1, penalty: 0 }),
     ]);

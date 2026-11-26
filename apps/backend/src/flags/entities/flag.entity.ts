@@ -57,6 +57,11 @@ export class Flag {
     @Column({ type: 'int', default: 1 })
     declare offense: number
 
+    // Veces que se detectó mientras seguía abierta. Un programa prohibido lo cierra la app,
+    // así que cada detección es un intento nuevo
+    @Column({ type: 'int', default: 1 })
+    declare attempts: number
+
     @ManyToOne(() => Edition, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'edition_id' })
     declare edition: Relation<Edition>

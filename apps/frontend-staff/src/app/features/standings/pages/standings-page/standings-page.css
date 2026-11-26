@@ -36,6 +36,11 @@ oj-alert,
   white-space: nowrap;
 }
 
+.st__penalty {
+  color: var(--oj-danger);
+  font-weight: 700;
+}
+
 
 .st__suspended .st__team {
   text-decoration: line-through;

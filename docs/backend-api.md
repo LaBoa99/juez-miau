@@ -332,7 +332,7 @@ Tipos: `ICreateSubmission`, `ISubmission`, `ISubmissionDetail`, `IStaffSubmissio
 
 Revisión manual. **No tiene controlador propio**: usa las rutas de `## submissions`:
 - `GET /editions/:editionId/review-queue` (`RequireEditionRole([ADMIN,JUDGE])`) → `IStaffSubmission[]` pendientes (`PENDING_REVIEW`).
-- `POST /submissions/:id/review` → `{ accept: boolean, comment?: string }` (`IReviewSubmission`). `accept:true` → `AC`; `false` → `WA` (cuenta como rechazo en la penalización). `comment` lo ve el equipo (`reviewComment`). Cada decisión queda en `GET /submissions/:id/reviews`.
+- `POST /submissions/:id/review` → `{ accept: boolean, comment?: string }` (`IReviewSubmission`). `accept:true` → `AC`; `false` → `WA` (se muestra como rechazo; no penaliza). `comment` lo ve el equipo (`reviewComment`). Cada decisión queda en `GET /submissions/:id/reviews`.
 - `POST /submissions/:id/manual-review` → manda a revisión un envío ya juzgado.
 
 Un envío entra a revisión cuando su testset tiene `manualReview: true` (ver `## testsets`).
@@ -348,7 +348,7 @@ Marcador ICPC. Tipos: `IStandings`, `IStandingsCategory`, `IStandingsRow`, `ISta
 | GET | `/public/editions/:editionId/standings` | `@Public` | `IStandings` (`view:'public'`, congelado en los últimos minutos) |
 | GET | `/editions/:editionId/standings` | `RequireEditionRole(ANY)` | `IStandings` (`view:'staff'`, siempre completo) |
 
-**`IStandings`** = `{ editionId, view:'public'|'staff', frozen, freezeMinute, generatedAt, categories: IStandingsCategory[] }`. Orden: más resueltos; luego menor penalización (minuto del AC + 20 por rechazo previo; CE no cuenta); luego AC más temprano. `IStandingsCell` trae `solved, rejected, acMinute, firstToSolve, pending`. En la vista pública, los envíos desde `freezeMinute` cuentan como `pending`.
+**`IStandings`** = `{ editionId, view:'public'|'staff', frozen, freezeMinute, generatedAt, categories: IStandingsCategory[] }`. Orden: más resueltos; luego menos penalizaciones (`penalty` = 0.3 por intento de programa prohibido + 1 por alerta confirmada; los rechazos no penalizan); luego `lastAcMinute` más temprano. `IStandingsCell` trae `solved, rejected, acMinute, firstToSolve, pending`. En la vista pública, los envíos desde `freezeMinute` cuentan como `pending`.
 
 ---
 
@@ -362,7 +362,7 @@ Alertas de integridad. Definidas en `IntegrityController` (no hay controlador `f
 | POST | `/editions/:editionId/flags` | `RequireEditionRole(ANY)` | `{ teamId (int≥1), details (≤1000) }` | `IFlag` (tipo `MANUAL`) |
 | POST | `/flags/:id/resolve` | ADMIN o JUDGE de la edición (servicio; el observador solo ve y levanta) | `{ outcome: CONFIRMED\|DISMISSED, note? (≤1000) }` | `IFlag`; 409 si ya tiene esa decisión. Sirve también para corregirla |
 
-**`FlagType`:** `SESSION_REPLACED`, `FORBIDDEN_PROCESS`, `HEARTBEAT_LOST`, `MANUAL`, `EXTRA_MONITOR`, `USB_STORAGE`, `NETWORK_CHANGE`, `SESSION_CLOSED`. `IFlag` = `{ id, editionId, teamId, type, details, createdAt, resolvedAt, resolvedBy, resolutionNote, outcome, offense }`. Con `offense ≥ 2` (reincidencia) y abierta, el equipo no puede enviar. Filtro `open=true` = sin resolver. Las automáticas generan una alerta por incidente (ver `docs/design/evaluacion-alertas.md`); las `MANUAL` siempre se crean. Cada alerta `CONFIRMED` suma 20 minutos a la penalización. Al crear/resolver se emite `flag:update` a la sala de staff. El filtro por salón se arma en el cliente (equipo → salón).
+**`FlagType`:** `SESSION_REPLACED`, `FORBIDDEN_PROCESS`, `HEARTBEAT_LOST`, `MANUAL`, `EXTRA_MONITOR`, `USB_STORAGE`, `NETWORK_CHANGE`, `SESSION_CLOSED`. `IFlag` = `{ id, editionId, teamId, type, details, createdAt, resolvedAt, resolvedBy, resolutionNote, outcome, offense }`. Con `offense ≥ 2` (reincidencia) y abierta, el equipo no puede enviar. Filtro `open=true` = sin resolver. Las automáticas generan una alerta por incidente (ver `docs/design/evaluacion-alertas.md`); las `MANUAL` siempre se crean. Cada alerta `CONFIRMED` suma 1 a `penalty`; cada intento (`attempts`) de una `FORBIDDEN_PROCESS` suma 0.3 aunque se descarte. Mientras una `FORBIDDEN_PROCESS` sigue abierta, volver a detectarla suma un intento (la app cierra el programa); ya decidida, es otra alerta. Al crear/resolver se emite `flag:update` a la sala de staff. El filtro por salón se arma en el cliente (equipo → salón).
 
 ---
 

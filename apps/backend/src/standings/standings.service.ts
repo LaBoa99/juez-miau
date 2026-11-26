@@ -47,10 +47,8 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
 
     onModuleInit(): void {
         this.submissionsService.onChange((submission) => this.changed(submission.edition_id))
-        // Solo la decisión de un juez cambia el marcador; una alerta nueva no
-        this.flagsService.onChange((flag) => {
-            if(flag.outcome) this.changed(flag.edition_id)
-        })
+        // Los intentos de un programa prohibido y la decisión del juez cambian la penalización
+        this.flagsService.onChange((flag) => this.changed(flag.edition_id))
         this.clockService.onTransition((editionId) => this.changed(editionId))
     }
 
@@ -77,7 +75,7 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
         if(cached) return cached
 
         const freezeMs = frozen ? freezeStartMs(edition) : null
-        const [categories, teams, problems, submissions, confirmedAlerts] = await Promise.all([
+        const [categories, teams, problems, submissions, penaltyTenths] = await Promise.all([
             this.categoryRepository.find({ where: { edition_id: edition.id }, order: { sort_order: 'ASC', id: 'ASC' } }),
             this.teamRepository.find({ where: { edition_id: edition.id }, select: { id: true, name: true, category_id: true, room_id: true, suspended_at: true } }),
             this.problemRepository.find({
@@ -88,7 +86,7 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
                 where: { edition_id: edition.id },
                 select: { id: true, team_id: true, problem_id: true, status: true, verdict: true, contest_ms: true },
             }),
-            this.flagsService.confirmedCounts(edition.id, freezeMs),
+            this.flagsService.penaltyTenths(edition.id, freezeMs),
         ])
 
         const standings: IStandings = {
@@ -98,7 +96,7 @@ export class StandingsService implements OnModuleInit, OnModuleDestroy {
             freezeMinute: edition.freeze_duration_ms > 0 ? Math.floor(freezeStartMs(edition) / 60_000) : null,
             generatedAt: new Date().toISOString(),
             categories: computeStandings({
-                categories, problems, submissions, confirmedAlerts,
+                categories, problems, submissions, penaltyTenths,
                 teams: teams.map((team) => ({ ...team, suspended: team.suspended_at !== null })),
             }, freezeMs),
         }

@@ -248,7 +248,7 @@ Las reglas generales están en CLAUDE.md / docs/frontend-claude.md; este archivo
 - Socket.io en `/ws`. Staff: `edition:join` (con token). Público: `public:join { editionId }` sin token.
 - Eventos: `clock:update`, `standings:update` (público y staff), `submission:update`, `submission:progress`,
   `flag:update` (solo staff).
-- Marcador ICPC: resueltos, luego penalización (minuto del AC + 20 por rechazo previo; CE no cuenta).
+- Marcador: resueltos, luego penalizaciones (alertas confirmadas; los rechazos no penalizan), luego último AC.
   Staff siempre completo; público congelado en los últimos minutos.
 - Proyector: ruta pública `/proyector/:editionId` (por id, sin token). No hay marcador por categoría en el backend:
   el selector de categoría se resuelve en el cliente.
@@ -385,7 +385,7 @@ Marcador · Revisión (contador ámbar) · Alertas (contador rojo).
 
 ### 18 · Marcador de staff
 - shared/ui/standings-cell (oj-standings-cell) normal | grande: "+N · min" verde, "−N" rojo, "? N" ámbar.
-- Segmentado por categoría; tabla #, Equipo y problemas (sin Resueltos ni Penalización; el orden lo da el backend); aviso si el público está congelado;
+- Segmentado por categoría; tabla #, Equipo, problemas, Resueltos y Penalizaciones (el orden lo da el backend); aviso si el público está congelado;
   "Abrir proyector" y "Descargar CSV"; standings:update.
 
 ### 19 · Proyector

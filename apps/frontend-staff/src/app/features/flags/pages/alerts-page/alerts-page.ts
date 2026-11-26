@@ -5,7 +5,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FlagOutcome, IEditionStaffListItem, IFlag, StaffRole } from '@concurso/shared-types';
+import { FlagOutcome, IEditionStaffListItem, IFlag, StaffRole, FlagType } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Badge } from '../../../../shared/ui/badge.component';
@@ -62,6 +62,7 @@ export class AlertsPage {
 
   protected readonly editionId = findEditionId(this.route);
   protected readonly FlagOutcome = FlagOutcome;
+  protected readonly FlagType = FlagType;
 
   // Lista maestra (más reciente primero); la vista se filtra en el cliente.
   protected readonly all = signal<IFlag[]>([]);
@@ -289,6 +290,11 @@ export class AlertsPage {
   }
 
   // ─── Datos de la tarjeta ───
+  // 0.3 por intento (lo calcula el backend en décimas); entero/10 para que 3 × 0.3 se vea 0.9
+  attemptsPenalty(f: IFlag): number {
+    return (3 * f.attempts) / 10;
+  }
+
   label(f: IFlag): string {
     return flagLabel(f.type);
   }

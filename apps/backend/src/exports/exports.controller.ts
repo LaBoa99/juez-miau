@@ -36,7 +36,7 @@ export class ExportsController {
         const rows = standings.categories.flatMap((category) => category.rows.map((row) => {
             const byLetter = new Map(category.problems.map((problem, index) => [problem.letter, row.cells[index]]))
             return [
-                category.name, row.rank, row.teamName, row.solved, row.penalty,
+                category.name, row.rank, row.teamName, row.solved, row.penalty, row.lastAcMinute,
                 ...letters.map((letter) => {
                     const cell = byLetter.get(letter)
                     if(!cell) return null
@@ -45,7 +45,7 @@ export class ExportsController {
                 }),
             ]
         }))
-        return toCsv(['Categoría', 'Lugar', 'Equipo', 'Resueltos', 'Penalización', ...letters], rows)
+        return toCsv(['Categoría', 'Lugar', 'Equipo', 'Resueltos', 'Penalizaciones', 'Último AC (min)', ...letters], rows)
     }
 
     @Get('submissions.csv')

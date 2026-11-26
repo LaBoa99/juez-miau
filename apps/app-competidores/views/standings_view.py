@@ -12,9 +12,9 @@ LEGEND = (
     f"<span style='color:{ERROR}'>−3</span> rechazos sin resolverlo &nbsp;·&nbsp; "
     f"<span style='color:{TEXT_MUTED}'>? 2</span> envíos pendientes &nbsp;·&nbsp; "
     "<b>negritas</b> primero en resolverlo &nbsp;·&nbsp; <s>tachado</s> equipo suspendido<br>"
-    "Se ordena por problemas resueltos y, en empate, por menor penalización: minuto de cada problema resuelto "
-    "más 20 minutos por cada rechazo previo (los errores de compilación no cuentan) "
-    "y por cada falta a las reglas confirmada por un juez."
+    "Se ordena por problemas resueltos; en empate, por menos penalizaciones y luego por quién resolvió antes su "
+    "último problema (columna Último AC). Abrir un programa prohibido suma 0.3 cada vez y una falta confirmada "
+    "por un juez suma 1. Los rechazos no penalizan."
 )
 
 
@@ -75,7 +75,7 @@ class StandingsView(QWidget):
 
         problems = category["problems"]
         # Orden: lugar, equipo, un resultado por problema y al final los totales
-        headers = ["#", "Equipo"] + [p["letter"] for p in problems] + ["Resueltos", "Penalización"]
+        headers = ["#", "Equipo"] + [p["letter"] for p in problems] + ["Resueltos", "Penalizaciones", "Último AC (min)"]
         self.table.setColumnCount(len(headers))
         self.table.setHorizontalHeaderLabels(headers)
         for col, problem in enumerate(problems, start=2):
@@ -101,7 +101,9 @@ class StandingsView(QWidget):
                 elif cell["pending"]:
                     item.setForeground(QColor(TEXT_MUTED))
                 items.append(item)
-            items += [QTableWidgetItem(str(row["solved"])), QTableWidgetItem(str(row["penalty"]))]
+            last_ac = row.get("lastAcMinute")
+            items += [QTableWidgetItem(str(row["solved"])), QTableWidgetItem(str(row["penalty"])),
+                      QTableWidgetItem("—" if last_ac is None else str(last_ac))]
             for c, item in enumerate(items):
                 if c != 1:
                     item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)

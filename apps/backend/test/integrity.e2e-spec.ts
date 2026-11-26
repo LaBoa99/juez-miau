@@ -93,7 +93,7 @@ describe('Integridad: alertas, heartbeat, auditoría y exportaciones (e2e)', () 
     expect(await flags()).toEqual([expect.objectContaining({ type: FlagType.SESSION_REPLACED, teamId: team.id, resolvedAt: null })]);
   });
 
-  it('el heartbeat reporta procesos prohibidos una sola vez mientras la alerta siga abierta', async () => {
+  it('el heartbeat reporta procesos prohibidos una vez mientras la alerta siga abierta y cuenta los intentos', async () => {
     const heartbeat = (processes: string[]) =>
       api().post('/api/v1/contest/heartbeat').set(bearer(teamToken)).send({ processes }).expect(200);
 
@@ -103,6 +103,8 @@ describe('Integridad: alertas, heartbeat, auditoría y exportaciones (e2e)', () 
 
     const forbidden = (await flags()).filter((flag) => flag.type === FlagType.FORBIDDEN_PROCESS);
     expect(forbidden.map((flag) => flag.details).sort()).toEqual(['Proceso prohibido en ejecución: Discord', 'Proceso prohibido en ejecución: chrome']);
+    // La app lo cerró y volvió a aparecer: otro intento en la misma alerta
+    expect(forbidden.find((flag) => flag.details.endsWith('chrome'))!.attempts).toBe(2);
     await api().post('/api/v1/contest/heartbeat').set(bearer(adminToken)).send({}).expect(403);
   });
 
@@ -215,48 +217,47 @@ describe('Integridad: alertas, heartbeat, auditoría y exportaciones (e2e)', () 
     await api().get(`/api/v1/editions/${otherEdition.id}/flags`).set(bearer(adminToken)).expect(403);
   });
 
-  it('una alerta confirmada suma 20 minutos una vez por incidente, se corrige y no se filtra con el marcador congelado', async () => {
+  it('cada intento suma 0.3, confirmar suma 1, descartar deja los intentos y el marcador congelado no lo filtra', async () => {
     const heartbeat = () => api().post('/api/v1/contest/heartbeat').set(bearer(teamToken)).send({ processes: ['chrome'] }).expect(200);
     const decide = (id: number, outcome: FlagOutcome) => api().post(`/api/v1/flags/${id}/resolve`).set(bearer(adminToken)).send({ outcome });
     const chrome = async () => (await flags()).filter((flag) => flag.type === FlagType.FORBIDDEN_PROCESS && flag.details.endsWith('chrome'));
     const penalty = async (path: string) => ((await api().get(path).set(bearer(adminToken)).expect(200)).body as IStandings)
       .categories[0].rows.find((row) => row.teamId === team.id)!.penalty;
     const staff = `/api/v1/editions/${edition.id}/standings`;
-    const reopened = () => repo(Flag).update({ team_id: team.id }, { last_seen_at: new Date(Date.now() - 60_000) });
+    // Los intentos de las pruebas anteriores (descartados) siguen contando
+    const base = await penalty(staff);
 
-    // El programa se cerró hace rato y se vuelve a abrir: incidente nuevo
-    await reopened();
+    // La alerta anterior ya se decidió: volver a abrirlo es otra alerta
     const before = (await chrome()).length;
     await heartbeat();
     const [flag] = await chrome();
     expect((await chrome()).length).toBe(before + 1);
+    expect(await penalty(staff)).toBeCloseTo(base + 0.3);
 
-    await decide(flag.id, FlagOutcome.CONFIRMED).expect(200);
-    expect(await penalty(staff)).toBe(20);
-    await decide(flag.id, FlagOutcome.CONFIRMED).expect(409);
-
-    // Sigue abierto después de la decisión: mismo incidente, no se penaliza otra vez
+    // Lo volvió a abrir mientras sigue abierta: mismo aviso, otro intento
     await heartbeat();
     expect((await chrome()).length).toBe(before + 1);
+    expect((await chrome())[0].attempts).toBe(2);
+    expect(await penalty(staff)).toBeCloseTo(base + 0.6);
+
+    await decide(flag.id, FlagOutcome.CONFIRMED).expect(200);
+    expect(await penalty(staff)).toBeCloseTo(base + 1.6);
+    await decide(flag.id, FlagOutcome.CONFIRMED).expect(409);
 
     // Confirmada durante el congelamiento: el staff la ve; el público todavía no
     await repo(Edition).update(edition.id, { freeze_duration_ms: 3_600_000 });
     await decide(flag.id, FlagOutcome.DISMISSED).expect(200);
     await decide(flag.id, FlagOutcome.CONFIRMED).expect(200);
-    expect(await penalty(staff)).toBe(20);
+    expect(await penalty(staff)).toBeCloseTo(base + 1.6);
     expect(await penalty(`/api/v1/public/editions/${edition.id}/standings`)).toBe(0);
     await repo(Edition).update(edition.id, { freeze_duration_ms: 0 });
 
+    // Descartada: quita el 1 del juez, los intentos se quedan
     await decide(flag.id, FlagOutcome.DISMISSED).expect(200);
-    expect(await penalty(staff)).toBe(0);
-
-    await reopened();
-    await heartbeat();
-    expect((await chrome()).length).toBe(before + 2);
-    await decide((await chrome())[0].id, FlagOutcome.DISMISSED).expect(200);
+    expect(await penalty(staff)).toBeCloseTo(base + 0.6);
   });
 
-  it('la reincidencia sale tras el margen, frena los envíos aunque la edición no bloquee y se libera al decidir', async () => {
+  it('después de confirmar, volver a abrirlo es reincidencia de inmediato, frena los envíos y se libera al decidir', async () => {
     const heartbeat = () => api().post('/api/v1/contest/heartbeat').set(bearer(teamToken)).send({ processes: ['chrome'] }).expect(200);
     const decide = (id: number, outcome: FlagOutcome) => api().post(`/api/v1/flags/${id}/resolve`).set(bearer(adminToken)).send({ outcome });
     const chrome = async () => (await flags()).filter((flag) => flag.type === FlagType.FORBIDDEN_PROCESS && flag.details.endsWith('chrome'));
@@ -264,31 +265,22 @@ describe('Integridad: alertas, heartbeat, auditoría y exportaciones (e2e)', () 
       .send({ problemId: 999999, languageId: '00000000-0000-4000-8000-000000000000', source: 'x' });
 
     await repo(Edition).update(edition.id, { block_submissions_on_alert: false });
-    await repo(Flag).update({ team_id: team.id }, { last_seen_at: new Date(Date.now() - 60_000) });
     await heartbeat();
     const [first] = await chrome();
     expect(first.offense).toBe(1);
     await decide(first.id, FlagOutcome.CONFIRMED).expect(200);
     const total = (await chrome()).length;
 
-    // Dentro del margen para cerrarlo: ni alerta nueva ni bloqueo
-    await heartbeat();
-    expect((await chrome()).length).toBe(total);
-    await submit().expect(404);
-
-    // Pasó el margen y se sigue detectando
-    await repo(Flag).update(first.id, { resolved_at: new Date(Date.now() - 3 * 60_000) });
+    // La app ya lo cerró: si vuelve a aparecer no hay margen, es otra falta
     await heartbeat();
     const [repeat] = await chrome();
-    expect(repeat).toMatchObject({ offense: 2, resolvedAt: null });
+    expect(repeat).toMatchObject({ offense: 2, resolvedAt: null, attempts: 1 });
     expect(repeat.id).not.toBe(first.id);
+    expect((await chrome()).length).toBe(total + 1);
     await submit().expect(403);
 
-    // Descartada: libera los envíos y no vuelve a sonar mientras siga abierto
     await decide(repeat.id, FlagOutcome.DISMISSED).expect(200);
     await submit().expect(404);
-    await heartbeat();
-    expect((await chrome()).length).toBe(total + 1);
 
     await decide(first.id, FlagOutcome.DISMISSED).expect(200);
     await repo(Edition).update(edition.id, { block_submissions_on_alert: true });
@@ -334,8 +326,9 @@ describe('Integridad: alertas, heartbeat, auditoría y exportaciones (e2e)', () 
   it('exporta el marcador y los envíos en CSV', async () => {
     const standings = await api().get(`/api/v1/editions/${edition.id}/exports/standings.csv`).set(bearer(adminToken)).expect(200);
     expect(standings.headers['content-type']).toMatch(/text\/csv/);
-    expect(standings.text).toContain('Categoría,Lugar,Equipo,Resueltos,Penalización');
-    expect(standings.text).toContain('Categoría E2E,1,Equipo integridad,0,0');
+    expect(standings.text).toContain('Categoría,Lugar,Equipo,Resueltos,Penalizaciones,Último AC (min)');
+    // Penalización = los intentos de programas prohibidos de las pruebas anteriores (0.3 cada uno, descartados)
+    expect(standings.text).toMatch(/Categoría E2E,1,Equipo integridad,0,\d+(\.\d)?,/);
 
     const submissions = await api().get(`/api/v1/editions/${edition.id}/exports/submissions.csv`).set(bearer(adminToken)).expect(200);
     // supertest le quita el BOM al decodificar el texto (csv.spec.ts revisa que esté)

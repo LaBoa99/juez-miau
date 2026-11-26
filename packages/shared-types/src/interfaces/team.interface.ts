@@ -46,6 +46,8 @@ export interface ITeamListItem {
     signalLost: boolean
     // Suspendido por el staff: no puede entrar ni enviar y queda al final del marcador
     suspended: boolean
+    // Igual que en el marcador: 0.3 por intento de programa prohibido y 1 por alerta confirmada
+    penalty: number
 }
 
 export interface ITeamsPage {

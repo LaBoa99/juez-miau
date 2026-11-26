@@ -48,8 +48,9 @@ Aunque la app esté detrás de tu IDE, te llega una notificación con cada vered
 | Error de compilación | No compiló. Selecciona el intento para ver el mensaje del compilador. |
 | En revisión del juez | Un juez lo revisa a mano; recibirás un aviso cuando termine. |
 
-Cada envío rechazado suma 20 minutos de penalización, pero solo si después resuelves ese problema.
-Los errores de compilación no cuentan. Cada falta a las reglas confirmada por un juez también suma 20 minutos.
+Los envíos rechazados no penalizan: puedes intentar las veces que quieras.
+Solo cuentan las faltas a las reglas: cada vez que abres un programa prohibido suma 0.3 de penalización
+(la app lo cierra) y cada falta confirmada por un juez suma 1.
 
 ## 6. Aclaraciones
 Si un enunciado no es claro, ve a la pestaña **Aclaraciones**, elige el problema (o *General del concurso*)

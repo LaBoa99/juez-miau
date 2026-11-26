@@ -155,6 +155,16 @@
   --oj-border: var(--oj-cell-border);
   --oj-neutral-bg: var(--oj-cell-head);
 }
+.pj__num {
+  width: 1%;
+  font-size: 32px;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+.pj__penalty {
+  color: var(--oj-danger);
+}
 .pj__more {
   margin: 8px 0 0;
   font-size: 20px;

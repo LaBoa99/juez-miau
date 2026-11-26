@@ -1,6 +1,6 @@
-// Marcador ICPC (decisión del 2026-10-27, docs/design/backend-roadmap.md):
-// más problemas resueltos; luego menos penalización (minuto de cada AC + 20 por cada rechazo
-// previo; CE no cuenta); luego el último AC más temprano. Empates exactos comparten lugar
+// Marcador (decisión del 2026-11-26, docs/design/evaluacion-alertas.md): más problemas resueltos;
+// luego menos penalizaciones (alertas confirmadas); luego el último AC más temprano.
+// Los rechazos no penalizan. Empates exactos comparten lugar
 
 export interface IStandingsCell {
     problemId: number
@@ -24,7 +24,10 @@ export interface IStandingsRow {
     // Para filtrar el marcador por salón
     roomId: number | null
     solved: number
+    // Alertas de integridad confirmadas por un juez (no minutos)
     penalty: number
+    // Minuto del último AC: desempata a igualdad de resueltos y penalizaciones; null si no ha resuelto nada
+    lastAcMinute: number | null
     cells: IStandingsCell[]
 }
 

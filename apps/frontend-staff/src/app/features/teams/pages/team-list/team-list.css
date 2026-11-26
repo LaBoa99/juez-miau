@@ -43,6 +43,10 @@
   text-align: center;
   white-space: nowrap;
 }
+.teams__penalty {
+  color: var(--oj-danger);
+  font-weight: 700;
+}
 
 /* Relleno, ámbar o hueco: se distinguen también sin ver el color */
 .teams__dot {

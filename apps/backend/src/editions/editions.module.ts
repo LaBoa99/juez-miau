@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { FlagsModule } from '../flags/flags.module.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EditionsController } from './controllers/editions.controller.js';
 import { EditionCategoriesController } from './controllers/edition-categories.controller.js';
@@ -41,6 +42,7 @@ import { EditionLanguagesService } from './services/edition-languages.service.js
     StaffModule,
     TeamsModule,
     LanguagesModule,
+    FlagsModule,
   ],
   controllers: [
     EditionsController,

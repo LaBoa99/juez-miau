@@ -1,3 +1,4 @@
+import { FlagsService } from '../../flags/flags.service.js';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -129,6 +130,7 @@ export class EditionTeamsService {
         private readonly editionService: EditionsService,
         private readonly teamsService: TeamsService,
         private readonly dataSource: DataSource,
+        private readonly flagsService: FlagsService,
     ) {}
 
     // Valida el CSV sin registrar nada (RF-09)
@@ -222,6 +224,7 @@ export class EditionTeamsService {
                 lastHeartbeatAt: null,
                 signalLost: false,
                 suspended: false,
+                penalty: 0,
             },
             credentials: { teamName: team.name, username: team.username, password },
         }
@@ -229,7 +232,10 @@ export class EditionTeamsService {
 
     async findAllByEdition(editionId: number, filters: TeamFiltersDto) {
         await this.editionService.getById(editionId)
-        const { teams, total } = await this.teamsService.findAllByEdition(editionId, filters)
+        const [{ teams, total }, penaltyTenths] = await Promise.all([
+            this.teamsService.findAllByEdition(editionId, filters),
+            this.flagsService.penaltyTenths(editionId, null),
+        ])
         const now = Date.now()
 
         return {
@@ -247,6 +253,7 @@ export class EditionTeamsService {
                     // Una app cerrada de golpe deja la sesión abierta: "online" solo no dice si sigue ahí
                     signalLost: !!session && now - new Date(session.last_heartbeat_at).getTime() > HEARTBEAT_LOST_AFTER_MS,
                     suspended: team.suspended_at !== null,
+                    penalty: (penaltyTenths.get(team.id) ?? 0) / 10,
                 }
             }),
             total,

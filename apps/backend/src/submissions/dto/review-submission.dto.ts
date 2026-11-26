@@ -3,7 +3,7 @@ import type { IReviewSubmission } from '@concurso/shared-types';
 
 export class ReviewSubmissionDto implements IReviewSubmission {
 
-    // true → AC; false → WA (cuenta como rechazo para la penalización)
+    // true → AC; false → WA (se muestra como rechazo; no penaliza)
     @IsBoolean()
     declare accept: boolean;
 

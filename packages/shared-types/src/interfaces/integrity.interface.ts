@@ -39,6 +39,8 @@ export interface IFlag {
     outcome: FlagOutcome | null
     // Número de falta de este tipo: 2 o más es reincidencia y frena los envíos mientras siga abierta
     offense: number
+    // Programa prohibido: veces que lo abrió mientras la alerta seguía abierta (cada una suma 0.3)
+    attempts: number
 }
 
 export interface ICreateFlag {

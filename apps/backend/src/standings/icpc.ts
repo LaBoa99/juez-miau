@@ -1,10 +1,6 @@
 import { SubmissionStatus, Verdict, type IStandingsCategory, type IStandingsCell, type IStandingsRow } from '@concurso/shared-types'
 
-export const PENALTY_PER_REJECTION = 20
-// Misma unidad que un rechazo: nunca supera a resolver un problema más
-export const PENALTY_PER_CONFIRMED_ALERT = 20
-
-// Rechazos que suman penalización; CE no cuenta (el código ni siquiera corrió)
+// Rechazos que se muestran en la celda (no penalizan); CE no cuenta (el código ni siquiera corrió)
 const REJECTED = new Set<Verdict>([Verdict.WA, Verdict.TLE, Verdict.MLE, Verdict.RE])
 
 export interface StandingsTeam { id: number, name: string, category_id: number, room_id?: number | null, suspended?: boolean }
@@ -24,8 +20,8 @@ export interface StandingsInput {
     teams: StandingsTeam[]
     problems: StandingsProblem[]
     submissions: StandingsSubmission[]
-    // Alertas confirmadas por un juez, por equipo
-    confirmedAlerts?: ReadonlyMap<number, number>
+    // Penalización por equipo en décimas (intentos de trampa y alertas confirmadas): FlagsService.penaltyTenths
+    penaltyTenths?: ReadonlyMap<number, number>
 }
 
 // `freezeMs`: los envíos desde ese tiempo de concurso cuentan como pendientes (vista pública
@@ -90,11 +86,11 @@ export function computeStandings(input: StandingsInput, freezeMs: number | null)
                     teamName: team.name,
                     roomId: team.room_id ?? null,
                     solved: solvedCells.length,
-                    penalty: solvedCells.reduce((total, cell) => total + cell.acMinute! + PENALTY_PER_REJECTION * cell.rejected, 0)
-                        + PENALTY_PER_CONFIRMED_ALERT * (input.confirmedAlerts?.get(team.id) ?? 0),
+                    // Décimas enteras / 10: 0.3 × 3 da 0.9 exacto y las comparaciones no fallan por redondeo
+                    penalty: (input.penaltyTenths?.get(team.id) ?? 0) / 10,
+                    lastAcMinute: solvedCells.length ? Math.max(...solvedCells.map((cell) => cell.acMinute!)) : null,
                     cells: teamCells,
                 } satisfies IStandingsRow,
-                lastAc: Math.max(-1, ...solvedCells.map((cell) => cell.acMinute!)),
             }
         })
 
@@ -103,7 +99,7 @@ export function computeStandings(input: StandingsInput, freezeMs: number | null)
             Number(a.row.suspended) - Number(b.row.suspended)
             || b.row.solved - a.row.solved
             || a.row.penalty - b.row.penalty
-            || a.lastAc - b.lastAc
+            || (a.row.lastAcMinute ?? -1) - (b.row.lastAcMinute ?? -1)
             || a.row.teamName.localeCompare(b.row.teamName))
 
         // Empate exacto en los tres criterios: mismo lugar (1, 2, 2, 4)
@@ -113,7 +109,7 @@ export function computeStandings(input: StandingsInput, freezeMs: number | null)
             const tied = previous
                 && previous.row.solved === entry.row.solved
                 && previous.row.penalty === entry.row.penalty
-                && previous.lastAc === entry.lastAc
+                && previous.row.lastAcMinute === entry.row.lastAcMinute
             entry.row.rank = tied ? previous.row.rank : index + 1
         })
 

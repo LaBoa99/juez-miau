@@ -49,6 +49,9 @@
             @for (p of cat.problems; track p.id) {
               <th class="st__prob" [title]="p.title">{{ p.letter }}</th>
             }
+            <th class="st__num">Resueltos</th>
+            <th class="st__num" title="Alertas de integridad confirmadas por un juez">Penalizaciones</th>
+            <th class="st__num" title="Minuto en que resolvió su último problema: desempata">Último AC (min)</th>
             <th aria-label="Acciones"></th>
           </tr>
         </thead>
@@ -69,6 +72,9 @@
               @for (p of cat.problems; track p.id; let i = $index) {
                 <td class="st__prob"><oj-standings-cell [cell]="row.cells[i]" [letter]="p.letter" /></td>
               }
+              <td class="st__num oj-mono">{{ row.solved }}</td>
+              <td class="st__num oj-mono" [class.st__penalty]="row.penalty > 0">{{ row.penalty }}</td>
+              <td class="st__num oj-mono">{{ row.lastAcMinute ?? '—' }}</td>
               <td class="st__num">
                 <button
                   ojButton
@@ -84,7 +90,7 @@
             </tr>
           } @empty {
             <tr>
-              <td [attr.colspan]="cat.problems.length + 3" class="st__none">Ningún equipo en esta categoría.</td>
+              <td [attr.colspan]="cat.problems.length + 6" class="st__none">Ningún equipo en esta categoría.</td>
             </tr>
           }
         </tbody>

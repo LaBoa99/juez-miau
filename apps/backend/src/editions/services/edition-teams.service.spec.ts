@@ -45,6 +45,7 @@ describe('EditionTeamsService.validateImport', () => {
         { getById: async () => ({ id: 9 }) } as any,
         {} as any,
         { getRepository: () => ({ find: async () => existing }) } as any,
+        {} as any,
     )
 
     it('empata la categoría sin acentos, marca los existentes como actualización y rechaza repetidos', async () => {

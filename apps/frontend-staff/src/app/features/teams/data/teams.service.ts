@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
   ICreateTeam,
@@ -10,6 +10,7 @@ import {
   IUpdateTeam,
 } from '@concurso/shared-types';
 import { EMPTY, Observable, expand, map, reduce } from 'rxjs';
+import { SILENT_SAVE } from '../../../core/notifications/saved.interceptor';
 
 const API = '/api';
 
@@ -80,6 +81,7 @@ export class TeamsService {
   }
 
   closeSessions(teamId: number): Observable<void> {
-    return this.http.delete<void>(`${API}/teams/${teamId}/sessions`);
+    // La página ya avisa "Se cerró la sesión de…"; sin esto el aviso genérico de DELETE decía "Se eliminó correctamente"
+    return this.http.delete<void>(`${API}/teams/${teamId}/sessions`, { context: new HttpContext().set(SILENT_SAVE, true) });
   }
 }

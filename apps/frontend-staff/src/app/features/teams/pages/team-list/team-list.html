@@ -60,6 +60,7 @@
           <th>Usuario</th>
           <th>Categoría</th>
           <th>Salón</th>
+          <th class="teams__center" title="Penalizaciones: 0.3 por intento de programa prohibido y 1 por alerta confirmada" aria-label="Penalizaciones">Pen.</th>
           <th aria-label="Acciones"></th>
         </tr>
       </thead>
@@ -94,6 +95,7 @@
                 <oj-badge tone="warning">Sin salón</oj-badge>
               }
             </td>
+            <td class="teams__center oj-mono" [class.teams__penalty]="t.penalty > 0">{{ t.penalty }}</td>
             <td>
               <div class="teams__row-actions">
                 <button ojButton variant="secondary" size="sm" class="oj-btn--icon" type="button"

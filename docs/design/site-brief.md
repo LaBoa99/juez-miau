@@ -17,7 +17,7 @@ Lúdico, con el gatito como guía. Cercano y simpático, sin perder la seriedad 
 ## Lo que el organizador debe poder responder al terminar
 
 1. **¿Es rápido?** Compila una vez, corre todos los casos, veredicto en segundos.
-2. **¿Es justo?** Contenedor sin red, 1 núcleo por caso, límites de tiempo y memoria, reglas ICPC (penalización 20 min, CE no cuenta), congelamiento del marcador.
+2. **¿Es justo?** Contenedor sin red, 1 núcleo por caso, límites de tiempo y memoria, penalización solo por faltas confirmadas (los rechazos no penalizan), congelamiento del marcador.
 3. **¿Detecta trampas?** Latido de la app: procesos, monitores, USB; alertas solo para el staff y suspensión.
 4. **¿Lo puedo montar yo?** Un servidor con Docker Compose, guía de despliegue, código abierto.
 5. **¿Quién lo hizo?** Maestría en Ingeniería de Software del CUValles (va al final, como respaldo, no como mensaje principal).

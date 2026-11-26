@@ -12,6 +12,9 @@ import { Submission } from '../entities/submission.entity.js'
 import { SubmissionCase } from '../entities/submission-case.entity.js'
 import { SUBMISSIONS_QUEUE, type SubmissionJob } from '../submissions.constants.js'
 
+// Postgres no guarda el byte 0 en text: un programa que lo imprime dejaba el envío en ERROR en vez de calificarlo
+export const pgText = (text: string | null | undefined): string | null => text?.replaceAll('\0', '\uFFFD') ?? null
+
 // La salida del equipo se guarda para el detalle por caso del staff; más que esto no aporta
 const MAX_CASE_OUTPUT = 64 * 1024
 
@@ -143,8 +146,8 @@ export class SubmissionProcessor extends WorkerHost implements OnApplicationBoot
                     wall_ms: testCase.wallMs,
                     memory_kb: testCase.memoryKb,
                     exit_code: testCase.exitCode,
-                    output: testCase.output?.slice(0, MAX_CASE_OUTPUT) ?? null,
-                    message: testCase.message?.slice(0, 4096) ?? null,
+                    output: pgText(testCase.output?.slice(0, MAX_CASE_OUTPUT)),
+                    message: pgText(testCase.message?.slice(0, 4096)),
                 })))
             }
             await manager.update(Submission, { id: submission.id, judge_round: submission.judge_round, status: In([SubmissionStatus.QUEUED, SubmissionStatus.JUDGING]) }, {
@@ -152,7 +155,7 @@ export class SubmissionProcessor extends WorkerHost implements OnApplicationBoot
                 verdict: result.verdict,
                 max_time_ms: result.cases.length > 0 ? result.maxTimeMs : null,
                 max_memory_kb: result.cases.length > 0 ? result.maxMemoryKb : null,
-                compile_log: result.compileLog?.slice(0, 8192) ?? null,
+                compile_log: pgText(result.compileLog?.slice(0, 8192)),
                 judged_at: new Date(),
             })
         })

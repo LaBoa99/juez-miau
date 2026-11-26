@@ -39,6 +39,9 @@
           @if (f.offense > 1) {
             <oj-badge [tone]="f.resolvedAt ? 'neutral' : 'danger'">REINCIDENCIA · {{ f.offense }}.ª FALTA</oj-badge>
           }
+          @if (f.type === FlagType.FORBIDDEN_PROCESS) {
+            <oj-badge [tone]="f.resolvedAt ? 'neutral' : 'warning'">{{ f.attempts }} {{ f.attempts === 1 ? 'INTENTO' : 'INTENTOS' }} · +{{ attemptsPenalty(f) }}</oj-badge>
+          }
           <span class="al__team">{{ teamName(f.teamId) }}</span>
           <span class="al__room-name">{{ roomName(f.teamId) }}</span>
           <span class="al__time oj-mono">{{ f.createdAt | date: 'HH:mm' }}</span>
@@ -53,7 +56,7 @@
         @if (f.resolvedAt) {
           <p class="al__resolved-by">
             @switch (f.outcome) {
-              @case (FlagOutcome.CONFIRMED) { <strong>Confirmada · +20 min</strong> por {{ resolverName(f) }} }
+              @case (FlagOutcome.CONFIRMED) { <strong>Confirmada · +1</strong> por {{ resolverName(f) }} }
               @case (FlagOutcome.DISMISSED) { Descartada por {{ resolverName(f) }} }
               @default { Resuelta por {{ resolverName(f) }} }
             }
@@ -119,7 +122,11 @@
     @if (actionError()) {
       <oj-alert tone="error">{{ actionError() }}</oj-alert>
     }
-    <p class="al__muted">Penalizar suma 20 minutos a la penalización del equipo. No penalizar no afecta su lugar.</p>
+    @if (resolveTarget()?.type === FlagType.FORBIDDEN_PROCESS) {
+      <p class="al__muted">Cada intento de abrir el programa ya sumó 0.3 de penalización. Penalizar suma 1 más; No penalizar deja solo los intentos.</p>
+    } @else {
+      <p class="al__muted">Penalizar suma 1 de penalización: con los mismos resueltos, el equipo queda debajo de quien tenga menos. No penalizar no afecta su lugar.</p>
+    }
     @if ((resolveTarget()?.offense ?? 1) > 1 && !resolveTarget()?.resolvedAt) {
       <oj-alert tone="warning">
         Es su falta número {{ resolveTarget()?.offense }} de este tipo y no puede enviar hasta que decidas.

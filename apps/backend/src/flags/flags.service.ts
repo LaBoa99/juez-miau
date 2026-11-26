@@ -12,6 +12,10 @@ import { Flag } from './entities/flag.entity.js'
 const SAME_INCIDENT_MS = 45_000
 // Tras confirmar una falta, tiempo para corregirla; si después se sigue detectando es reincidencia
 const REPEAT_GRACE_MS = 120_000
+// Penalización en décimas: cada intento de abrir un programa prohibido suma 0.3 aunque el juez la descarte;
+// confirmar cualquier alerta suma 1 más
+const ATTEMPT_TENTHS = 3
+const CONFIRMED_TENTHS = 10
 const LOGOUT_KEY = 'logout'
 const LOGOUT_PENDING = 'Cerró sesión durante el concurso y aún no vuelve.'
 
@@ -39,6 +43,7 @@ export function toFlagDto(flag: Flag): IFlag {
         resolutionNote: flag.resolution_note,
         outcome: flag.outcome ?? null,
         offense: flag.offense ?? 1,
+        attempts: flag.attempts ?? 1,
     }
 }
 
@@ -79,7 +84,16 @@ export class FlagsService {
                 select: { id: true, resolved_at: true, last_seen_at: true, outcome: true },
             })
             const now = new Date()
-            if(last && isSameIncident(last, type, now, endedAt)){
+            if(last && type === FlagType.FORBIDDEN_PROCESS){
+                // shortcut: la app solo manda nombres; si no pudo cerrarlo (corre como administrador) cada heartbeat cuenta
+                // como intento. Si llega a pasar, mandar el PID para distinguir "sigue abierto" de "lo volvió a abrir"
+                if(!last.resolved_at){
+                    await this.flagRepository.update(last.id, { last_seen_at: now, attempts: () => 'attempts + 1' })
+                    this.notify(await this.flagRepository.findOneByOrFail({ id: last.id }))
+                    return null
+                }
+                // Ya decidida: volver a abrirlo es otra falta
+            } else if(last && isSameIncident(last, type, now, endedAt)){
                 await this.flagRepository.update(last.id, { last_seen_at: now })
                 return null
             }
@@ -170,18 +184,24 @@ export class FlagsService {
         return toFlagDto(flag)
     }
 
-    // Alertas confirmadas por equipo. `beforeMs`: solo las confirmadas antes de ese tiempo (marcador congelado)
-    async confirmedCounts(editionId: number, beforeMs: number | null): Promise<Map<number, number>> {
+    // Penalización por equipo, en décimas. `beforeMs` (marcador congelado): solo las confirmadas antes de ese tiempo.
+    // shortcut: congelado no muestra los 0.3 de alertas sin confirmar; se ven al terminar el congelamiento
+    async penaltyTenths(editionId: number, beforeMs: number | null): Promise<Map<number, number>> {
         const flags = await this.flagRepository.find({
-            where: { edition_id: editionId, outcome: FlagOutcome.CONFIRMED },
-            select: { id: true, team_id: true, outcome_contest_ms: true },
+            where: [
+                { edition_id: editionId, outcome: FlagOutcome.CONFIRMED },
+                ...(beforeMs === null ? [{ edition_id: editionId, type: FlagType.FORBIDDEN_PROCESS }] : []),
+            ],
+            select: { id: true, team_id: true, type: true, outcome: true, outcome_contest_ms: true, attempts: true },
         })
-        const counts = new Map<number, number>()
+        const tenths = new Map<number, number>()
         for(const flag of flags){
-            if(beforeMs !== null && (flag.outcome_contest_ms ?? 0) >= beforeMs) continue
-            counts.set(flag.team_id, (counts.get(flag.team_id) ?? 0) + 1)
+            const confirmed = flag.outcome === FlagOutcome.CONFIRMED
+            if(beforeMs !== null && (!confirmed || (flag.outcome_contest_ms ?? 0) >= beforeMs)) continue
+            const value = (flag.type === FlagType.FORBIDDEN_PROCESS ? ATTEMPT_TENTHS * flag.attempts : 0) + (confirmed ? CONFIRMED_TENTHS : 0)
+            tenths.set(flag.team_id, (tenths.get(flag.team_id) ?? 0) + value)
         }
-        return counts
+        return tenths
     }
 
     private notify(flag: Flag): void {

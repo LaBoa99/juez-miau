@@ -24,25 +24,25 @@ const base = (submissions: StandingsSubmission[]): StandingsInput => ({
 })
 
 describe('computeStandings (ICPC)', () => {
-    it('cada alerta confirmada suma 20 minutos, pero no supera a quien resolvió más', () => {
+    it('la penalización (en décimas) no supera a quien resolvió más', () => {
         const input = base([
             // Alfa: 10 min; Beta: 5 min; Gama: dos resueltos en 50 min
             sub(10, 101, Verdict.AC, 10), sub(11, 101, Verdict.AC, 5),
             sub(12, 101, Verdict.AC, 20), sub(12, 100, Verdict.AC, 30),
         ])
-        const [principiantes] = computeStandings({ ...input, confirmedAlerts: new Map([[11, 1], [12, 2]]) }, null)
+        const [principiantes] = computeStandings({ ...input, penaltyTenths: new Map([[11, 13], [12, 20]]) }, null)
         expect(principiantes.rows.map((row) => [row.rank, row.teamName, row.solved, row.penalty])).toEqual([
-            [1, 'Gama', 2, 90],
-            [2, 'Alfa', 1, 10],
-            [3, 'Beta', 1, 25],
+            [1, 'Gama', 2, 2],
+            [2, 'Alfa', 1, 0],
+            [3, 'Beta', 1, 1.3],
         ])
     })
 
-    it('ordena por resueltos y penalización; CE no penaliza y lo posterior al AC no cuenta', () => {
+    it('ordena por resueltos; los rechazos no penalizan y lo posterior al AC no cuenta', () => {
         const [principiantes, avanzados] = computeStandings(base([
-            // Alfa: A en el minuto 10 con un WA y un CE antes → 10 + 20 = 30; luego un WA que no cuenta
+            // Alfa: A en el minuto 10 con un WA y un CE antes (solo el WA se muestra); luego un WA que no cuenta
             sub(10, 101, Verdict.WA, 3), sub(10, 101, Verdict.CE, 5), sub(10, 101, Verdict.AC, 10), sub(10, 101, Verdict.WA, 12),
-            // Beta: A en 15 y B en 40 → 55; dos resueltos le gana a Alfa
+            // Beta: A en 15 y B en 40; dos resueltos le gana a Alfa
             sub(11, 101, Verdict.AC, 15), sub(11, 100, Verdict.TLE, 30), sub(11, 100, Verdict.AC, 40),
             // Gama: solo rechazos
             sub(12, 100, Verdict.RE, 20),
@@ -52,8 +52,8 @@ describe('computeStandings (ICPC)', () => {
 
         expect(principiantes.problems.map((problem) => problem.letter)).toEqual(['A', 'B'])
         expect(principiantes.rows.map((row) => [row.rank, row.teamName, row.solved, row.penalty])).toEqual([
-            [1, 'Beta', 2, 15 + 40 + 20],
-            [2, 'Alfa', 1, 30],
+            [1, 'Beta', 2, 0],
+            [2, 'Alfa', 1, 0],
             [3, 'Gama', 0, 0],
         ])
         const alfaA = principiantes.rows[1].cells[0]
@@ -62,17 +62,23 @@ describe('computeStandings (ICPC)', () => {
         expect(avanzados.rows).toEqual([expect.objectContaining({ teamName: 'Delta', rank: 1, solved: 1 })])
     })
 
+    it('con los mismos resueltos, un solo intento de trampa (0.3) pesa más que el tiempo', () => {
+        const input = base([sub(10, 101, Verdict.AC, 5), sub(11, 101, Verdict.WA, 10), sub(11, 101, Verdict.AC, 50)])
+        const [principiantes] = computeStandings({ ...input, penaltyTenths: new Map([[10, 3]]) }, null)
+        expect(principiantes.rows.map((row) => [row.rank, row.teamName, row.penalty])).toEqual([[1, 'Beta', 0], [2, 'Alfa', 0.3], [3, 'Gama', 0]])
+    })
+
     it('desempata por el último AC más temprano y comparte lugar en empate exacto', () => {
         const [principiantes] = computeStandings(base([
-            // Alfa: 10 + 50 = 60, último AC en 50
+            // Alfa: último AC en 50
             sub(10, 101, Verdict.AC, 10), sub(10, 100, Verdict.AC, 50),
-            // Beta: 30 + 30 = 60, último AC en 30 → gana el desempate
+            // Beta: último AC en 30 → gana el desempate
             sub(11, 101, Verdict.AC, 30), sub(11, 100, Verdict.AC, 30),
             // Gama: idéntico a Alfa → mismo lugar
             sub(12, 101, Verdict.AC, 10), sub(12, 100, Verdict.AC, 50),
         ]), null)
 
-        expect(principiantes.rows.map((row) => [row.rank, row.teamName])).toEqual([[1, 'Beta'], [2, 'Alfa'], [2, 'Gama']])
+        expect(principiantes.rows.map((row) => [row.rank, row.teamName, row.lastAcMinute])).toEqual([[1, 'Beta', 30], [2, 'Alfa', 50], [2, 'Gama', 50]])
     })
 
     it('los suspendidos van al final, sin lugar, y no le quitan lugares a los demás', () => {
@@ -96,6 +102,6 @@ describe('computeStandings (ICPC)', () => {
         expect(frozen.rows.find((row) => row.teamName === 'Beta')!.cells[0].pending).toBe(1)
 
         const [staff] = computeStandings(base(submissions), null)
-        expect(staff.rows.find((row) => row.teamName === 'Alfa')!).toMatchObject({ solved: 1, penalty: 95 + 20 })
+        expect(staff.rows.find((row) => row.teamName === 'Alfa')!).toMatchObject({ solved: 1, penalty: 0 })
     })
 })

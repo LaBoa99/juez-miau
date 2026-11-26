@@ -48,7 +48,7 @@ export class Submission {
     @Column({ type: 'enum', enum: Verdict, nullable: true })
     declare verdict: Verdict | null
 
-    // Tiempo de concurso al recibirlo (sin pausas): es lo que cuenta para la penalización
+    // Tiempo de concurso al recibirlo (sin pausas): es lo que cuenta para el desempate
     @Column({ type: 'bigint', transformer: bigintTransformer })
     declare contest_ms: number
 

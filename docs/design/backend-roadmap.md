@@ -57,7 +57,7 @@ Hallazgos que cambian el orden:
   - Al quedar `READY`, mover `Problem.current_testset_id` a esa versión. Con el problema publicado, ese cambio implica rejudge (fase 6).
 
 ## Decisiones tomadas (2026-10-27)
-- **Puntaje:** ICPC. Se ordena por problemas resueltos y luego por penalización: minutos hasta cada AC más 20 min por cada envío rechazado antes de ese AC. Un CE no suma penalización. Desempata el minuto del último AC.
+- **Puntaje:** se ordena por problemas resueltos, luego por penalizaciones (solo alertas confirmadas; desde el 2026-11-26 los rechazos ya no suman minutos, ver `evaluacion-alertas.md`). Desempata el minuto del último AC.
 - **Aviso del worker a la API:** `QueueEvents` de BullMQ. Los estados intermedios van con `job.updateProgress`.
 - **Drivers:** los 6 lenguajes con tipos simples y sus arrays para el simulacro 1.
 - Los e2e de las fases 1 y 2 pasan (50/50) con Postgres y Redis locales.
@@ -104,7 +104,7 @@ Hallazgos que cambian el orden:
   - ~~Pendiente: cerrar los sockets de un equipo cuando se revoca su sesión.~~ Hecho: `TeamSessionsService.changes` avisa al gateway, que desconecta los sockets de la sesión vieja.
 
 - Fase 5 implementada (2026-10-27) → **el backend ya permite el Simulacro 1**:
-  - `src/standings/icpc.ts`: `computeStandings()` es una función pura con pruebas. Ordena por resueltos, luego por penalización (minuto del AC + 20 por cada rechazo previo; CE no cuenta) y luego por el último AC más temprano. Los empates exactos comparten lugar. También marca al primero en resolver por categoría y cuenta los pendientes.
+  - `src/standings/icpc.ts`: `computeStandings()` es una función pura con pruebas. Ordena por resueltos, luego por penalizaciones (alertas confirmadas) y luego por el último AC más temprano. Los empates exactos comparten lugar. También marca al primero en resolver por categoría y cuenta los pendientes.
   - Congelamiento: en la vista pública, los envíos desde `duration - freeze` cuentan como pendientes. La del staff siempre está completa. Al terminar la edición se descongela.
   - `StandingsService` recalcula desde los envíos y guarda el resultado en memoria por edición, vista y estado de congelamiento. Se invalida con `SubmissionsService.onChange` y `ContestClockService.onTransition`.
   - Por socket emite `standings:update`, con un debounce de 1 s: la vista pública va a la sala pública y la del staff a la sala del staff, con el campo `view` para distinguirlas.
