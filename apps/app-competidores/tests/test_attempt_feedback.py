@@ -67,7 +67,7 @@ def test_failed_example_opens_by_default_with_input_output_expected_in_order():
     ]})
     text = view.detail_text()
     assert text.startswith("Revisión") and "Falló" not in text
-    assert text.index("La entrada fue") < text.index("nums = [2, 7]\nk = 9") < text.index("Tu salida fue") \
+    assert text.index("La entrada fue") < text.index("nums = [\n  2,\n  7\n]\nk = 9") < text.index("Tu salida fue") \
         < text.index("[1, 0]") < text.index("Se esperaba") < text.index("[0, 1]")
     # Los ejemplos se abren; los ocultos se ven pero no se les puede dar clic
     assert [(c.text(), c.isEnabled(), c.isChecked(), c.locked) for c in chips(view)] == [

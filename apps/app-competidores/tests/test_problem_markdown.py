@@ -63,7 +63,7 @@ def test_samples_show_input_and_output_in_two_columns():
     text = document.toPlainText()
     assert text.index("Suma.") < text.index("Ejemplo 1") < text.index("Ejemplo 2")
     assert example_cells(document) == [
-        ["Entrada", "Salida", "nums = [1, 1, 1]\nk = 2", "2"],
+        ["Entrada", "Salida", "nums = [\n  1,\n  1,\n  1\n]\nk = 2", "2"],
         ["Entrada", "Salida", "4", "4"],
     ]
     assert "Copiar" not in text  # cada lenguaje lee distinto: copiar no servía tal cual
@@ -110,7 +110,10 @@ def test_solved_problem_asks_before_another_submission():
 
 def test_sample_input_shows_one_parameter_per_line():
     # Espacio tras cada coma: las listas largas cortan entre números; las comas dentro de cadenas no se tocan
-    assert case_input_text('{"nums":[2,7,11,15],"target":9}') == "nums = [2, 7, 11, 15]\ntarget = 9"
+    assert case_input_text('{"nums":[2,7,11,15],"target":9}') == "nums = [\n  2,\n  7,\n  11,\n  15\n]\ntarget = 9"
+    # Una cuadrícula: una fila por línea; las comas dentro de un texto no cortan; la lista vacía se queda en una línea
+    assert case_input_text('{"g":[[1,2],[3]],"ops":["a,b","P"],"v":[]}') == \
+        'g = [\n  [1, 2],\n  [3]\n]\nops = [\n  "a,b",\n  "P"\n]\nv = []'
     assert case_input_text('{"s":"a,b}\\"c","n":123456789012345678901}') == 's = "a,b}\\"c"\nn = 123456789012345678901'
     text = rendered({"statement": "x", "samples": [{"input": '{"text":"abc"}', "output": "3"}]}).toPlainText()
     assert 'text = "abc"' in text and '{"text"' not in text

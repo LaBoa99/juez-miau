@@ -9,12 +9,30 @@ from views.style import BORDER, MONO, SM
 
 def case_input_text(json_text):
     """Presentación de la entrada de un ejemplo: llega como JSON canónico ({"nums":[2,7],"k":9}) y se
-    muestra un parámetro por línea ("nums = [2, 7]", "k = 9"), sin la estructura JSON. Se corta el
-    texto en vez de parsearlo para no perder precisión en los long."""
+    muestra un parámetro por línea ("k = 9"), sin la estructura JSON. Una lista lleva un elemento por línea (en una
+    cuadrícula, una fila por línea), igual que en el PDF del enunciado. Se corta el texto en vez de parsearlo para no
+    perder precisión en los long."""
     text = json_text.strip()
     if not (text.startswith("{") and text.endswith("}")):
         return json_text
-    parts, depth, in_string, start, body, i = [], 0, False, 0, text[1:-1], 0
+    lines = []
+    for part in _top_level(text[1:-1]):
+        match = re.match(r'\s*"((?:[^"\\]|\\.)*)"\s*:\s*(.*)$', part, re.S)
+        if not match:
+            return json_text
+        name, value = match.group(1), match.group(2).strip()
+        items = _top_level(value[1:-1]) if value.startswith("[") and value.endswith("]") else []
+        if not items:
+            lines.append(f"{name} = {spaced(value)}")
+            continue
+        lines.append(f"{name} = [")
+        lines += [f"  {spaced(item.strip())}," for item in items[:-1]] + [f"  {spaced(items[-1].strip())}", "]"]
+    return "\n".join(lines)
+
+
+def _top_level(body):
+    """Corta por las comas que no están dentro de una cadena, lista u objeto: "1,[2,3],"a,b"" → 3 partes."""
+    parts, depth, in_string, start, i = [], 0, False, 0, 0
     while i < len(body):
         ch = body[i]
         if in_string:
@@ -34,13 +52,7 @@ def case_input_text(json_text):
         i += 1
     if body[start:].strip():
         parts.append(body[start:])
-    lines = []
-    for part in parts:
-        match = re.match(r'\s*"((?:[^"\\]|\\.)*)"\s*:\s*(.*)$', part, re.S)
-        if not match:
-            return json_text
-        lines.append(f"{match.group(1)} = {spaced(match.group(2).strip())}")
-    return "\n".join(lines)
+    return parts
 
 
 def spaced(text):
