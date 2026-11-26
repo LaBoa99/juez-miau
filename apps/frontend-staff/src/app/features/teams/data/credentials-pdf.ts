@@ -63,16 +63,18 @@ async function loadImage(url: string): Promise<string | null> {
 async function loadPdfMake() {
   const [pdfMakeMod, vfsMod] = await Promise.all([import('pdfmake/build/pdfmake'), import('pdfmake/build/vfs_fonts')]);
   const pdfMake = ((pdfMakeMod as unknown as { default?: unknown }).default ?? pdfMakeMod) as {
-    vfs: unknown;
+    addVirtualFileSystem: (vfs: Record<string, string>) => void;
     fonts: unknown;
     createPdf: (doc: TDocumentDefinitions) => { download: (name: string) => void };
   };
   const robotoVfs = ((vfsMod as unknown as { default?: unknown }).default ?? vfsMod) as Record<string, string>;
-  pdfMake.vfs = {
+  // No basta con pdfMake.vfs = …: vfs_fonts registra solo Roboto con addVirtualFileSystem, y ese registro
+  // le gana a pdfMake.vfs en createPdf. Sin esto el build de producción no encuentra JetBrains Mono.
+  pdfMake.addVirtualFileSystem({
     ...robotoVfs,
     'JetBrainsMono-Regular.woff': JETBRAINS_MONO_REGULAR_WOFF,
     'JetBrainsMono-Bold.woff': JETBRAINS_MONO_BOLD_WOFF,
-  };
+  });
   // Roboto: pdfmake en el navegador solo trae esa fuente en su vfs (Courier truena al generar).
   // JetBrains Mono: para usuario/contraseña, distingue I/l/1/O/0 a simple vista (ver credentials()).
   pdfMake.fonts = {
