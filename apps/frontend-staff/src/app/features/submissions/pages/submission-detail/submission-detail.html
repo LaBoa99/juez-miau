@@ -47,8 +47,20 @@
 
   <!-- Fila de datos -->
   <dl class="sd__facts">
-    <div><dt>Equipo</dt><dd>{{ teamName() || '—' }}</dd></div>
-    <div><dt>Problema</dt><dd><span class="oj-mono sd__letter">{{ letter() }}</span> {{ title() }}</dd></div>
+    <div>
+      <dt>Equipo</dt>
+      <dd>
+        @if (teamName(); as team) {
+          <a [routerLink]="['/ediciones', editionId, 'envios']" [queryParams]="{ equipo: team, problema: d.problemId }" ojTooltip="Sus envíos a este problema">{{ team }}</a>
+        } @else { — }
+      </dd>
+    </div>
+    <div>
+      <dt>Problema</dt>
+      <dd>
+        <a [routerLink]="['/ediciones', editionId, 'problemas', d.problemId]" ojTooltip="Ver enunciado y casos"><span class="oj-mono sd__letter">{{ letter() }}</span> {{ title() }}</a>
+      </dd>
+    </div>
     <div><dt>Lenguaje</dt><dd class="oj-mono">{{ langCode() }}</dd></div>
     <div><dt>Enviado</dt><dd class="oj-mono">min {{ minute() }}</dd></div>
     <div><dt>Testset</dt><dd class="oj-mono">{{ testsetVersion() }}</dd></div>
@@ -248,6 +260,10 @@
       </div>
     }
     <div footer>
+      @if (detail(); as d) {
+        <!-- Ahí se ve su grupo y se puede hacer público si el equipo lo pide -->
+        <a ojButton variant="secondary" [routerLink]="['/ediciones', editionId, 'problemas', d.problemId]" [queryParams]="{ vista: 'casos', caso: openCase()?.ordinal }">Ver en el problema</a>
+      }
       <button ojButton variant="secondary" type="button" (click)="closeCase()">Cerrar</button>
     </div>
   </oj-modal>

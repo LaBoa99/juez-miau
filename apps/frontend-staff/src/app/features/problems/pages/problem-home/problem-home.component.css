@@ -4,3 +4,7 @@
 .home__hint { margin: 0; font-size: 13px; color: var(--oj-text-muted); }
 .home__filter { display: flex; align-items: center; gap: var(--oj-space-sm); font-size: 13px; color: var(--oj-text-muted); }
 .home__draft { display: flex; flex-direction: column; gap: var(--oj-space-md); }
+.home__letter { display: inline-block; min-width: 1.5em; font-weight: 700; }
+.home__author { color: var(--oj-text-muted); white-space: nowrap; }
+.home__badges { display: flex; flex-wrap: wrap; gap: var(--oj-space-xs); }
+.home__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oj-space-md); }

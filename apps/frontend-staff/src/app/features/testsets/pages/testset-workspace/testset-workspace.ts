@@ -171,6 +171,9 @@ export class TestsetWorkspace {
   readonly step = input.required<TestsetStep>();
   // Problema de otro juez: se ve todo pero no se edita (el backend también lo rechaza)
   readonly readOnly = input(false);
+  // Consulta (vista Casos del problema): la versión vigente, sin herramientas de edición; `focusCase` abre ese caso
+  readonly consult = input(false);
+  readonly focusCase = input<number | null>(null);
   readonly changed = output<void>();
   // Qué pasos están completos (para la barra de la página) y "ya guardé, sigue al siguiente"
   readonly progress = output<TestsetProgress>();
@@ -200,7 +203,7 @@ export class TestsetWorkspace {
   protected readonly proposed = computed(() => this.problem()?.status !== ProblemStatus.DRAFT);
   protected readonly editable = computed(() => {
     const s = this.testset()?.status;
-    return !this.readOnly() && (s === TestsetStatus.DRAFT || s === TestsetStatus.FAILED);
+    return !this.readOnly() && !this.consult() && (s === TestsetStatus.DRAFT || s === TestsetStatus.FAILED);
   });
   // La firma solo cambia con el problema en borrador y su testset editable (DRAFT/FAILED).
   protected readonly signatureEditable = computed(() => !this.proposed() && this.editable());
@@ -946,7 +949,7 @@ export class TestsetWorkspace {
     // Al llegar el problema, abre la versión en curso (la última, si no está construida) o la vigente.
     effect(() => {
       const p = this.problem();
-      if (untracked(this.selectedId) === null) this.selectedId.set(defaultTestsetId(p));
+      if (untracked(this.selectedId) === null) this.selectedId.set(this.consult() ? (p.currentTestsetId ?? defaultTestsetId(p)) : defaultTestsetId(p));
     });
 
     // Al entrar a un paso (y cuando llega el testset) se prepara su formulario; no en cada recarga
@@ -1074,6 +1077,8 @@ export class TestsetWorkspace {
       next: (t) => {
         this.testset.set(t);
         this.busyKey.set(null);
+        this.openFocusCase(t);
+        this.syncConsultCase(t);
         this.compareMode.set(t.compareMode);
         if (t.status === TestsetStatus.BUILDING) this.startPoll(id);
         else this.stopPoll();
@@ -1750,7 +1755,8 @@ export class TestsetWorkspace {
     this.viewParams.set([]);
     this.viewOutput.set(null);
     this.viewLoading.set(true);
-    this.viewModal().open();
+    if (this.consult()) this.openGroups.set(new Set(this.openGroups()).add(c.group ?? ''));
+    else this.viewModal().open();
     this.service.getCase(t.id, c.id).subscribe({
       next: (content) => {
         this.viewLoading.set(false);
@@ -1765,7 +1771,7 @@ export class TestsetWorkspace {
       error: (err) => {
         this.viewLoading.set(false);
         this.actionError.set(message(err, 'No se pudo cargar el caso.'));
-        this.viewModal().close();
+        if (!this.consult()) this.viewModal().close();
       },
     });
   }
@@ -1781,25 +1787,80 @@ export class TestsetWorkspace {
     this.caseError.set(message(err, 'No se pudo guardar el caso.'));
   }
 
+  // Publicar u ocultar se puede siempre (no cambia cómo se juzga). Con el problema en el concurso pide confirmar:
+  // los equipos lo ven al momento como ejemplo y en el detalle de todos sus envíos
+  private readonly publishDialog = viewChild.required<ConfirmDialog>('publishDlg');
+  protected readonly publishMessage = signal('');
+  private pendingPublish: (() => void) | null = null;
+
+  private confirmPublish(what: string, run: () => void): void {
+    if (!this.published()) return run();
+    this.pendingPublish = run;
+    this.publishMessage.set(
+      `${what} Los equipos de la categoría lo verán como ejemplo en el enunciado y con su entrada, salida esperada y lo que dio su programa en todos sus envíos.`,
+    );
+    this.publishDialog().open();
+  }
+
+  publishConfirmed(): void {
+    this.pendingPublish?.();
+    this.pendingPublish = null;
+  }
+
   toggleVisibility(c: ITestCase): void {
     const t = this.testset();
     if (!t) return;
     const visibility = c.visibility === TestCaseVisibility.PUBLIC ? TestCaseVisibility.HIDDEN : TestCaseVisibility.PUBLIC;
-    this.busyKey.set('vis:' + c.id);
-    this.service.updateCase(t.id, c.id, { visibility }).subscribe({
-      next: () => this.loadTestset(t.id),
-      error: (err) => this.actionFailed(err, 'No se pudo cambiar la visibilidad del caso.'),
-    });
+    const run = () => {
+      this.busyKey.set('vis:' + c.id);
+      this.service.updateCasesVisibility(t.id, { caseId: c.id, visibility }).subscribe({
+        next: () => this.loadTestset(t.id),
+        error: (err) => this.actionFailed(err, 'No se pudo cambiar la visibilidad del caso.'),
+      });
+    };
+    visibility === TestCaseVisibility.PUBLIC ? this.confirmPublish(`Se hará público el caso #${c.ordinal}.`, run) : run();
   }
 
   setGroupVisibility(group: string | null, visibility: TestCaseVisibility): void {
     const t = this.testset();
     if (!t) return;
-    this.busyKey.set('group:' + (group ?? '') + ':' + visibility);
-    this.service.updateCasesVisibility(t.id, { group, visibility }).subscribe({
-      next: () => this.loadTestset(t.id),
-      error: (err) => this.actionFailed(err, 'No se pudo cambiar la visibilidad del grupo.'),
-    });
+    const run = () => {
+      this.busyKey.set('group:' + (group ?? '') + ':' + visibility);
+      this.service.updateCasesVisibility(t.id, { group, visibility }).subscribe({
+        next: () => this.loadTestset(t.id),
+        error: (err) => this.actionFailed(err, 'No se pudo cambiar la visibilidad del grupo.'),
+      });
+    };
+    visibility === TestCaseVisibility.PUBLIC ? this.confirmPublish(`Se harán públicos todos los casos de «${group ?? 'Sin grupo'}».`, run) : run();
+  }
+
+  // Consulta: siempre hay un caso a la vista. Tras recargar (p. ej. al publicarlo) se queda el mismo, con su visibilidad nueva
+  private syncConsultCase(t: ITestsetDetail): void {
+    if (!this.consult()) return;
+    const current = this.viewCase();
+    const same = current && t.cases.find((c) => c.id === current.id);
+    if (same) this.viewCase.set(same);
+    else if (t.cases.length) this.openView(t.cases[0]);
+  }
+
+  // Lo abre la página del problema desde su encabezado (Probar una solución…)
+  private readonly testRunModal = viewChild<TestRunModal>('testRun');
+  openTestRun(): void {
+    this.testRunModal()?.openCustom();
+  }
+
+  // Llegó desde un envío o una aclaración con ?caso=N: abre su grupo y el caso (una sola vez)
+  private focusedOnce = false;
+  private openFocusCase(t: ITestsetDetail): void {
+    const ordinal = this.focusCase();
+    if (this.focusedOnce || ordinal == null) return;
+    const c = t.cases.find((tc) => tc.ordinal === ordinal);
+    if (!c) return;
+    this.focusedOnce = true;
+    const next = new Set(this.openGroups());
+    next.add(c.group ?? '');
+    this.openGroups.set(next);
+    this.openView(c);
   }
 
   askDeleteCase(c: ITestCase): void {

@@ -1,70 +1,72 @@
 <div class="pw">
-  <aside class="pw__list">
-    <header class="pw__list-head">Problemas de {{ code() }}</header>
+  <nav class="pw__list" aria-label="Problemas">
+    <!-- Primer renglón, como una pestaña más: la tabla con todos (también propuestos y borradores) -->
+    <button type="button" class="pw__item pw__item--overview" [class.pw__item--active]="selected() === null"
+            [attr.aria-current]="selected() === null ? 'page' : null" (click)="select('.')">
+      <span class="pw__title">Todos los problemas</span>
+      <span class="pw__count oj-mono">{{ bus.problems().length }}</span>
+    </button>
 
-    <div class="pw__list-body">
-      @if (bus.loading()) {
-        <p class="pw__muted">Cargando…</p>
-      } @else if (bus.error()) {
-        <p class="pw__muted">No se pudieron cargar los problemas.</p>
-      } @else {
-        <!-- Regreso a la tabla de todos (propuestos, en el concurso, borradores) desde cualquier problema -->
-        <button
-          type="button"
-          class="pw__item pw__item--overview"
-          [class.pw__item--active]="selected() === null"
-          [attr.aria-current]="selected() === null ? 'page' : null"
-          (click)="selectOverview()"
-        >
-          <span class="pw__title">Todos los problemas</span>
-          <span class="pw__group-count oj-mono">{{ bus.problems().length }}</span>
-        </button>
+    <!-- Categoría y autor: dos filtros compactos (5 categorías no caben como pestañas en 240px) -->
+    <div class="pw__filters">
+      <label class="pw__label" for="pw-cat">Categoría</label>
+      <select id="pw-cat" (change)="setTab($event)">
         @for (g of groups(); track g.category.id) {
-          @let open = isOpen(g.category.id);
-          <div class="pw__group">
-            <button
-              type="button"
-              class="pw__group-name"
-              [attr.aria-expanded]="open"
-              [attr.aria-controls]="'pw-cat-' + g.category.id"
-              (click)="toggle(g.category.id)"
-            >
-              <svg class="pw__chevron" [class.pw__chevron--open]="open" viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M6 4l4 4-4 4" />
-              </svg>
-              <span class="pw__group-label">{{ g.category.name }}</span>
-              <span class="pw__group-count oj-mono">{{ g.problems.length }}</span>
-            </button>
-            <div class="pw__group-items" [id]="'pw-cat-' + g.category.id" [hidden]="!open">
-            @for (p of g.problems; track p.id) {
-              <button
-                type="button"
-                class="pw__item"
-                [class.pw__item--active]="selected() === (p.id + '')"
-                [attr.aria-current]="selected() === (p.id + '') ? 'true' : null"
-                (click)="selectProblem(p.id)"
-              >
-                <span class="pw__letter oj-mono" [attr.aria-label]="p.letter ? null : 'Sin letra'">{{ p.letter ?? '—' }}</span>
-                <span class="pw__title">{{ p.title }}</span>
-                <oj-badge [tone]="(p.status | problemStatus).tone">{{ (p.status | problemStatus).label }}</oj-badge>
-              </button>
-            } @empty {
-              <p class="pw__empty">Sin problemas</p>
-            }
-            </div>
-          </div>
+          <option [value]="g.category.id" [selected]="g.category.id === tab()">{{ g.category.name }} ({{ g.inContest.length }})</option>
+        }
+      </select>
+      <!-- Filtro secundario: más discreto que la categoría, y marcado cuando está activo -->
+      <div class="pw__label-row">
+        <label class="pw__label pw__label--sub" [class.pw__label--on]="author() !== null" for="pw-author">Filtrar por autor</label>
+        @if (author() !== null) {
+          <button type="button" class="pw__clear" (click)="author.set(null)">Quitar</button>
+        }
+      </div>
+      <select id="pw-author" (change)="setAuthor($event)">
+        <option value="" [selected]="author() === null">Todos los autores</option>
+        @for (a of authors(); track a.id) {
+          <option [value]="a.id" [selected]="a.id === author()">{{ a.name }} ({{ a.n }})</option>
+        }
+      </select>
+    </div>
+
+    @if (bus.loading() && bus.problems().length === 0) {
+      <p class="pw__muted">Cargando…</p>
+    } @else if (bus.error()) {
+      <p class="pw__muted">No se pudieron cargar los problemas.</p>
+    } @else if (shown(); as g) {
+      @for (p of g.inContest; track p.id) {
+        <ng-container *ngTemplateOutlet="item; context: { $implicit: p }" />
+      }
+      @if (g.others.length) {
+        <!-- Fuera del concurso: abajo de una línea y atenuados, con su estado a la vista -->
+        <div class="pw__divider" role="separator"></div>
+        @for (p of g.others; track p.id) {
+          <ng-container *ngTemplateOutlet="item; context: { $implicit: p }" />
         }
       }
-    </div>
+      @if (!g.inContest.length && !g.others.length) {
+        <p class="pw__muted">Sin problemas.</p>
+      }
+    }
+  </nav>
 
-    <div class="pw__list-foot">
-      <button ojButton variant="secondary" type="button" (click)="selectNew()">+ Nuevo problema</button>
-    </div>
-  </aside>
+  <!-- Letra y título (se busca por cualquiera de los dos) y, debajo, el autor y el estado si no está en el concurso -->
+  <ng-template #item let-p>
+    @let out = p.status !== 'published';
+    <button type="button" class="pw__item" [class.pw__item--out]="out" [class.pw__item--active]="selected() === (p.id + '')"
+            [attr.aria-current]="selected() === (p.id + '') ? 'page' : null" (click)="select(p.id + '')">
+      <span class="pw__letter oj-mono" [attr.aria-label]="p.letter ? null : 'Sin letra'">{{ p.letter ?? '—' }}</span>
+      <span class="pw__text">
+        <span class="pw__title">{{ p.title }}</span>
+        <span class="pw__author">{{ authorName(p) }}@if (out) { · {{ (p.status | problemStatus).label }}}</span>
+      </span>
+    </button>
+  </ng-template>
 
-  <section class="pw__panel">
+  <div class="pw__panel">
     <router-outlet />
-  </section>
+  </div>
 </div>
 
 <oj-confirm-dialog

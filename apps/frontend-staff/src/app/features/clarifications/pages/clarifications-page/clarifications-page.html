@@ -53,6 +53,15 @@
           @if (tab() === 'answered') {
             <button ojButton size="sm" variant="danger" type="button" (click)="askDelete(c)">Eliminar</button>
           }
+          <!-- Para contestar hay que ver el enunciado y lo que envió el equipo: a un clic, sin buscarlo en la barra -->
+          <span class="cl__links">
+            @if (c.problemId != null) {
+              <a ojButton size="sm" variant="secondary" [routerLink]="['/ediciones', editionId, 'problemas', c.problemId]">Ver problema</a>
+            }
+            <a ojButton size="sm" variant="secondary" [routerLink]="['/ediciones', editionId, 'envios']" [queryParams]="{ equipo: c.teamName, problema: c.problemId ?? undefined }">
+              {{ c.problemId != null ? 'Sus envíos a este problema' : 'Sus envíos' }}
+            </a>
+          </span>
         </div>
       </li>
     }

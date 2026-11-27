@@ -2,6 +2,7 @@
 @if (loadError()) {
   <oj-alert tone="error">No se pudieron cargar los casos de prueba.</oj-alert>
 } @else if (testset(); as t) {
+  @if (!consult()) {
   <div class="tw__version">
     <span class="oj-mono">Versión {{ t.version }}</span>
     <oj-badge [tone]="(t.status | testsetStatus).tone">{{ (t.status | testsetStatus).label }}</oj-badge>
@@ -9,12 +10,13 @@
       <span class="tw__current">Vigente para el concurso</span>
     }
   </div>
+  }
 
   @if (actionError()) {
     <oj-alert tone="error">{{ actionError() }}</oj-alert>
   }
 
-  @if (t.status === TestsetStatus.READY && !readOnly()) {
+  @if (t.status === TestsetStatus.READY && !readOnly() && !consult()) {
     <div class="tw__locked">
       <p class="tw__muted">
         Esta versión ya está construida y no se puede modificar. Para cambiar la firma, la solución o los casos, crea una
@@ -30,7 +32,9 @@
   }
 
   <section class="tw__step" [attr.aria-label]="stepTitle()">
-    <p class="tw__muted">{{ stepHint() }}</p>
+    @if (!consult()) {
+      <p class="tw__muted">{{ stepHint() }}</p>
+    }
 
     @switch (step()) {
       @case ('solucion') {
@@ -262,11 +266,14 @@
         @if (!hasParams()) {
           <p class="tw__muted">Primero define la firma de la función (paso Solución y firma): los casos se arman con sus parámetros.</p>
         } @else {
+        <!-- En consulta: la lista y, debajo, el caso elegido (sin modal; abajo porque una salida grande empujaría la lista) -->
+        <div [class.tw__consult]="consult()">
         <!-- Lo que ya tiene la versión, separado de las herramientas para agregar (abajo) -->
         <section class="tw__cases-list" aria-labelledby="tw-cases-title">
           <header class="tw__cases-head">
             <h4 class="tw__panel-title" id="tw-cases-title">Casos de esta versión</h4>
             <span class="tw__muted oj-mono">{{ caseSummaryLine() }}</span>
+
           </header>
           @if (t.cases.length === 0) {
             <p class="tw__muted tw__cases-empty">Aún no hay casos. Agrégalos abajo.</p>
@@ -283,19 +290,20 @@
                     <span class="tw__src-name">{{ g.label }}</span>
                     <span class="tw__muted oj-mono">{{ g.cases.length }} {{ g.cases.length === 1 ? 'caso' : 'casos' }} · {{ g.pub }} {{ g.pub === 1 ? 'público' : 'públicos' }}</span>
                   </button>
-                  @if (editable()) {
-                    <div class="tw__row-actions">
+                  <!-- Publicar u ocultar no cambia cómo se juzga: se puede siempre, también con la versión construida -->
+                  <div class="tw__row-actions">
                       <button ojButton variant="secondary" size="sm" class="tw__icon-btn" type="button" [disabled]="g.pub === g.cases.length || !!busyKey()"
                               [attr.aria-label]="'Hacer públicos los casos de ' + g.label" ojTooltip="Hacer públicos todos los casos del grupo"
                               (click)="setGroupVisibility(g.key, TestCaseVisibility.PUBLIC)">@if (busyKey() === 'group:' + (g.key ?? '') + ':public') { <span class="tw__btn-spinner" aria-hidden="true"></span> } @else { <svg class="tw__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M1.5 8h13M8 1.5c1.8 1.8 2.6 4 2.6 6.5S9.8 12.7 8 14.5C6.2 12.7 5.4 10.5 5.4 8S6.2 3.3 8 1.5z"/></svg> }</button>
                       <button ojButton variant="secondary" size="sm" class="tw__icon-btn" type="button" [disabled]="g.pub === 0 || !!busyKey()"
                               [attr.aria-label]="'Ocultar los casos de ' + g.label" ojTooltip="Ocultar todos los casos del grupo"
                               (click)="setGroupVisibility(g.key, TestCaseVisibility.HIDDEN)">@if (busyKey() === 'group:' + (g.key ?? '') + ':hidden') { <span class="tw__btn-spinner" aria-hidden="true"></span> } @else { <svg class="tw__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2l12 12M6.6 6.6A2 2 0 0 0 9.4 9.4M4.2 4.3C2.6 5.4 1.5 8 1.5 8s2.5 4.5 6.5 4.5c1.3 0 2.5-.4 3.5-1M7 3.6c.3 0 .7-.1 1-.1 4 0 6.5 4.5 6.5 4.5s-.5.9-1.4 1.9"/></svg> }</button>
+                      @if (editable()) {
                       <button ojButton variant="danger-outline" size="sm" class="tw__icon-btn" type="button" [disabled]="!!busyKey()"
                               [attr.aria-label]="'Eliminar el grupo ' + g.label" ojTooltip="Eliminar el grupo con sus casos"
                               (click)="askDeleteGroup(g)"><svg class="tw__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.5 6.5v5M9.5 6.5v5"/></svg></button>
-                    </div>
-                  }
+                      }
+                  </div>
                 </div>
                 <!-- grid 0fr ↔ 1fr anima la altura sin medirla; inert saca de la tabulación lo que está cerrado -->
                 <div class="tw__group-body" [id]="'tw-group-' + gi" [attr.inert]="open ? null : ''">
@@ -306,7 +314,7 @@
                       <tr>
                         <th class="tw__col-num">#</th>
                         <th>Entradas</th>
-                        <th class="tw__col-icon"><span class="oj-visually-hidden">Origen</span></th>
+                        @if (!consult()) { <th class="tw__col-icon"><span class="oj-visually-hidden">Origen</span></th> }
                         <th>Visibilidad</th>
                         <th>Salida</th>
                         <th><span class="oj-visually-hidden">Acciones</span></th>
@@ -314,9 +322,12 @@
                     </thead>
                     <tbody>
                       @for (c of g.cases; track c.id) {
-                        <tr [class.tw__row--editing]="caseEditing()?.id === c.id" [attr.aria-current]="caseEditing()?.id === c.id ? 'true' : null">
+                        @let picked = consult() && viewCase()?.id === c.id;
+                        <tr [class.tw__row--editing]="caseEditing()?.id === c.id || picked" [class.tw__row--pick]="consult()"
+                            [attr.aria-current]="caseEditing()?.id === c.id || picked ? 'true' : null" (click)="consult() && openView(c)">
                           <td class="tw__col-num oj-mono">{{ c.ordinal }}</td>
                           <td class="tw__summary oj-mono" [title]="caseSummary(c)">{{ caseSummary(c) }}</td>
+                          @if (!consult()) {
                           <td class="tw__col-icon">
                             <!-- El origen importa por lo que permite (editar, regenerar), no por su número: basta un ícono -->
                             <span class="tw__origin" role="img" [attr.aria-label]="originLabel(c.origin)" [ojTooltip]="originHint(c.origin)">
@@ -327,6 +338,7 @@
                               }
                             </span>
                           </td>
+                          }
                           <td>
                             <span class="tw__vis" [class.tw__vis--pub]="c.visibility === TestCaseVisibility.PUBLIC">
                               {{ c.visibility === TestCaseVisibility.PUBLIC ? 'Público' : 'Oculto' }}
@@ -344,12 +356,14 @@
                           </td>
                           <td>
                             <div class="tw__row-actions">
-                              <button ojButton variant="secondary" size="sm" class="tw__icon-btn" type="button" aria-label="Ver el caso" ojTooltip="Ver entrada y salida" (click)="openView(c)"><svg class="tw__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg></button>
-                              @if (editable()) {
-                                @let pub = c.visibility === TestCaseVisibility.PUBLIC;
+                              <!-- En consulta la fila entera elige el caso; el botón queda para teclado -->
+                              <button ojButton variant="secondary" size="sm" class="tw__icon-btn" [class.oj-visually-hidden]="consult()" type="button" aria-label="Ver el caso" ojTooltip="Ver entrada y salida" (click)="openView(c); $event.stopPropagation()"><svg class="tw__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg></button>
+                              @let pub = c.visibility === TestCaseVisibility.PUBLIC;
+                              <!-- En consulta, Hacer público vive en el detalle del caso elegido -->
+                              @if (!consult()) {
                                 <button ojButton variant="secondary" size="sm" class="tw__icon-btn" type="button"
                                         [attr.aria-label]="pub ? 'Ocultar el caso' : 'Hacer público el caso'"
-                                        [ojTooltip]="pub ? 'Ocultar: deja de salir como ejemplo' : 'Hacer público: sale como ejemplo en el enunciado'"
+                                        [ojTooltip]="pub ? 'Ocultar: deja de salir como ejemplo' : 'Hacer público: sale como ejemplo en el enunciado y en los envíos'"
                                         [disabled]="!!busyKey()"
                                         (click)="toggleVisibility(c)">
                                   @if (busyKey() === 'vis:' + c.id) { <span class="tw__btn-spinner" aria-hidden="true"></span> } @else if (pub) { <svg class="tw__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2l12 12M6.6 6.6A2 2 0 0 0 9.4 9.4M4.2 4.3C2.6 5.4 1.5 8 1.5 8s2.5 4.5 6.5 4.5c1.3 0 2.5-.4 3.5-1M7 3.6c.3 0 .7-.1 1-.1 4 0 6.5 4.5 6.5 4.5s-.5.9-1.4 1.9"/></svg> } @else { <svg class="tw__icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M1.5 8h13M8 1.5c1.8 1.8 2.6 4 2.6 6.5S9.8 12.7 8 14.5C6.2 12.7 5.4 10.5 5.4 8S6.2 3.3 8 1.5z"/></svg> }
@@ -378,6 +392,29 @@
             }
           }
         </section>
+        @if (consult()) {
+          <aside class="tw__detail" aria-labelledby="tw-detail-title" aria-live="polite">
+            @if (viewCase(); as vc) {
+              @let vpub = vc.visibility === TestCaseVisibility.PUBLIC;
+              <header class="tw__detail-head">
+                <h4 class="tw__panel-title" id="tw-detail-title">Caso #{{ vc.ordinal }}</h4>
+                <span class="tw__muted">{{ vc.group ?? 'Sin grupo' }}</span>
+                <span class="tw__vis" [class.tw__vis--pub]="vpub">{{ vpub ? 'Público' : 'Oculto' }}</span>
+                <button ojButton size="sm" type="button" class="tw__detail-action" [variant]="vpub ? 'secondary' : 'primary'" [disabled]="!!busyKey()" (click)="toggleVisibility(vc)">
+                  @if (busyKey() === 'vis:' + vc.id) { <span class="tw__btn-spinner" aria-hidden="true"></span> }
+                  {{ vpub ? 'Ocultar' : 'Hacer público' }}
+                </button>
+              </header>
+              @if (!vpub) {
+                <p class="tw__muted">Oculto: el equipo solo sabe si pasó. Al hacerlo público ve la entrada, la salida esperada y lo que dio su programa.</p>
+              }
+              <ng-container *ngTemplateOutlet="caseBody" />
+            } @else {
+              <p class="tw__muted" id="tw-detail-title">Elige un caso para ver su entrada y su salida esperada.</p>
+            }
+          </aside>
+        }
+        </div>
 
         @if (editable()) {
           <h4 class="tw__panel-title tw__add-title">Agregar casos</h4>
@@ -454,6 +491,7 @@
           </form>
         }
 
+        @if (!consult()) {
         <!-- Casos aleatorios -->
         @if (expanded() === 'aleatorios') {
           <div class="tw__panel">
@@ -591,6 +629,7 @@
               </div>
             }
           </div>
+        }
         }
         }
       }
@@ -911,6 +950,14 @@
 
 <!-- Ver caso (solo lectura) -->
 <oj-modal #viewModal [title]="viewCase() ? 'Caso #' + viewCase()!.ordinal : 'Caso'" size="md">
+  <ng-container *ngTemplateOutlet="caseBody" />
+  <div footer>
+    <button ojButton variant="secondary" type="button" (click)="closeModal('view')">Cerrar</button>
+  </div>
+</oj-modal>
+
+<!-- Entrada y salida de un caso: en el modal "Ver" y en el detalle de la consulta -->
+<ng-template #caseBody>
   @if (viewLoading()) {
     <p class="tw__muted">Cargando…</p>
   } @else {
@@ -933,10 +980,7 @@
       </div>
     </div>
   }
-  <div footer>
-    <button ojButton variant="secondary" type="button" (click)="closeModal('view')">Cerrar</button>
-  </div>
-</oj-modal>
+</ng-template>
 
 <oj-test-run-modal #testRun [testsetId]="testset()?.id ?? 0" [languages]="enabledLanguages()" />
 
@@ -990,6 +1034,14 @@
   [danger]="false"
   (confirmed)="build()"
 />
+<oj-confirm-dialog
+  #publishDlg
+  title="Hacer público"
+  [message]="publishMessage()"
+  confirmLabel="Hacer público"
+  (confirmed)="publishConfirmed()"
+/>
+
 <oj-confirm-dialog
   #deleteCaseDlg
   title="Eliminar caso"

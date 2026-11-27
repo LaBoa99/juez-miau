@@ -1,4 +1,4 @@
-import { IsEnum, IsObject, IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
+import { IsEnum, IsInt, IsObject, IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
 import { TestCaseVisibility, type IUpdateCasesVisibility, type IUpdateTestCase } from '@concurso/shared-types';
 
 export class UpdateTestCaseDto implements IUpdateTestCase {
@@ -22,10 +22,14 @@ export class UpdateTestCaseDto implements IUpdateTestCase {
 
 export class UpdateCasesVisibilityDto implements IUpdateCasesVisibility {
 
-    // null = casos manuales
-    @ValidateIf((_, value) => value !== null)
+    // null = casos manuales; se ignora si viene caseId
+    @ValidateIf((dto: UpdateCasesVisibilityDto, value) => dto.caseId === undefined && value !== null)
     @IsString()
-    declare group: string | null;
+    declare group?: string | null;
+
+    @IsOptional()
+    @IsInt()
+    declare caseId?: number;
 
     @IsEnum(TestCaseVisibility)
     declare visibility: TestCaseVisibility;

@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import {
   ICreateEditionStaff,
   IEditionStaff,
+  IEditionStaffListItem,
   IStaffListItem,
   StaffRole,
 } from '@concurso/shared-types';
@@ -14,8 +15,8 @@ const API = '/api';
 export class EditionStaffService {
   private readonly http = inject(HttpClient);
 
-  list(editionId: number): Observable<IEditionStaff[]> {
-    return this.http.get<IEditionStaff[]>(`${API}/editions/${editionId}/staff`);
+  list(editionId: number): Observable<IEditionStaffListItem[]> {
+    return this.http.get<IEditionStaffListItem[]>(`${API}/editions/${editionId}/staff`);
   }
 
   assign(editionId: number, staffUserId: number, role: StaffRole): Observable<IEditionStaff> {

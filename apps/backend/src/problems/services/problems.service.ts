@@ -101,6 +101,7 @@ export class ProblemsService {
             status: problem.status,
             currentTestsetVersion: problem.current_testset?.version ?? null,
             createdBy: problem.created_by,
+            manualReview: problem.current_testset?.manual_review ?? false,
         }))
     }
 

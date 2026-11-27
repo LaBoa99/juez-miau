@@ -28,12 +28,10 @@ export class EditionStaffService {
         return this.editionStaffRepository;
     }
 
-    async findAllByEdition(editionId: number): Promise<EditionStaff[]> {
-        return this.editionStaffRepository.find({
-            where: {
-                edition_id: editionId
-            }
-        })
+    // Con el nombre (y solo el nombre): el panel lo muestra como autor de un problema o revisor de un envío
+    async findAllByEdition(editionId: number): Promise<IEditionStaffListItem[]> {
+        const rows = await this.editionStaffRepository.find({ where: { edition_id: editionId }, relations: { staff_user: true } })
+        return rows.map((row) => ({ edition_id: row.edition_id, staff_user_id: row.staff_user_id, role: row.role, name: row.staff_user.name }))
     }
 
     async findAllByStaffUser(staffUserId: number): Promise<EditionStaff[]> {

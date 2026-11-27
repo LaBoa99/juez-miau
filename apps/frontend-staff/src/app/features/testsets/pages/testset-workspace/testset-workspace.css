@@ -113,3 +113,18 @@
 
 /* Código pegado o cargado de un archivo */
 .tw__code { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--oj-font-mono); }
+
+/* Consulta (vista Casos del problema): lista y caso elegido lado a lado */
+:host { container-type: inline-size; }
+/* La lista y debajo el caso elegido: una salida grande no debe empujar la lista */
+.tw__consult { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--oj-space-lg); align-items: start; }
+
+.tw__detail {
+  display: flex; flex-direction: column; gap: var(--oj-space-md); min-width: 0;
+  padding: var(--oj-space-md); border: 1px solid var(--oj-border); border-radius: var(--oj-radius); background: var(--oj-bg);
+}
+.tw__detail-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oj-space-sm); }
+.tw__detail-head .tw__panel-title { margin: 0; }
+.tw__detail-action { margin-left: auto; }
+.tw__row--pick { cursor: pointer; }
+.tw__row--pick:hover td { background: var(--oj-bg-muted); }

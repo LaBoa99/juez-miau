@@ -85,8 +85,11 @@ export interface ICreateTestCases {
 }
 
 // Visibilidad de un grupo completo; `group: null` son los casos manuales
+// Un caso (`caseId`) o un grupo (`group`; null = los manuales). Cualquier juez, con el testset en cualquier estado:
+// publicar u ocultar no cambia las salidas ni cómo se juzga
 export interface IUpdateCasesVisibility {
-    group: string | null
+    group?: string | null
+    caseId?: number
     visibility: TestCaseVisibility
 }
 

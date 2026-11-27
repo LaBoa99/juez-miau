@@ -26,9 +26,10 @@ import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { ProblemsService } from '../../../problems/data/problems.service';
 import { TeamsService } from '../../../teams/data/teams.service';
 import { EditionLanguagesService } from '../../../editions/edition-languages/data/edition-languages.service';
+import { EditionStaffService } from '../../../editions/edition-staff/data/edition-staff.service';
 import { SubmissionsService } from '../../data/submissions.service';
 
-type VerdictSeg = 'all' | 'ac' | 'bad' | 'limit' | 'pending';
+type VerdictSeg = 'all' | 'ac' | 'bad' | 'limit' | 'pending' | 'reviewed';
 
 @Component({
   selector: 'oj-submission-list',
@@ -54,6 +55,7 @@ export class SubmissionList {
   private readonly problemsService = inject(ProblemsService);
   private readonly teamsService = inject(TeamsService);
   private readonly languagesService = inject(EditionLanguagesService);
+  private readonly staffService = inject(EditionStaffService);
   protected readonly ctx = inject(EditionContext);
   protected readonly rt = inject(RealtimeService);
   private readonly fb = inject(FormBuilder);
@@ -76,6 +78,7 @@ export class SubmissionList {
   private readonly problemMap = signal<Map<number, IProblemListItem>>(new Map());
   private readonly teamMap = signal<Map<number, { name: string; category: string }>>(new Map());
   private readonly langMap = signal<Map<string, string>>(new Map());
+  private readonly staffNames = signal<Map<number, string>>(new Map());
 
   protected readonly categories = computed(() => this.ctx.edition()?.categories ?? []);
   protected readonly problems = computed(() => [...this.problemMap().values()].sort((a, b) => (a.letter ?? '').localeCompare(b.letter ?? '') || a.id - b.id));
@@ -100,6 +103,7 @@ export class SubmissionList {
     },
     { value: 'limit', label: 'TLE · MLE', hint: 'TLE: tiempo excedido. MLE: memoria excedida.' },
     { value: 'pending', label: 'Pendientes', hint: 'En cola, evaluándose o esperando la revisión de un juez.' },
+    { value: 'reviewed', label: 'Revisados', hint: 'Un juez los aceptó o rechazó a mano.' },
   ] as const;
   // Cada opción con su número, contado sobre la misma lista que el indicador Total
   protected readonly verdictOptions = computed(() => {
@@ -150,6 +154,15 @@ export class SubmissionList {
   });
 
   constructor() {
+    // Filtros desde un enlace (p. ej. una aclaración: los envíos de ese equipo en ese problema)
+    const query = this.route.snapshot.queryParamMap;
+    const problem = Number(query.get('problema'));
+    if (problem) this.problemCtrl.setValue(problem);
+    const team = query.get('equipo');
+    if (team) {
+      this.teamCtrl.setValue(team);
+      this.teamSearch.set(team);
+    }
     this.loadLookups();
     this.load();
 
@@ -193,6 +206,10 @@ export class SubmissionList {
         this.teamMap.set(new Map(teams.map((t) => [t.id, { name: t.name, category: t.category?.name ?? '' }]))),
       error: () => {},
     });
+    this.staffService.list(this.editionId).subscribe({
+      next: (rows) => this.staffNames.set(new Map(rows.map((s) => [s.staff_user_id, s.name]))),
+      error: () => {},
+    });
     this.languagesService.catalog().subscribe({
       next: (langs) => this.langMap.set(new Map(langs.map((l) => [l.id, l.code]))),
       error: () => {},
@@ -201,6 +218,7 @@ export class SubmissionList {
 
   private matchesSeg(s: IStaffSubmission, seg: VerdictSeg): boolean {
     if (seg === 'all') return true;
+    if (seg === 'reviewed') return s.reviewedBy != null;
     if (seg === 'pending') {
       return s.status === SubmissionStatus.QUEUED || s.status === SubmissionStatus.JUDGING || s.verdict === Verdict.PENDING_REVIEW;
     }
@@ -262,6 +280,9 @@ export class SubmissionList {
   // ─── Datos de la fila (resueltos de las búsquedas auxiliares) ───
   minute(contestMs: number): number {
     return Math.max(0, Math.floor(contestMs / 60000));
+  }
+  reviewer(s: IStaffSubmission): string {
+    return this.staffNames().get(s.reviewedBy!) ?? 'un juez';
   }
   teamName(id: number): string {
     return this.teamMap().get(id)?.name ?? '#' + id;

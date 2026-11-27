@@ -79,6 +79,14 @@
 .cl__card-actions {
   justify-content: flex-end;
 }
+/* Consultar a la izquierda, decidir a la derecha */
+.cl__links {
+  order: -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--oj-space-sm);
+  margin-right: auto;
+}
 
 oj-modal oj-alert,
 .cl__modal-q {

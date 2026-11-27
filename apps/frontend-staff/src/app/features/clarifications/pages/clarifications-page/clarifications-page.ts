@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -17,13 +17,14 @@ import { backendMessage } from '../../../../core/http/backend-error.mapper';
 import { RealtimeService } from '../../../../core/realtime/realtime.service';
 import { ProblemsService } from '../../../problems/data/problems.service';
 import { ClarificationsService } from '../../data/clarifications.service';
+import { EditionContext } from '../../../editions/pages/edition-layout/edition-context';
 
 type Tab = 'pending' | 'answered';
 
 @Component({
   selector: 'oj-clarifications-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, DatePipe, PageHeader, ButtonDirective, Badge, Alert, EmptyState, Segmented, FormField, Modal, ConfirmDialog],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, PageHeader, ButtonDirective, Badge, Alert, EmptyState, Segmented, FormField, Modal, ConfirmDialog],
   templateUrl: './clarifications-page.html',
   styleUrl: './clarifications-page.css',
 })
@@ -34,6 +35,7 @@ export class ClarificationsPage {
   private readonly rt = inject(RealtimeService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly ctx = inject(EditionContext);
 
   protected readonly editionId = findEditionId(this.route);
 
@@ -41,7 +43,7 @@ export class ClarificationsPage {
   protected readonly all = signal<IStaffClarification[]>([]);
   protected readonly loading = signal(false);
   protected readonly error = signal(false);
-  private readonly problemLabels = signal<Map<number, string>>(new Map());
+  private readonly problemLabels = signal<Map<number, { name: string; categoryId: number }>>(new Map());
 
   protected readonly tab = signal<Tab>('pending');
   protected readonly pendingCount = computed(() => this.all().filter(isOpen).length);
@@ -65,7 +67,7 @@ export class ClarificationsPage {
   constructor() {
     this.load();
     this.problems.list(this.editionId).subscribe({
-      next: (rows) => this.problemLabels.set(new Map(rows.map((p) => [p.id, p.letter ? `${p.letter} · ${p.title}` : p.title]))),
+      next: (rows) => this.problemLabels.set(new Map(rows.map((p) => [p.id, { name: p.letter ? `${p.letter} · ${p.title}` : p.title, categoryId: p.categoryId }]))),
       error: () => {},
     });
 
@@ -184,7 +186,11 @@ export class ClarificationsPage {
 
   problemLabel(c: IStaffClarification): string {
     if (c.problemId == null) return 'General';
-    return this.problemLabels().get(c.problemId) ?? `Problema #${c.problemId}`;
+    const problem = this.problemLabels().get(c.problemId);
+    if (!problem) return `Problema #${c.problemId}`;
+    // La letra se repite entre categorías (hay una A en cada una): la etiqueta lleva la categoría
+    const category = this.ctx.edition()?.categories.find((cat) => cat.id === problem.categoryId)?.name;
+    return category ? `${category} · ${problem.name}` : problem.name;
   }
 }
 

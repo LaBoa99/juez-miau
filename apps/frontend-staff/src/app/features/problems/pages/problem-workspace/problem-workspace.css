@@ -1,158 +1,45 @@
-.pw {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 24px;
-}
-
+/* Lista | problema. La lista es angosta y se queda a la vista con su propio scroll */
+.pw { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--oj-space-lg); }
+.pw__panel { flex: 1 1 560px; min-width: 0; }
 .pw__list {
-  flex: 0 0 300px;
-  max-width: 300px;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--oj-border);
-  border-radius: var(--oj-radius);
-  overflow: hidden;
-}
-
-.pw__list-head {
-  padding: var(--oj-space-sm) var(--oj-space-md);
-  background: var(--oj-bg-muted);
-  border-bottom: 1px solid var(--oj-border);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.pw__list-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--oj-space-sm);
-  padding: var(--oj-space-sm);
-}
-
-.pw__group-name {
-  display: flex;
-  align-items: center;
-  gap: var(--oj-space-xs);
-  width: 100%;
-  padding: var(--oj-space-xs) var(--oj-space-sm);
-  border: 0;
-  border-radius: var(--oj-radius);
-  background: none;
-  cursor: pointer;
-  text-align: left;
-  font-family: var(--oj-font-sans);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--oj-text-muted);
-}
-
-.pw__group-name:hover {
-  background: var(--oj-bg-muted);
-  color: var(--oj-text);
-}
-
-.pw__group-label {
-  flex: 1;
-}
-
-.pw__group-count {
-  font-weight: 400;
-}
-
-.pw__chevron {
-  flex: none;
-  width: 12px;
-  height: 12px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transition: transform 150ms ease;
-}
-
-.pw__chevron--open {
-  transform: rotate(90deg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pw__chevron {
-    transition: none;
-  }
+  flex: 0 0 224px; display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  position: sticky; top: var(--oj-space-md); max-height: calc(100dvh - 2 * var(--oj-space-md)); overflow-y: auto;
 }
 
 .pw__item {
-  display: flex;
-  align-items: center;
-  gap: var(--oj-space-sm);
-  width: 100%;
-  padding: var(--oj-space-sm);
-  border: 0;
-  background: transparent;
-  border-radius: var(--oj-radius);
-  cursor: pointer;
-  text-align: left;
-  font-family: var(--oj-font-sans);
-  font-size: 13px;
-  color: var(--oj-text);
+  display: flex; align-items: center; gap: var(--oj-space-sm); width: 100%;
+  border: 0; background: none; cursor: pointer; text-align: left; font-family: var(--oj-font-sans);
 }
+/* La barrita a la izquierda dice "esto se puede abrir": tenue al pasar el cursor, marcada en el problema abierto.
+   Renglones sin esquinas redondeadas, como una lista de navegación */
+.pw__item { padding: 6px var(--oj-space-sm); font-size: 13px; color: var(--oj-text); border-left: 2px solid transparent; }
+.pw__item:hover { background: var(--oj-bg-muted); border-left-color: var(--oj-border-input); }
+.pw__item--active,
+.pw__item--active:hover { background: var(--oj-neutral-bg); font-weight: 600; border-left-color: var(--oj-text); }
+.pw__item--overview { margin-bottom: var(--oj-space-xs); }
 
-.pw__item:hover {
-  background: var(--oj-bg-muted);
-}
+.pw__count { margin-left: auto; font-weight: 400; font-size: 11px; color: var(--oj-text-muted); }
+/* Filtros de categoría y autor */
+.pw__filters { display: flex; flex-direction: column; gap: 4px; margin-bottom: var(--oj-space-sm); }
+.pw__filters select { width: 100%; }
+.pw__label { font-size: 12px; font-weight: 600; color: var(--oj-text); }
+/* Autor: filtro secundario (etiqueta atenuada); activo, la etiqueta se marca y ofrece Quitar */
+.pw__label-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--oj-space-sm); margin-top: var(--oj-space-xs); }
+.pw__label--sub { font-weight: 500; color: var(--oj-text-muted); }
+.pw__label--on { color: var(--oj-text); font-weight: 600; }
+.pw__clear { padding: 0; border: 0; background: none; cursor: pointer; font: 500 12px var(--oj-font-sans); color: var(--oj-text-muted); }
+.pw__clear:hover { color: var(--oj-text); }
+/* Renglón: letra | título y, debajo, autor (y estado fuera del concurso) */
+.pw__text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.pw__author { font-size: 11px; font-weight: 400; color: var(--oj-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.pw__item--active {
-  background: var(--oj-neutral-bg);
-}
+.pw__letter { flex: none; min-width: 1.25em; text-align: center; font-weight: 700; }
+.pw__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw__divider { height: 1px; margin: var(--oj-space-sm) var(--oj-space-sm); background: var(--oj-border); }
+.pw__item--out { color: var(--oj-text-muted); }
+.pw__muted { margin: 0; padding: var(--oj-space-xs) var(--oj-space-sm); font-size: 12px; color: var(--oj-text-muted); }
 
-.pw__item--overview {
-  font-weight: 600;
-}
-
-.pw__letter {
-  font-weight: 700;
-}
-
-.pw__title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pw__empty,
-.pw__muted {
-  margin: 0;
-  padding: var(--oj-space-xs) var(--oj-space-sm);
-  font-size: 12px;
-  color: var(--oj-text-muted);
-}
-
-.pw__list-foot {
-  padding: var(--oj-space-sm);
-  border-top: 1px solid var(--oj-border);
-}
-
-.pw__list-foot button {
-  width: 100%;
-}
-
-.pw__panel {
-  flex: 1 1 420px;
-  min-width: 0;
-}
-
-/* En pantallas angostas: lista arriba con alto máximo y scroll, panel debajo. */
-@media (max-width: 720px) {
-  .pw__list {
-    flex-basis: 100%;
-    max-width: 100%;
-    max-height: 280px;
-  }
-  .pw__list-body {
-    overflow-y: auto;
-  }
+/* Angosto: la lista arriba con alto limitado y el problema debajo */
+@media (max-width: 820px) {
+  .pw__list { flex-basis: 100%; position: static; max-height: 240px; }
 }

@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, map, of } from 'rxjs';
 import { EditionStatus, IProblemListItem, ProblemStatus, StaffRole } from '@concurso/shared-types';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
@@ -16,6 +18,7 @@ import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { EditionContext } from '../../../editions/pages/edition-layout/edition-context';
 import { ProblemsBus } from '../../data/problems-bus';
 import { ProblemsService } from '../../data/problems.service';
+import { EditionStaffService } from '../../../editions/edition-staff/data/edition-staff.service';
 
 type Filter = 'todos' | ProblemStatus;
 
@@ -34,6 +37,7 @@ export class ProblemHome {
   private readonly auth = inject(AuthService);
   private readonly ctx = inject(EditionContext);
   private readonly service = inject(ProblemsService);
+  private readonly staff = inject(EditionStaffService);
   protected readonly bus = inject(ProblemsBus);
 
   protected readonly isAdmin = computed(
@@ -46,7 +50,20 @@ export class ProblemHome {
 
   protected readonly paused = computed(() => this.ctx.edition()?.status === EditionStatus.PAUSED);
 
-  protected readonly filter = signal<Filter>('todos');
+  // Con el concurso iniciado lo que importa es lo que está en él: los propuestos que no entraron estorban
+  protected readonly filter = linkedSignal<Filter>(() =>
+    [EditionStatus.RUNNING, EditionStatus.PAUSED, EditionStatus.FINISHED].includes(this.ctx.edition()?.status as EditionStatus)
+      ? ProblemStatus.PUBLISHED
+      : 'todos',
+  );
+  // Autor de cada problema (nombres del staff de la edición)
+  private readonly staffNames = toSignal(
+    this.staff.list(this.bus.editionId).pipe(
+      map((rows) => new Map(rows.map((s) => [s.staff_user_id, s.name]))),
+      catchError(() => of(new Map<number, string>())), // sin nombres la columna queda vacía; no rompe la tabla
+    ),
+    { initialValue: new Map<number, string>() },
+  );
   protected readonly filterOptions = computed(() => {
     const count = (status: ProblemStatus) => this.bus.problems().filter((p) => p.status === status).length;
     return [
@@ -65,6 +82,10 @@ export class ProblemHome {
 
   protected readonly busyId = signal<number | null>(null);
   protected readonly error = signal<string | null>(null);
+
+  author(p: IProblemListItem): string {
+    return p.createdBy == null ? '' : (this.staffNames().get(p.createdBy) ?? '');
+  }
 
   category(p: IProblemListItem): string {
     return this.categoryName().get(p.categoryId) ?? '';

@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -15,7 +16,6 @@ import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Badge } from '../../../../shared/ui/badge.component';
 import { Alert } from '../../../../shared/ui/alert.component';
 import { FormField } from '../../../../shared/ui/form-field.component';
-import { Segmented } from '../../../../shared/ui/segmented.component';
 import { EmptyState } from '../../../../shared/ui/empty-state.component';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog.component';
 import { FileDrop } from '../../../../shared/ui/file-drop.component';
@@ -30,6 +30,7 @@ import { TestsetsService } from '../../../testsets/data/testsets.service';
 import { Stepper, StepperItem } from '../../../../shared/ui/stepper.component';
 import { ProblemsService } from '../../data/problems.service';
 import { ProblemsBus } from '../../data/problems-bus';
+import { TooltipDirective } from '../../../../shared/ui/tooltip.directive';
 import { EditionContext } from '../../../editions/pages/edition-layout/edition-context';
 import { backendMessage } from '../../../../core/http/backend-error.mapper';
 
@@ -38,7 +39,7 @@ import { clearDraft, loadDraft, saveDraft } from '../../../../shared/draft';
 @Component({
   selector: 'oj-problem-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, Badge, Alert, FormField, Segmented, EmptyState, ConfirmDialog, TestsetWorkspace, MarkdownEditor, Stepper, ProblemStatusPipe, FileDrop],
+  imports: [NgTemplateOutlet, ReactiveFormsModule, RouterLink, ButtonDirective, Badge, Alert, FormField, EmptyState, ConfirmDialog, TestsetWorkspace, MarkdownEditor, Stepper, ProblemStatusPipe, FileDrop, TooltipDirective],
   templateUrl: './problem-panel.html',
   styleUrl: './problem-panel.css',
 })
@@ -56,7 +57,7 @@ export class ProblemPanel {
   protected readonly editionId = findEditionId(this.route);
   // La ruta 'nuevo' no lleva :problemId; leemos el último segmento de ESTA ruta
   // ('nuevo' o el id) para no pedir al backend un problema inexistente en modo nuevo.
-  private readonly param = toSignal(this.route.url.pipe(map((segs) => segs.at(-1)?.path ?? null)), {
+  protected readonly param = toSignal(this.route.url.pipe(map((segs) => segs.at(-1)?.path ?? null)), {
     initialValue: this.route.snapshot.url.at(-1)?.path ?? null,
   });
   protected readonly isNew = computed(() => this.param() === 'nuevo');
@@ -91,11 +92,11 @@ export class ProblemPanel {
   protected readonly noCategories = computed(() => this.isNew() && this.categories().length === 0);
 
   protected readonly detail = signal<IProblemDetail | null>(null);
-  protected readonly view = signal<'editar' | 'vista'>('editar');
-  protected readonly viewOptions = [
-    { value: 'editar', label: 'Editar' },
-    { value: 'vista', label: 'Vista previa' },
-  ];
+  // Leer va primero: durante el concurso el juez viene a consultar el enunciado o los casos, no a editar
+  // Consulta (enunciado + casos, lo que se hace durante el concurso) o Editar (el formulario por pasos)
+  protected readonly view = signal<'editar' | 'casos'>('editar');
+  // ?caso=N (desde un envío o una aclaración): la vista Casos abre ese caso
+  protected readonly casoParam = toSignal(this.route.queryParamMap.pipe(map((q) => Number(q.get('caso')) || null)), { initialValue: null });
 
   protected readonly saving = signal(false);
   protected readonly loading = signal(false);
@@ -112,6 +113,16 @@ export class ProblemPanel {
     statement: ['', [Validators.required]],
     manualReview: [false],
   });
+
+  // Probar una solución desde el encabezado: el modal vive en la tabla de casos (versión vigente, ya construida)
+  private readonly casesView = viewChild(TestsetWorkspace);
+  protected readonly canTestRun = computed(() => {
+    const d = this.detail();
+    return !!d && d.testsets.some((t) => t.id === d.currentTestsetId && t.status === TestsetStatus.READY);
+  });
+  openTestRun(): void {
+    this.casesView()?.openTestRun();
+  }
 
   protected readonly title = computed(() => {
     if (this.isNew()) return 'Nuevo problema';
@@ -157,6 +168,13 @@ export class ProblemPanel {
   protected readonly hasPdf = computed(() => this.detail()?.hasStatementPdf ?? false);
   protected readonly previewPdfUrl = signal<SafeResourceUrl | null>(null);
   private previewPdfRaw: string | null = null;
+  // Junto a los casos el visor va sin su barra: la de Chrome pide ~560px y en la columna provoca scroll horizontal.
+  // La página se ajusta al ancho; zoom, descarga e impresión quedan en "Abrir en otra pestaña"
+  protected readonly sidePdfUrl = computed(() => {
+    const url = this.previewPdfUrl();
+    return url && this.previewPdfRaw ? this.sanitizer.bypassSecurityTrustResourceUrl(this.previewPdfRaw + '#toolbar=0&view=FitH') : null;
+  });
+  protected readonly pdfHref = computed(() => (this.previewPdfUrl() ? this.previewPdfRaw : null));
 
   onStmtMode(mode: 'markdown' | 'pdf'): void {
     if (mode === this.stmtMode()) return;
@@ -337,6 +355,11 @@ export class ProblemPanel {
         this.bus.dirty.set(false);
         this.restoreDatosDraft();
         this.loadProgress(d, id);
+        // Quien no puede editarlo, o con el concurso ya iniciado, viene a leerlo: abre en el enunciado, no en el formulario
+        const started = [EditionStatus.RUNNING, EditionStatus.PAUSED, EditionStatus.FINISHED].includes(this.ctx.edition()?.status as EditionStatus);
+        const wanted = this.route.snapshot.queryParamMap.get('vista');
+        // ?vista=enunciado viene de enlaces anteriores: hoy es la misma consulta
+        if (wanted === 'casos' || wanted === 'enunciado' || !d.canEdit || (started && d.status === ProblemStatus.PUBLISHED)) this.onView('casos');
       },
       error: (err) => {
         this.loading.set(false);
@@ -361,8 +384,9 @@ export class ProblemPanel {
   }
 
   onView(value: string): void {
-    this.view.set(value as 'editar' | 'vista');
-    if (value === 'vista' && !this.isNew()) this.loadPreview();
+    this.view.set(value as 'editar' | 'casos');
+    // Casos también lo carga: ahí el PDF va junto a los casos
+    if (value !== 'editar' && !this.isNew()) this.loadPreview();
   }
 
   // "Cancelar" en modo nuevo: vuelve a la lista sin crear nada.

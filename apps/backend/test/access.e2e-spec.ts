@@ -122,23 +122,41 @@ describe('Control de acceso: guard global, roles por edición y sesión de equip
       }
     });
 
-    it('prueba de calor: el staff registra sus clics en la barra (solo el rol); solo el superadmin ve los conteos', async () => {
+    it('prueba de calor: el staff registra sus clics en la barra (rol y pestaña); solo cuenta la corrida actual y solo el superadmin ve los conteos', async () => {
       const url = `/api/v1/editions/${edition.id}/nav-events`;
-      await api().post(url).set(bearer(judgeToken)).send({ from: null, to: 'problemas' }).expect(204);
-      await api().post(url).set(bearer(judgeToken)).send({ from: 'problemas', to: 'envios' }).expect(204);
-      await api().post(url).set(bearer(judgeToken)).send({ from: 'problemas', to: 'envios' }).expect(204);
-      await api().post(url).set(bearer(judgeToken)).send({ from: 'problemas', to: 'no-existe' }).expect(400);
-      await api().post(`/api/v1/editions/${otherEdition.id}/nav-events`).set(bearer(judgeToken)).send({ from: null, to: 'envios' }).expect(403);
+      const session = '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b';
+      // Ensayo: con el concurso andando pero antes del started_at vigente
+      await api().post(url).set(bearer(judgeToken)).send({ from: 'envios', to: 'marcador', session }).expect(204);
+      await editionRepo.query('UPDATE edition SET started_at = now() WHERE id = $1', [edition.id]);
+      try {
+        await api().post(url).set(bearer(judgeToken)).send({ from: null, to: 'problemas', session }).expect(204);
+        await api().post(url).set(bearer(judgeToken)).send({ from: 'problemas', to: 'envios', session }).expect(204);
+        await api().post(url).set(bearer(judgeToken)).send({ from: 'problemas', to: 'envios', session }).expect(204);
+        await api().post(url).set(bearer(judgeToken)).send({ from: 'problemas', to: 'envios' }).expect(204);
+        await api().post(url).set(bearer(judgeToken)).send({ from: 'problemas', to: 'no-existe' }).expect(400);
+        await api().post(url).set(bearer(judgeToken)).send({ from: null, to: 'envios', session: 'juez-7' }).expect(400);
+        await api().post(`/api/v1/editions/${otherEdition.id}/nav-events`).set(bearer(judgeToken)).send({ from: null, to: 'envios' }).expect(403);
 
-      await api().get('/api/v1/audit/navigation').set(bearer(judgeToken)).expect(403);
-      const counts = await api().get(`/api/v1/audit/navigation?editionId=${edition.id}`).set(bearer(superToken)).expect(200);
-      expect(counts.body).toEqual(expect.arrayContaining([
-        { role: 'judge', from: null, to: 'problemas', count: 1 },
-        { role: 'judge', from: 'problemas', to: 'envios', count: 2 },
-      ]));
+        await api().get('/api/v1/audit/navigation').set(bearer(judgeToken)).expect(403);
+        const counts = await api().get(`/api/v1/audit/navigation?editionId=${edition.id}`).set(bearer(superToken)).expect(200);
+        expect(counts.body).toEqual(expect.arrayContaining([
+          { role: 'judge', from: null, to: 'problemas', session, count: 1 },
+          { role: 'judge', from: 'problemas', to: 'envios', session, count: 2 },
+          { role: 'judge', from: 'problemas', to: 'envios', session: null, count: 1 },
+        ]));
+        expect(counts.body.some((c: { to: string }) => c.to === 'marcador')).toBe(false);
+      } finally {
+        await editionRepo.query('UPDATE edition SET started_at = NULL WHERE id = $1', [edition.id]);
+      }
       // Los clics no se mezclan con la auditoría de cambios
       const audit = await api().get(`/api/v1/audit?editionId=${edition.id}`).set(bearer(superToken)).expect(200);
       expect(audit.body.some((entry: { path: string }) => entry.path.endsWith('/nav-events'))).toBe(false);
+    });
+
+    it('GET editions/:id/staff: un juez ve el nombre de cada miembro y nada más de su cuenta', async () => {
+      const res = await api().get(`/api/v1/editions/${edition.id}/staff`).set(bearer(judgeToken)).expect(200);
+      expect(res.body).toContainEqual({ edition_id: edition.id, staff_user_id: judge.id, role: 'JUDGE', name: 'Juez acceso' });
+      expect(JSON.stringify(res.body)).not.toMatch(/password|email/);
     });
 
     it('el marcador no se queda con un equipo renombrado o borrado (caché)', async () => {

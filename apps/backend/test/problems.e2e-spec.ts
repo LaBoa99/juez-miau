@@ -199,6 +199,7 @@ describe('Problemas para staff (e2e)', () => {
           status: 'draft',
           currentTestsetVersion: 1,
           createdBy: judge.id,
+          manualReview: false,
         },
       ]);
     });

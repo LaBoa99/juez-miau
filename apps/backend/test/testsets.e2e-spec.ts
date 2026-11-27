@@ -7,7 +7,7 @@ import request from 'supertest';
 import { App } from 'supertest/types.js';
 import type { Queue } from 'bullmq';
 import { Repository } from 'typeorm';
-import { ProblemStatus, StaffRole, TestCaseOrigin, TestsetStatus } from '@concurso/shared-types';
+import { ProblemStatus, StaffRole, TestCaseOrigin, TestCaseVisibility, TestsetStatus } from '@concurso/shared-types';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/app.setup.js';
 import { StaffUser } from '../src/staff/entities/staff-user.entity.js';
@@ -35,6 +35,7 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
   const stamp = Date.now();
   let judge: StaffUser;
   let observer: StaffUser;
+  let colleague: StaffUser;
   let edition: Edition;
   let enabledLanguage: Language;
   let disabledLanguage: Language;
@@ -86,6 +87,7 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
       staffRepo.save(staffRepo.create({ name, email: `testsets-${name}-${stamp}@concurso.test`, password_hash: 'x' }));
     judge = await newStaff('judge');
     observer = await newStaff('observer');
+    colleague = await newStaff('colleague');
 
     edition = await editionRepo.save(editionRepo.create({ name: `Testsets E2E ${stamp}` }));
     const category = await app.get<Repository<Category>>(getRepositoryToken(Category)).save({
@@ -94,6 +96,7 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
     await app.get<Repository<EditionStaff>>(getRepositoryToken(EditionStaff)).save([
       { edition_id: edition.id, staff_user_id: judge.id, role: StaffRole.JUDGE },
       { edition_id: edition.id, staff_user_id: observer.id, role: StaffRole.OBSERVER },
+      { edition_id: edition.id, staff_user_id: colleague.id, role: StaffRole.JUDGE },
     ]);
 
     const newLanguage = (suffix: string, ext: string) =>
@@ -106,7 +109,7 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
     disabledLanguage = await newLanguage('off', 'y' + String(stamp % 1000).padStart(3, '0'));
     await editionRepo.createQueryBuilder().relation(Edition, 'languages').of(edition.id).add(enabledLanguage.id);
 
-    for (const user of [judge, observer]) {
+    for (const user of [judge, observer, colleague]) {
       tokens[user.name] = await jwt.signAsync({ sub: user.id, type: 'staff' });
     }
 
@@ -129,7 +132,7 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
     // son contenido compartido por sha
     await editionRepo.delete(edition.id);
     await languageRepo.delete([disabledLanguage.id]);
-    await staffRepo.delete([judge.id, observer.id]);
+    await staffRepo.delete([judge.id, observer.id, colleague.id]);
     await app.close();
   });
 
@@ -362,6 +365,27 @@ describe('Testsets: firma, casos, esquema, solución oficial, build y versiones 
 
     // Solo una versión en curso a la vez
     await api().post(`/api/v1/problems/${problemId}/testsets`).set(as('judge')).send({ reason: 'otra' }).expect(409);
+  });
+
+  it('PATCH cases/visibility publica un caso suelto con el testset ya construido y el problema en el concurso, aunque no sea su autor', async () => {
+    const url = `/api/v1/testsets/${testsetId}/cases/visibility`;
+    const target = await caseRepo.findOneByOrFail({ testset_id: testsetId, visibility: TestCaseVisibility.HIDDEN });
+    const publicCount = () => caseRepo.countBy({ testset_id: testsetId, visibility: TestCaseVisibility.PUBLIC });
+    const before = await publicCount();
+    const { status } = await problemRepo.findOneByOrFail({ id: problemId });
+    await problemRepo.update(problemId, { status: ProblemStatus.PUBLISHED });
+    try {
+      expect((await testsetRepo.findOneByOrFail({ id: testsetId })).status).toBe(TestsetStatus.READY);
+      const res = await api().patch(url).set(as('colleague')).send({ caseId: target.id, visibility: 'public' }).expect(200);
+      expect(res.body).toEqual({ updated: 1 });
+      expect((await caseRepo.findOneByOrFail({ id: target.id })).visibility).toBe(TestCaseVisibility.PUBLIC);
+      expect(await publicCount()).toBe(before + 1); // solo ese caso, no su grupo
+      await api().patch(url).set(as('observer')).send({ caseId: target.id, visibility: 'hidden' }).expect(403);
+      await api().patch(url).set(as('colleague')).send({ caseId: 999999999, visibility: 'hidden' }).expect(404);
+      await api().patch(url).set(as('colleague')).send({ caseId: target.id, visibility: 'hidden' }).expect(200);
+    } finally {
+      await problemRepo.update(problemId, { status });
+    }
   });
 
   it('el preview muestra los casos públicos con salida y publicar ya no tiene errores de testset', async () => {

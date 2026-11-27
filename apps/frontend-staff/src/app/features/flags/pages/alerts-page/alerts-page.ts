@@ -5,7 +5,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FlagOutcome, IEditionStaffListItem, IFlag, StaffRole, FlagType } from '@concurso/shared-types';
+import { FlagOutcome, IFlag, StaffRole, FlagType } from '@concurso/shared-types';
 import { PageHeader } from '../../../../shared/ui/page-header.component';
 import { ButtonDirective } from '../../../../shared/ui/button.directive';
 import { Badge } from '../../../../shared/ui/badge.component';
@@ -187,7 +187,7 @@ export class AlertsPage {
     this.staffService.list(this.editionId).subscribe({
       next: (rows) =>
         this.staffMap.set(
-          new Map((rows as IEditionStaffListItem[]).map((s) => [s.staff_user_id, s.name])),
+          new Map(rows.map((s) => [s.staff_user_id, s.name])),
         ),
       error: () => {},
     });

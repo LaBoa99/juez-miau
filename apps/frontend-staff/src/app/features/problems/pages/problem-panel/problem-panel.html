@@ -6,23 +6,42 @@
 } @else if (loadError()) {
   <oj-alert tone="error">No se pudo cargar el problema.</oj-alert>
 } @else {
-  <header class="pp__header">
-    <div class="pp__header-left">
-      <button ojButton variant="secondary" size="sm" type="button" (click)="backToList()">← Problemas</button>
-      <h1 class="pp__title">{{ title() }}</h1>
-    </div>
-    <div class="pp__header-right">
-      @if (!isNew() && detail(); as d) {
-        <oj-badge [tone]="(d.status | problemStatus).tone">{{ (d.status | problemStatus).label }}</oj-badge>
-      }
+  <!-- Título, firma, categoría, límites y estado: en consulta van arriba de los casos (el PDF se alinea con ellos);
+       en Editar y en Nuevo, como encabezado de la página -->
+  <ng-template #heading>
+    <div class="pp__heading">
+      <div class="pp__title-row">
+        <h1 class="pp__title">{{ title() }}</h1>
+        @if (!isNew() && detail(); as d) {
+          <oj-badge [tone]="(d.status | problemStatus).tone">{{ (d.status | problemStatus).label }}</oj-badge>
+        }
+      </div>
       @if (!isNew()) {
-        <oj-segmented [options]="viewOptions" [value]="view()" (valueChange)="onView($event!)" />
-      }
-      @if (canDelete()) {
-        <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDelete()">Eliminar</button>
+        <p class="pp__subtitle">
+          @if (preview()?.signature; as sig) {
+            <code class="oj-mono pp__sig">{{ preview()!.fullProgram ? 'Programa completo · lee ' + readOrder(sig) : signatureText(sig) }}</code>
+          }
+          @if (detail(); as d) {
+            <span class="pp__cat">{{ categoryName(d.categoryId) }}@if (preview()?.limits; as l) { · <span class="oj-mono">{{ l.timeLimitMs }} ms · {{ l.memoryLimitMb }} MB</span>}@if (d.author) { · {{ d.author.name }}}</span>
+          }
+        </p>
       }
     </div>
-  </header>
+  </ng-template>
+
+  @if (isNew() || view() === 'editar') {
+    <header class="pp__header">
+      <ng-container *ngTemplateOutlet="heading" />
+      @if (!isNew()) {
+        <div class="pp__actions">
+          @if (canDelete()) {
+            <button ojButton variant="danger-outline" size="sm" type="button" (click)="askDelete()">Eliminar</button>
+          }
+          <button ojButton variant="secondary" size="sm" type="button" (click)="onView('casos')">Ver problema</button>
+        </div>
+      }
+    </header>
+  }
 
   @if (loading()) {
     <p class="pp__muted">Cargando…</p>
@@ -186,61 +205,54 @@
       }
     }
   } @else {
-    <div class="pp__box pp__preview">
-      @if (previewLoading()) {
-        <p class="pp__muted">Cargando…</p>
-      } @else if (preview(); as p) {
-        <h2 class="pp__preview-title">{{ p.title }}</h2>
-        @if (p.limits) {
-          <span class="pp__limits oj-mono">{{ p.limits.timeLimitMs }} ms · {{ p.limits.memoryLimitMb }} MB</span>
-        }
-        @if (p.hasStatementPdf) {
-          @if (previewPdfUrl(); as url) {
-            <iframe class="pp__pdf" [src]="url" title="Enunciado en PDF"></iframe>
+    <!-- Consulta: los casos (el trabajo) a la izquierda, donde se mira primero; el enunciado de referencia a la derecha.
+         La firma va con los casos; los ejemplos son los casos públicos y no se repiten -->
+    @if (detail(); as d) {
+      <div class="pp__casos">
+        <section class="pp__work" aria-label="Casos y acciones del problema">
+          <ng-container *ngTemplateOutlet="heading" />
+          <!-- Todo lo que se hace con el problema, junto a los casos -->
+          <div class="pp__work-actions">
+            @if (canTestRun()) {
+              <button ojButton variant="secondary" size="sm" type="button" (click)="openTestRun()"
+                      ojTooltip="Juzga un código contra los casos como un envío; no cuenta para el marcador">Probar una solución…</button>
+            }
+            <button ojButton variant="secondary" size="sm" type="button" (click)="onView('editar')"
+                    [ojTooltip]="canEdit() ? 'Datos, solución, casos y evaluación' : 'Solo lectura: es de otro juez'">
+              {{ canEdit() ? 'Editar problema' : 'Ver configuración' }}
+            </button>
+          </div>
+          <oj-testset-workspace [problem]="d" step="casos" [readOnly]="true" [consult]="true" [focusCase]="casoParam()" (changed)="refreshDetail()" />
+        </section>
+        <aside class="pp__statement" aria-label="Enunciado">
+          @if (preview(); as p) {
+            @if (p.hasStatementPdf) {
+              @if (sidePdfUrl(); as url) {
+                <a class="pp__pdf-open" [href]="pdfHref()" target="_blank" rel="noopener">Abrir en otra pestaña</a>
+                <iframe class="pp__pdf pp__pdf--side" [src]="url" title="Enunciado en PDF"></iframe>
+              } @else {
+                <p class="pp__muted">Cargando el PDF…</p>
+              }
+            } @else {
+              <div class="pp__md oj-md" [innerHTML]="renderMd(p.statement)"></div>
+            }
+            <!-- Solo problemas anteriores que todavía los traen -->
+            @if (p.inputFormat) {
+              <h3 class="pp__preview-h">Entrada</h3>
+              <div class="pp__md oj-md" [innerHTML]="renderMd(p.inputFormat)"></div>
+            }
+            @if (p.outputFormat) {
+              <h3 class="pp__preview-h">Salida</h3>
+              <div class="pp__md oj-md" [innerHTML]="renderMd(p.outputFormat)"></div>
+            }
+          } @else if (previewLoading()) {
+            <p class="pp__muted">Cargando el enunciado…</p>
           } @else {
-            <p class="pp__muted">Cargando el PDF…</p>
+            <p class="pp__muted">No se pudo cargar el enunciado.</p>
           }
-        } @else {
-          <div class="pp__md oj-md" [innerHTML]="renderMd(p.statement)"></div>
-        }
-        @if (p.signature && p.fullProgram) {
-          <h3 class="pp__preview-h">Programa completo</h3>
-          <p class="pp__muted">
-            El equipo recibe una plantilla que ya lee, en este orden:
-            <span class="oj-mono">{{ readOrder(p.signature) }}</span>. Solo escribe la lógica e imprime la respuesta.
-          </p>
-        } @else if (p.signature) {
-          <h3 class="pp__preview-h">Función</h3>
-          <pre class="pp__sample-block oj-mono">{{ signatureText(p.signature) }}</pre>
-        }
-        <!-- Solo problemas anteriores que todavía los traen -->
-        @if (p.inputFormat) {
-          <h3 class="pp__preview-h">Entrada</h3>
-          <div class="pp__md oj-md" [innerHTML]="renderMd(p.inputFormat)"></div>
-        }
-        @if (p.outputFormat) {
-          <h3 class="pp__preview-h">Salida</h3>
-          <div class="pp__md oj-md" [innerHTML]="renderMd(p.outputFormat)"></div>
-        }
-        @if (p.samples.length) {
-          <h3 class="pp__preview-h">Ejemplos</h3>
-          @for (s of p.samples; track $index) {
-            <div class="pp__sample">
-              <div>
-                <div class="pp__sample-label">Entrada</div>
-                <pre class="pp__sample-block oj-mono">{{ p.fullProgram ? s.input : caseInput(s.input) }}</pre>
-              </div>
-              <div>
-                <div class="pp__sample-label">Salida</div>
-                <pre class="pp__sample-block oj-mono">{{ s.output }}</pre>
-              </div>
-            </div>
-          }
-        }
-      } @else {
-        <p class="pp__muted">Sin vista previa.</p>
-      }
-    </div>
+        </aside>
+      </div>
+    }
   }
 
   <oj-confirm-dialog

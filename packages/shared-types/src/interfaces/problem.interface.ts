@@ -34,6 +34,8 @@ export interface IProblemListItem {
     currentTestsetVersion: number | null
     // Autor (null en problemas viejos): con el admin de la edición, quien lo puede eliminar
     createdBy: number | null
+    // La versión vigente manda los envíos que pasan todo a un juez (testset.manual_review)
+    manualReview: boolean
 }
 
 export interface ICreateProblemResponse {

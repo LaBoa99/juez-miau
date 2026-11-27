@@ -101,6 +101,9 @@
               @if (progressText(s); as pt) {
                 <span class="sub__progress oj-mono">{{ pt }}</span>
               }
+              @if (s.reviewedBy != null) {
+                <div class="sub__reviewed">Revisado por {{ reviewer(s) }}</div>
+              }
             </td>
             <td class="oj-mono sub__num">{{ s.maxTimeMs !== null ? s.maxTimeMs + ' ms' : '—' }}</td>
             <td class="oj-mono sub__num">{{ s.maxMemoryKb !== null ? s.maxMemoryKb + ' KB' : '—' }}</td>

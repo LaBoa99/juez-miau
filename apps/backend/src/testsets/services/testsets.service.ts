@@ -757,13 +757,18 @@ export class TestsetsService {
         })
     }
 
-    // Visibilidad de todo un grupo; `group: null` son los casos manuales
+    // Visibilidad de un caso o de todo un grupo (`group: null` son los manuales). Publicar u ocultar no toca salidas ni
+    // cómo se juzga, así que no pide versión nueva y lo puede hacer cualquier juez con el concurso en marcha: es como se
+    // le muestra a los equipos el caso que piden en una aclaración (lo ven como ejemplo y en el detalle de sus envíos)
     async updateCasesVisibility(testsetId: number, dto: UpdateCasesVisibilityDto, staffUserId: number): Promise<{ updated: number }> {
-        const { testset } = await this.getTestsetForAuthor(testsetId, staffUserId)
-        this.assertEditable(testset)
+        const { testset } = await this.getTestsetForJudge(testsetId, staffUserId)
+        if(dto.caseId !== undefined) await this.getCaseOfTestset(testset.id, dto.caseId)
 
         return this.dataSource.transaction(async (manager) => {
-            const result = await manager.update(TestCase, { testset_id: testset.id, group_name: dto.group ?? IsNull() }, { visibility: dto.visibility })
+            const where = dto.caseId !== undefined
+                ? { testset_id: testset.id, id: dto.caseId }
+                : { testset_id: testset.id, group_name: dto.group ?? IsNull() }
+            const result = await manager.update(TestCase, where, { visibility: dto.visibility })
             await this.markEdited(testset, manager)
             return { updated: result.affected ?? 0 }
         })
