@@ -65,10 +65,15 @@ class SubmissionController(QObject):
     @Slot(object)
     def _submitted(self, submission):
         self.window.problems.set_submitting(False)
-        # Sin aviso de Windows aquí: solo uno, al final, cuando llegue el veredicto (_on_update)
-        self.window.problems.show_message("✓ Envío recibido. Recibirás un aviso con el veredicto.", success=True)
-        self._awaiting = submission["id"]
-        self._on_update(submission)
+        # Un veredicto rápido (CE) puede llegar por socket antes que esta respuesta, que dice QUEUED:
+        # aplicarla regresaría el envío a "En cola" y el siguiente evento DONE avisaría otra vez
+        known = self.submissions.get(submission["id"])
+        if not known or not is_final(known):
+            # Sin aviso de Windows aquí: solo uno, al final, cuando llegue el veredicto (_on_update)
+            self.window.problems.show_message("✓ Envío recibido. Recibirás un aviso con el veredicto.", success=True)
+            self._awaiting = submission["id"]
+        if not known:
+            self._on_update(submission)
         # A la pestaña Intentos: ahí se ve "En cola", "Juzgando 3/12" y luego el veredicto
         self.window.problems.show_attempt(submission["problemId"], submission["id"])
 

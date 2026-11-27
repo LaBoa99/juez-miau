@@ -10,13 +10,10 @@ import { outputHint } from './starter-notes.js'
 
 const KEEP = '───── NO TOCAR estas líneas ni cambiar su orden ─────'
 
-// Si un envío todavía tiene esta frase, el participante no escribió nada: lo detecta submissions.service.ts
-export const FULL_PROGRAM_MARKER = 'Escribe tu solución aquí'
-
 // Dónde va la solución y qué imprimir. La primera línea la buscan las pruebas para meter código
 function solveHere(comment: string, indent: string, out: string, returns: TypeRef, languageCode: string): string[] {
     return [
-        indent + comment + ' ───── ' + FULL_PROGRAM_MARKER + ' ─────',
+        indent + comment + ' ───── Escribe tu solución aquí ─────',
         indent + comment + ' ' + outputHint(returns, languageCode) + ' Usa ' + out + '.',
         indent + comment + ' Si antes imprimes mensajes no pasa nada: el juez solo revisa lo último que imprimas.',
     ]

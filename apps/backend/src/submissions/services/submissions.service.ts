@@ -17,6 +17,7 @@ import {
     type ISubmissionFeedback,
     type IStaffSubmission,
     type IStaffSubmissionDetail,
+    type IProblemSignature,
 } from '@concurso/shared-types'
 import { ANY_EDITION_ROLE } from '../../auth/decorators/access.decorators.js'
 import { BlobsService } from '../../blobs/services/blobs.service.js'
@@ -24,8 +25,8 @@ import { acceptsSubmissions, elapsedMs } from '../../contest-clock/clock.js'
 import { Edition } from '../../editions/entities/edition.entity.js'
 import { EditionStaffService } from '../../editions/services/edition-staff.service.js'
 import { FlagsService } from '../../flags/flags.service.js'
-import { FUNCTION_MARKER, hasDriver } from '../../judge/drivers/index.js'
-import { FULL_PROGRAM_MARKER } from '../../judge/drivers/program-starter.js'
+import { hasDriver, starterCode } from '../../judge/drivers/index.js'
+import { programStarterCode } from '../../judge/drivers/program-starter.js'
 import { Language } from '../../languages/entities/language.entity.js'
 import { Problem } from '../../problems/entities/problem.entity.js'
 import { RealtimeService } from '../../realtime/realtime.service.js'
@@ -51,6 +52,18 @@ const JUDGE_ROLES = [StaffRole.ADMIN, StaffRole.JUDGE]
 const JUDGED = [Verdict.AC, Verdict.WA, Verdict.TLE, Verdict.MLE, Verdict.RE]
 
 const DEFAULT_PAGE = 50
+
+// Sin diferencias de fin de línea ni espacios al final: el IDE puede cambiarlos al guardar
+const normalizeSource = (source: string) => source.replace(/\r\n?/g, '\n').split('\n').map((line) => line.trimEnd()).join('\n').trim()
+
+// Igual a la plantilla de función o a la de programa completo de ese lenguaje (no hace falta saber el modo)
+export function isUntouchedTemplate(source: string, languageCode: string, signature: IProblemSignature): boolean {
+    const sent = normalizeSource(source)
+    return [starterCode, programStarterCode].some((template) => {
+        const code = template(languageCode, signature)
+        return code !== null && normalizeSource(code) === sent
+    })
+}
 
 @Injectable()
 export class SubmissionsService implements OnApplicationBootstrap {
@@ -130,10 +143,10 @@ export class SubmissionsService implements OnApplicationBootstrap {
         if(source.length > MAX_SOURCE_BYTES){
             throw new UnprocessableEntityException('El archivo pesa más de ' + MAX_SOURCE_BYTES / 1024 + ' KB.')
         }
-        // La plantilla sin tocar compila (o ni eso) y el juez la resuelve casi al instante: se rechaza
-        // antes de encolar para no mandar dos avisos pegados ("recibido" y el veredicto) a la app
-        if(dto.source.includes(FULL_PROGRAM_MARKER) || dto.source.includes(FUNCTION_MARKER)){
-            throw new UnprocessableEntityException('No se detectó una solución: el archivo todavía tiene el comentario de la plantilla sin reemplazar.')
+        // La plantilla tal como se descargó no es una solución. Solo cuenta si es idéntica: casi todos escriben
+        // debajo del comentario de la plantilla sin borrarlo
+        if(problem.signature && isUntouchedTemplate(dto.source, language.code, problem.signature)){
+            throw new UnprocessableEntityException('No se detectó una solución: enviaste la plantilla sin cambios.')
         }
 
         const recent = await this.submissionRepository.exists({

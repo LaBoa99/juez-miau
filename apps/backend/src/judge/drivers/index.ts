@@ -60,9 +60,6 @@ function pyType(type: TypeRef): string {
     return type.type === 'array' ? 'list[' + pyType(type.items) + ']' : PY_SCALARS[type.type]
 }
 
-// Si un envío todavía tiene esta frase, el participante no escribió nada: lo detecta submissions.service.ts
-export const FUNCTION_MARKER = 'Escribe tu código aquí'
-
 // Plantilla de modo función: el esqueleto con un encabezado que dice qué no tocar y qué regresar, y en el cuerpo
 // dónde escribir y un return del tipo correcto (así compila tal cual)
 export function starterCode(languageCode: string, signature: IProblemSignature): string | null {
@@ -77,7 +74,7 @@ export function starterCode(languageCode: string, signature: IProblemSignature):
         '',
     ]
     const body = [
-        indent + comment + ' ' + FUNCTION_MARKER,
+        indent + comment + ' Escribe tu código aquí',
         indent + 'return ' + placeholder(languageCode, signature.returns) + (languageCode === 'python' ? '' : ';'),
     ]
     return [...header, ...withBody(skeleton, languageCode, signature.functionName, body)].join('\n')
