@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, Query, Req } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Type } from 'class-transformer'
-import { IsEnum, IsIn, IsInt, IsOptional, ValidateIf } from 'class-validator'
+import { IsEnum, IsIn, IsInt, IsOptional, IsUUID, ValidateIf } from 'class-validator'
 import { DataSource, Repository } from 'typeorm'
 import { EDITION_SECTIONS, EditionStatus, type EditionSection, type ICreateNavEvent, type INavCount, type NavRole } from '@concurso/shared-types'
 import { ANY_EDITION_ROLE, RequireEditionRole, SuperadminOnly } from '../auth/decorators/access.decorators.js'
@@ -20,6 +20,8 @@ export class CreateNavEventDto implements ICreateNavEvent {
 
     @IsIn(SECTIONS)
     declare to: EditionSection
+
+    @IsOptional() @IsUUID() declare session?: string
 }
 
 export class NavFiltersDto {
@@ -51,7 +53,7 @@ export class NavigationController {
         const edition = await this.dataSource.getRepository(Edition).findOneBy({ id: editionId })
         if(!role || !edition) return
 
-        await this.navRepository.insert({ edition_id: editionId, role, from_section: dto.from, to_section: dto.to, edition_status: edition.status })
+        await this.navRepository.insert({ edition_id: editionId, role, from_section: dto.from, to_section: dto.to, session_id: dto.session ?? null, edition_status: edition.status })
     }
 
     @Get('audit/navigation')
@@ -61,14 +63,20 @@ export class NavigationController {
             .select('event.role', 'role')
             .addSelect('event.from_section', 'from')
             .addSelect('event.to_section', 'to')
+            .addSelect('event.session_id', 'session')
             .addSelect('COUNT(*)', 'count')
+            .leftJoin(Edition, 'edition', 'edition.id = event.edition_id')
+            // Solo la corrida actual: clock/reset no borra nada, así que los clics con el concurso andando de antes del
+            // started_at vigente son de ensayos (tras un reset started_at es null y no queda ninguno). Preparar sí cuenta
+            .where('(event.edition_status IN (:...prep) OR event.created_at >= edition.started_at)', { prep: [EditionStatus.DRAFT, EditionStatus.SCHEDULED] })
             .groupBy('event.role')
             .addGroupBy('event.from_section')
             .addGroupBy('event.to_section')
+            .addGroupBy('event.session_id')
         if(filters.editionId !== undefined) query.andWhere('event.edition_id = :editionId', { editionId: filters.editionId })
         if(filters.status !== undefined) query.andWhere('event.edition_status = :status', { status: filters.status })
 
-        const rows = await query.getRawMany<{ role: NavRole, from: EditionSection | null, to: EditionSection, count: string }>()
+        const rows = await query.getRawMany<{ role: NavRole, from: EditionSection | null, to: EditionSection, session: string | null, count: string }>()
         return rows.map((row) => ({ ...row, count: Number(row.count) }))
     }
 }

@@ -15,6 +15,7 @@ function flag(type: FlagType, details: string): IFlag {
     resolutionNote: null,
     outcome: null,
     offense: 1,
+    attempts: 1,
   };
 }
 

@@ -79,6 +79,9 @@ export class EditionLayout {
 
   constructor() {
     this.ctx.load(this.id);
+    // Entrada a la edición (por URL, recarga o desde la lista): from = null hacia la sección donde cae
+    const landing = this.route.snapshot.firstChild?.routeConfig?.path;
+    if (EDITION_SECTIONS.some((s) => s.path === landing)) this.editionsService.recordNav(this.id, { from: null, to: landing as EditionSection });
 
     this.submissions.reviewQueue(this.id).subscribe({
       next: (rows) => this.pending.set(new Set(rows.map((r) => r.id))),

@@ -23,9 +23,17 @@ export class EditionsService {
     return this.http.get<IEditionListItem[]>(EDITIONS, { params });
   }
 
+  // Id al azar por pestaña (sessionStorage) para separar a cada juez en la prueba de calor sin saber quién es.
+  // shortcut: «Duplicar pestaña» copia sessionStorage y comparte el id; no importa para contar idas y vueltas
+  private readonly navSession = (() => {
+    const id = sessionStorage.getItem('nav-session') ?? crypto.randomUUID();
+    sessionStorage.setItem('nav-session', id);
+    return id;
+  })();
+
   // Prueba de calor de la barra: cada clic de sección; si falla no importa (no se reintenta ni se avisa)
   recordNav(id: number, event: ICreateNavEvent): void {
-    this.http.post<void>(`${EDITIONS}/${id}/nav-events`, event).subscribe({ error: () => {} });
+    this.http.post<void>(`${EDITIONS}/${id}/nav-events`, { ...event, session: this.navSession }).subscribe({ error: () => {} });
   }
 
   get(id: number): Observable<IEditionDetail> {

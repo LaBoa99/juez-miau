@@ -18,15 +18,18 @@ export type EditionSection = typeof EDITION_SECTIONS[number]['path']
 export interface ICreateNavEvent {
     from: EditionSection | null
     to: EditionSection
+    // Id al azar de la pestaña (anónimo): separa sesiones sin guardar quién navegó
+    session?: string
 }
 
 // Rol con el que se navegó; superadmin aparte porque ve todo sin tener rol en la edición
 export type NavRole = 'superadmin' | 'admin' | 'judge' | 'observer'
 
-// Conteo agregado: cuántas veces se fue de `from` a `to` con ese rol
+// Conteo agregado: cuántas veces se fue de `from` a `to` con ese rol, en esa pestaña (null = sin id de sesión)
 export interface INavCount {
     role: NavRole
     from: EditionSection | null
     to: EditionSection
+    session: string | null
     count: number
 }

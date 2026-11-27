@@ -25,6 +25,10 @@ const PHASES: { value: EditionStatus; label: string }[] = [
   { value: EditionStatus.FINISHED, label: 'Terminada' },
 ];
 
+const PAIRS_SHOWN = 10;
+// A partir de aquí un par se marca como lejano en la barra
+const FAR = 3;
+
 // Prueba de calor de la barra de secciones de una edición: qué secciones se abren, con qué rol, y qué saltos se
 // repiten. Si una sección muy usada está lejos de las que se usan con ella, el orden no ayuda
 @Component({
@@ -41,11 +45,14 @@ export class NavHeat {
   protected readonly roles = ROLES;
   protected readonly phases = PHASES;
   protected readonly sections = EDITION_SECTIONS;
+  protected readonly far = FAR;
 
   protected readonly editionCtrl = new FormControl<number | null>(null);
   protected readonly phaseCtrl = new FormControl<EditionStatus | null>(null);
   protected readonly roleCtrl = new FormControl<NavRole | null>(null);
   private readonly role = toSignal(this.roleCtrl.valueChanges, { initialValue: null });
+  protected readonly sessionCtrl = new FormControl<string | null>(null);
+  private readonly session = toSignal(this.sessionCtrl.valueChanges, { initialValue: null });
 
   protected readonly editionList = signal<IEditionListItem[]>([]);
   protected readonly counts = signal<INavCount[]>([]);
@@ -65,6 +72,7 @@ export class NavHeat {
       )
       .subscribe({
         next: (counts) => {
+          this.sessionCtrl.setValue(null);
           this.counts.set(counts);
           this.loading.set(false);
         },
@@ -75,13 +83,45 @@ export class NavHeat {
       });
   }
 
-  protected readonly total = computed(() => this.counts().reduce((n, c) => n + c.count, 0));
+  // Pestañas (id anónimo por pestaña del panel), de la más activa a la menos; los clics viejos no traen id
+  protected readonly sessionList = computed(() => {
+    const byId = new Map<string, { count: number; roles: Map<NavRole, number> }>();
+    for (const c of this.counts()) {
+      if (!c.session) continue;
+      const s = byId.get(c.session) ?? { count: 0, roles: new Map() };
+      s.count += c.count;
+      s.roles.set(c.role, (s.roles.get(c.role) ?? 0) + c.count);
+      byId.set(c.session, s);
+    }
+    return [...byId]
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([id, s], i) => {
+        const role = [...s.roles].sort((a, b) => b[1] - a[1])[0][0];
+        return { id, count: s.count, label: `Pestaña ${i + 1} · ${ROLES.find((r) => r.role === role)!.label} · ${s.count} clics` };
+      });
+  });
+
+  // Cuántas pestañas y si una sola concentra los clics (un juez muy activo pesa más que el resto)
+  protected readonly sessionSummary = computed(() => {
+    const list = this.sessionList();
+    if (!list.length) return null;
+    const tracked = list.reduce((n, s) => n + s.count, 0);
+    return { sessions: list.length, topShare: list[0].count / tracked, untracked: this.counts().reduce((n, c) => n + c.count, 0) - tracked };
+  });
+
+  // Todo lo de abajo se calcula con la pestaña elegida (o todas)
+  private readonly filtered = computed(() => {
+    const session = this.session();
+    return session ? this.counts().filter((c) => c.session === session) : this.counts();
+  });
+
+  protected readonly total = computed(() => this.filtered().reduce((n, c) => n + c.count, 0));
 
   // Clics que llegan a cada sección, por rol. % = parte de los clics de ese rol
   protected readonly usage = computed(() => {
     const byRole = new Map<NavRole, number>();
     const cell = new Map<string, number>();
-    for (const c of this.counts()) {
+    for (const c of this.filtered()) {
       byRole.set(c.role, (byRole.get(c.role) ?? 0) + c.count);
       cell.set(c.role + '|' + c.to, (cell.get(c.role + '|' + c.to) ?? 0) + c.count);
     }
@@ -107,7 +147,7 @@ export class NavHeat {
   protected readonly jumps = computed(() => {
     const role = this.role();
     const cell = new Map<string, number>();
-    for (const c of this.counts()) {
+    for (const c of this.filtered()) {
       if (role && c.role !== role) continue;
       cell.set((c.from ?? '') + '|' + c.to, (cell.get((c.from ?? '') + '|' + c.to) ?? 0) + c.count);
     }
@@ -120,12 +160,42 @@ export class NavHeat {
     const position = new Map(EDITION_SECTIONS.map((s, i) => [s.path as string, i]));
     let distance = 0;
     let jumps = 0;
-    for (const c of this.counts()) {
+    for (const c of this.filtered()) {
       if (c.from === null) continue;
       distance += Math.abs(position.get(c.from)! - position.get(c.to)!) * c.count;
       jumps += c.count;
     }
     return jumps ? (distance / jumps).toFixed(1) : null;
+  });
+
+  // Idas y vueltas: A→B y B→A sumados por par (con el rol de la matriz), con su distancia en la barra.
+  // Un par muy usado y lejano es candidato a quedar junto
+  protected readonly pairs = computed(() => {
+    const role = this.role();
+    const position = new Map(EDITION_SECTIONS.map((s, i) => [s.path as string, i]));
+    const byPair = new Map<string, { a: number; b: number; ab: number; ba: number }>();
+    for (const c of this.filtered()) {
+      if (c.from === null || (role && c.role !== role)) continue;
+      const [a, b] = [position.get(c.from)!, position.get(c.to)!].sort((x, y) => x - y);
+      const pair = byPair.get(a + '|' + b) ?? { a, b, ab: 0, ba: 0 };
+      if (position.get(c.from) === a) pair.ab += c.count;
+      else pair.ba += c.count;
+      byPair.set(a + '|' + b, pair);
+    }
+    const rows = [...byPair.values()].map((p) => ({
+      a: EDITION_SECTIONS[p.a].label,
+      b: EDITION_SECTIONS[p.b].label,
+      ab: p.ab,
+      ba: p.ba,
+      total: p.ab + p.ba,
+      distance: p.b - p.a,
+    }));
+    const jumps = rows.reduce((n, r) => n + r.total, 0);
+    const adjacent = rows.filter((r) => r.distance === 1).reduce((n, r) => n + r.total, 0);
+    return {
+      top: rows.sort((x, y) => y.total - x.total).slice(0, PAIRS_SHOWN),
+      adjacentShare: jumps ? adjacent / jumps : null,
+    };
   });
 
   // Intensidad del color según la parte (0–1); con mucho color el texto pasa a claro

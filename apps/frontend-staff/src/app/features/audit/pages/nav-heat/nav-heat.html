@@ -20,7 +20,24 @@
       }
     </select>
   </oj-form-field>
+  @if (sessionList().length) {
+    <oj-form-field label="Pestaña" for="heat-session">
+      <select id="heat-session" [formControl]="sessionCtrl">
+        <option [ngValue]="null">Todas</option>
+        @for (s of sessionList(); track s.id) {
+          <option [ngValue]="s.id">{{ s.label }}</option>
+        }
+      </select>
+    </oj-form-field>
+  }
 </div>
+@if (!loading() && !error() && sessionSummary(); as s) {
+  <p class="heat__muted">
+    <span class="oj-mono">{{ s.sessions }}</span> {{ s.sessions === 1 ? 'pestaña' : 'pestañas' }} del panel (un id al azar por
+    pestaña, sin saber quién es). La más activa hizo el <span class="oj-mono">{{ percent(s.topShare) }}</span> de sus clics@if (s.untracked) {;
+    otros <span class="oj-mono">{{ s.untracked }}</span> clics son de antes de guardar la pestaña}.
+  </p>
+}
 
 @if (loading()) {
   <p class="heat__muted">Cargando…</p>
@@ -78,7 +95,10 @@
         </select>
       </oj-form-field>
     </div>
-    <p class="heat__muted">Filas: desde dónde; columnas: a dónde. Dos secciones con muchos saltos entre sí deberían quedar juntas.</p>
+    <p class="heat__muted">
+      Filas: desde dónde («Entrada» es al abrir la edición por URL, recarga o desde la lista); columnas: a dónde. Dos
+      secciones con muchos saltos entre sí deberían quedar juntas.
+    </p>
     <div class="oj-table-wrap">
       <table class="oj-table heat__table">
         <thead>
@@ -102,5 +122,42 @@
         </tbody>
       </table>
     </div>
+  </section>
+
+  <section class="heat__block" aria-labelledby="heat-pairs">
+    <h3 class="heat__title" id="heat-pairs">Idas y vueltas más comunes</h3>
+    @if (pairs().top.length) {
+      <p class="heat__muted">
+        Saltos entre dos secciones sumando los dos sentidos, con el rol elegido arriba. «Ida» va en el orden de la barra y «Vuelta» al revés.@if (pairs().adjacentShare !== null) {
+        El <span class="oj-mono">{{ percent(pairs().adjacentShare!) }}</span> de los saltos va a la sección de al lado.}
+        Se resalta la distancia de los pares a {{ far }} lugares o más.
+      </p>
+      <div class="oj-table-wrap">
+        <table class="oj-table heat__table">
+          <thead>
+            <tr>
+              <th>Secciones</th>
+              <th class="heat__num">Ida</th>
+              <th class="heat__num">Vuelta</th>
+              <th class="heat__num">Total</th>
+              <th class="heat__num">Distancia</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of pairs().top; track p.a + p.b) {
+              <tr>
+                <td>{{ p.a }} ↔ {{ p.b }}</td>
+                <td class="heat__num oj-mono">{{ p.ab }}</td>
+                <td class="heat__num oj-mono">{{ p.ba }}</td>
+                <td class="heat__num oj-mono">{{ p.total }}</td>
+                <td class="heat__num oj-mono" [class.heat__off]="p.distance >= far">{{ p.distance }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <p class="heat__muted">Aún no hay saltos entre secciones con este rol.</p>
+    }
   </section>
 }
